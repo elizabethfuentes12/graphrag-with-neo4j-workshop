@@ -1,0 +1,21 @@
+assets/*
+!assets/README.md
+
+# Environment — never commit credentials
+.env
+*.env.local
+notebooks/.env
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Jupyter outputs (strip before committing with: jupyter nbconvert --clear-output)
+.ipynb_checkpoints/
+
+# Large data files (go in assets/ S3 bucket, not repo)
+notebooks/*.index
+notebooks/*.json.bak
+notebooks/faqs_*.json
+notebooks/faqs_*.index

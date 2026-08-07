@@ -1,0 +1,264 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  Neo4j Foundation — Secret, S3 dump bucket, IAM roles, Security Group,
+  CloudWatch Log Groups, ECS Cluster. Deploy first; other stacks depend on this.
+
+Parameters:
+  VpcId:
+    Type: String
+  AssetsBucketName:
+    Type: String
+    Default: ""
+  AssetsBucketPrefix:
+    Type: String
+    Default: ""
+  BedrockRegion:
+    Type: String
+    Default: "us-east-1"
+
+Resources:
+
+  Neo4jSecret:
+    Type: AWS::SecretsManager::Secret
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      GenerateSecretString:
+        PasswordLength: 20
+        ExcludePunctuation: true
+
+  GraphDumpBucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: cleanup-old-dumps
+            Status: Enabled
+            ExpirationInDays: 30
+
+  # Empties the bucket before CFN deletes it (avoids DELETE_FAILED on non-empty bucket)
+  BucketEmptierRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: lambda.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: EmptyBucket
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: [s3:ListBucket, s3:ListBucketVersions, s3:DeleteObject, s3:DeleteObjectVersion]
+                Resource:
+                  - !GetAtt GraphDumpBucket.Arn
+                  - !Sub "${GraphDumpBucket.Arn}/*"
+
+  BucketEmptierLambda:
+    Type: AWS::Lambda::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: Bucket emptier Lambda does not need VPC
+          - id: W92
+            reason: One-time cleanup Lambda
+    Properties:
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt BucketEmptierRole.Arn
+      Timeout: 300
+      Code:
+        ZipFile: |
+          import boto3, json, urllib3
+
+          def send(event, status, data={}):
+              body = json.dumps({
+                  'Status': status,
+                  'PhysicalResourceId': event.get('PhysicalResourceId', event['LogicalResourceId']),
+                  'StackId': event['StackId'],
+                  'RequestId': event['RequestId'],
+                  'LogicalResourceId': event['LogicalResourceId'],
+                  'Data': data,
+              })
+              urllib3.PoolManager().request('PUT', event['ResponseURL'],
+                  body=body, headers={'Content-Type': ''})
+
+          def handler(event, context):
+              bucket = event['ResourceProperties']['BucketName']
+              if event['RequestType'] == 'Delete':
+                  try:
+                      s3 = boto3.client('s3')
+                      paginator = s3.get_paginator('list_objects_v2')
+                      for page in paginator.paginate(Bucket=bucket):
+                          objects = [{'Key': o['Key']} for o in page.get('Contents', [])]
+                          if objects:
+                              s3.delete_objects(Bucket=bucket, Delete={'Objects': objects})
+                  except Exception as e:
+                      print(f"Error emptying bucket: {e}")
+                      send(event, 'FAILED', {'Error': str(e)})
+                      return
+              send(event, 'SUCCESS')
+
+  EmptyBucketOnDelete:
+    Type: Custom::EmptyBucketOnDelete
+    DependsOn: GraphDumpBucket
+    Properties:
+      ServiceToken: !GetAtt BucketEmptierLambda.Arn
+      BucketName: !Ref GraphDumpBucket
+
+  Neo4jSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W5
+            reason: Neo4j Bolt must be reachable from all participant accounts via NLB
+          - id: W40
+            reason: All outbound required for S3 and Bedrock access from Fargate tasks
+    Properties:
+      GroupDescription: Central Neo4j - Bolt from internet, all outbound for S3/Bedrock
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 7687
+          ToPort: 7687
+          CidrIp: 0.0.0.0/0
+          Description: Neo4j Bolt (participant accounts connect via NLB)
+
+  Neo4jExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ecs-tasks.amazonaws.com}
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref Neo4jSecret
+
+  Neo4jTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: {Service: ecs-tasks.amazonaws.com}
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: S3AndBedrock
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: S3DumpAccess
+                Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:HeadObject, s3:ListBucket]
+                Resource:
+                  - !GetAtt GraphDumpBucket.Arn
+                  - !Sub "${GraphDumpBucket.Arn}/*"
+              - Sid: S3AssetsBucketAccess
+                Effect: Allow
+                Action: [s3:GetObject, s3:PutObject, s3:HeadObject, s3:ListBucket]
+                Resource:
+                  - !Sub "arn:aws:s3:::${AssetsBucketName}"
+                  - !Sub "arn:aws:s3:::${AssetsBucketName}/*"
+              - Sid: BedrockForBuild
+                Effect: Allow
+                Action: [bedrock:InvokeModel, bedrock:InvokeModelWithResponseStream]
+                Resource:
+                  - !Sub "arn:aws:bedrock:*::foundation-model/anthropic.*"
+                  - !Sub "arn:aws:bedrock:*::foundation-model/amazon.*"
+                  - !Sub "arn:aws:bedrock:*:${AWS::AccountId}:inference-profile/us.anthropic.*"
+              - Sid: MarketplaceForCrossRegion
+                Effect: Allow
+                Action: [aws-marketplace:ViewSubscriptions, aws-marketplace:Subscribe]
+                Resource: "*"
+              - Sid: SecretsAccess
+                Effect: Allow
+                Action: secretsmanager:GetSecretValue
+                Resource: !Ref Neo4jSecret
+
+  Neo4jLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/ecs/${AWS::StackName}/neo4j"
+      RetentionInDays: 7
+
+  BuildLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Delete
+    UpdateReplacePolicy: Delete
+    Properties:
+      LogGroupName: !Sub "/ecs/${AWS::StackName}/build"
+      RetentionInDays: 7
+
+  Neo4jCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${AWS::StackName}-neo4j"
+
+Outputs:
+  Neo4jSecretArn:
+    Value: !Ref Neo4jSecret
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jSecretArn"
+  GraphDumpBucketName:
+    Value: !Ref GraphDumpBucket
+    Export:
+      Name: !Sub "${AWS::StackName}-GraphDumpBucketName"
+  Neo4jSecurityGroupId:
+    Value: !Ref Neo4jSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jSecurityGroupId"
+  Neo4jExecutionRoleArn:
+    Value: !GetAtt Neo4jExecutionRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jExecutionRoleArn"
+  Neo4jTaskRoleArn:
+    Value: !GetAtt Neo4jTaskRole.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jTaskRoleArn"
+  Neo4jLogGroupName:
+    Value: !Ref Neo4jLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jLogGroupName"
+  BuildLogGroupName:
+    Value: !Ref BuildLogGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-BuildLogGroupName"
+  Neo4jClusterName:
+    Value: !Ref Neo4jCluster
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jClusterName"
+  Neo4jClusterArn:
+    Value: !GetAtt Neo4jCluster.Arn
+    Export:
+      Name: !Sub "${AWS::StackName}-Neo4jClusterArn"
+  BedrockRegion:
+    Value: !Ref BedrockRegion
+    Export:
+      Name: !Sub "${AWS::StackName}-BedrockRegion"
