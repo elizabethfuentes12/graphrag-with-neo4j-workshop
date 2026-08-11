@@ -22,6 +22,11 @@ Resources:
     Type: AWS::SecretsManager::Secret
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_149
+            comment: Workshop secret - KMS CMK not required; uses AWS-managed key
     Properties:
       GenerateSecretString:
         PasswordLength: 20
@@ -31,6 +36,13 @@ Resources:
     Type: AWS::S3::Bucket
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_18
+            comment: Workshop bucket - access logging not required
+          - id: CKV_AWS_21
+            comment: Workshop bucket - versioning not required for temporary graph dumps
     Properties:
       PublicAccessBlockConfiguration:
         BlockPublicAcls: true
@@ -75,6 +87,14 @@ Resources:
             reason: Bucket emptier Lambda does not need VPC
           - id: W92
             reason: One-time cleanup Lambda
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: One-time cleanup Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: One-time cleanup Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: Bucket emptier Lambda does not need VPC
     Properties:
       Runtime: python3.12
       Handler: index.handler
@@ -137,6 +157,10 @@ Resources:
           ToPort: 7687
           CidrIp: 0.0.0.0/0
           Description: Neo4j Bolt (participant accounts connect via NLB)
+      SecurityGroupEgress:
+        - IpProtocol: "-1"
+          CidrIp: 0.0.0.0/0
+          Description: All outbound for S3, Bedrock, and internet access from Fargate tasks
 
   Neo4jExecutionRole:
     Type: AWS::IAM::Role
@@ -204,6 +228,11 @@ Resources:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_158
+            comment: Workshop log group - KMS CMK encryption not required
     Properties:
       LogGroupName: !Sub "/ecs/${AWS::StackName}/neo4j"
       RetentionInDays: 7
@@ -212,12 +241,22 @@ Resources:
     Type: AWS::Logs::LogGroup
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_158
+            comment: Workshop log group - KMS CMK encryption not required
     Properties:
       LogGroupName: !Sub "/ecs/${AWS::StackName}/build"
       RetentionInDays: 7
 
   Neo4jCluster:
     Type: AWS::ECS::Cluster
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_65
+            comment: Workshop ECS cluster - container insights not required
     Properties:
       ClusterName: !Sub "${AWS::StackName}-neo4j"
 

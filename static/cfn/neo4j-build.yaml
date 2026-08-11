@@ -206,8 +206,13 @@ Resources:
             Version: "2012-10-17"
             Statement:
               - Effect: Allow
-                Action: [ecs:RunTask, ecs:StopTask, ecs:ListTasks, iam:PassRole]
+                Action: [ecs:RunTask, ecs:StopTask, ecs:ListTasks]
                 Resource: "*"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - Fn::ImportValue: !Sub "${FoundationStack}-Neo4jExecutionRoleArn"
+                  - Fn::ImportValue: !Sub "${FoundationStack}-Neo4jTaskRoleArn"
               - Effect: Allow
                 Action: [ssm:PutParameter, ssm:DeleteParameter]
                 Resource:
@@ -223,6 +228,16 @@ Resources:
             reason: Build trigger Lambda does not need VPC
           - id: W92
             reason: One-time trigger Lambda
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: One-time trigger Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: One-time trigger Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: Build trigger Lambda does not need VPC
+          - id: CKV_AWS_173
+            comment: Workshop Lambda - environment variables do not contain sensitive data
     Properties:
       Runtime: python3.12
       Handler: index.handler
@@ -319,9 +334,13 @@ Resources:
                 Action:
                   - cloudformation:CreateStack
                   - cloudformation:DescribeStacks
-                  - iam:PassRole
                   - ssm:GetParameter
                 Resource: "*"
+              - Effect: Allow
+                Action: iam:PassRole
+                Resource:
+                  - Fn::ImportValue: !Sub "${FoundationStack}-Neo4jExecutionRoleArn"
+                  - Fn::ImportValue: !Sub "${FoundationStack}-Neo4jTaskRoleArn"
 
   ServiceLauncherLambda:
     Type: AWS::Lambda::Function
@@ -332,6 +351,16 @@ Resources:
             reason: Service launcher Lambda does not need VPC
           - id: W92
             reason: Event-driven Lambda
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: Event-driven Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: Event-driven Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: Service launcher Lambda does not need VPC
+          - id: CKV_AWS_173
+            comment: Workshop Lambda - environment variables do not contain sensitive data
     Properties:
       Runtime: python3.12
       Handler: index.handler

@@ -301,8 +301,7 @@ def _rule_problems(record: Mapping[str, Any] | None) -> list[str]:
         return ["maximum-guests rule is missing"]
     if record.get("rule_count") != 1:
         return [
-            "maximum-guests rule count is "
-            f"{record.get('rule_count', 0)!r}, expected 1"
+            f"maximum-guests rule count is {record.get('rule_count', 0)!r}, expected 1"
         ]
     expected = {
         "max_guests": contracts.MAX_GUESTS,

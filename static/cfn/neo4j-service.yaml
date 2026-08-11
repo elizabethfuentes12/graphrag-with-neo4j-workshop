@@ -116,6 +116,11 @@ Resources:
 
   Neo4jNLB:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_91
+            comment: Workshop NLB - access logging not required
     Properties:
       Name: !Sub "neo4j-${AWS::AccountId}"
       Scheme: internet-facing

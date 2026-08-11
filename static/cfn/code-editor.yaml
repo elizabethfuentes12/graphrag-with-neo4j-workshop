@@ -257,6 +257,10 @@ Resources:
         rules_to_suppress:
           - id: W77
             reason: The default KMS Key used by Secrets Manager is appropriate for this password which will be used to log into Code Editor, which has very limited permissions. In addition this secret will not be required to be shared across accounts
+      checkov:
+        skip:
+          - id: CKV_AWS_149
+            comment: Workshop secret - KMS CMK not required; uses AWS-managed key
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
@@ -277,6 +281,10 @@ Resources:
         rules_to_suppress:
           - id: W77
             reason: The default KMS Key used by Secrets Manager is appropriate for this password which will be used for the local Neo4j instance
+      checkov:
+        skip:
+          - id: CKV_AWS_149
+            comment: Workshop secret - KMS CMK not required; uses AWS-managed key
     DeletionPolicy: Delete
     UpdateReplacePolicy: Delete
     Properties:
@@ -373,6 +381,11 @@ Resources:
 
   Neo4jECSCluster:
     Type: AWS::ECS::Cluster
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_65
+            comment: Workshop ECS cluster - container insights not required
     Properties:
       ClusterName: !Sub ${AWS::StackName}-neo4j
 
@@ -383,6 +396,10 @@ Resources:
         rules_to_suppress:
           - id: W84
             reason: CloudWatch Logs encryption with KMS adds unnecessary complexity for workshop
+      checkov:
+        skip:
+          - id: CKV_AWS_158
+            comment: Workshop log group - KMS CMK encryption not required
     Properties:
       LogGroupName: !Sub /ecs/${AWS::StackName}-neo4j
       RetentionInDays: 7
@@ -543,6 +560,11 @@ Resources:
 
   Neo4jNetworkLoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Metadata:
+      checkov:
+        skip:
+          - id: CKV_AWS_91
+            comment: Workshop NLB - access logging not required
     Properties:
       Type: network
       Scheme: internal
@@ -642,6 +664,16 @@ Resources:
             reason: Warning incorrectly reported. The role has AWSLambdaBasicExecutionRole which includes CloudWatch Logs permissions
           - id: W89
             reason: CloudFormation custom function does not need VPC access
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: CFN custom resource Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: CFN custom resource Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: CFN custom resource Lambda does not need VPC access
+          - id: CKV_SECRET_6
+            comment: Inline Python script contains no real secrets - false positive from high-entropy code patterns
           - id: W92
             reason: CloudFormation custom function does not need reserved concurrent executions
     Properties:
@@ -745,6 +777,16 @@ Resources:
             reason: Warning incorrectly reported. The role associated with the Lambda function has the AWSLambdaBasicExecutionRole managed policy attached, which includes permission to write CloudWatch Logs. See https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaBasicExecutionRole.html
           - id: W89
             reason: CloudFormation custom function does not need the scaffolding of a VPC, to do so would add unnecessary complexity
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: CFN custom resource Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: CFN custom resource Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: CFN custom resource Lambda does not need VPC access
+          - id: CKV_SECRET_6
+            comment: Inline Python script contains no real secrets - false positive from high-entropy code patterns
           - id: W92
             reason: CloudFormation custom function does not need reserved concurrent executions, to do so would add unnecessary complexity
     Properties:
@@ -1557,6 +1599,16 @@ Resources:
             reason: Warning incorrectly reported. The role associated with the Lambda function has the AWSLambdaBasicExecutionRole managed policy attached, which includes permission to write CloudWatch Logs. See https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaBasicExecutionRole.html
           - id: W89
             reason: CloudFormation custom function does not need the scaffolding of a VPC, to do so would add unnecessary complexity
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: CFN custom resource Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: CFN custom resource Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: CFN custom resource Lambda does not need VPC access
+          - id: CKV_AWS_173
+            comment: Workshop Lambda - environment variables do not contain sensitive data
           - id: W92
             reason: CloudFormation custom function does not need reserved concurrent executions, to do so would add unnecessary complexity
     Properties:
@@ -2043,6 +2095,14 @@ Resources:
             reason: CloudFront Distribution access logging would require setup of an S3 bucket and changes in IAM, which add unnecessary complexity to the template
           - id: W70
             reason: Workshop Studio does not include a domain that can be used to provision a certificate, so it is not possible to setup TLS. See PFR EE-6016
+      checkov:
+        skip:
+          - id: CKV_AWS_68
+            comment: Workshop CloudFront - WAF not required
+          - id: CKV_AWS_86
+            comment: Workshop CloudFront - access logging not required
+          - id: CKV_AWS_174
+            comment: Workshop CloudFront - TLS v1.2 minimum not enforceable without custom domain/certificate
     Properties:
       DistributionConfig:
         Enabled: True
@@ -2142,6 +2202,14 @@ Resources:
             reason: Role has AWSLambdaBasicExecutionRole which includes CloudWatch Logs write permissions
           - id: W89
             reason: This cleanup Lambda does not need VPC access
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: One-time cleanup Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: One-time cleanup Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: Cleanup Lambda does not need VPC access
           - id: W92
             reason: Reserved concurrency not needed for a one-time cleanup function
     Properties:
@@ -2220,6 +2288,16 @@ Resources:
             reason: Warning incorrectly reported. The role associated with the Lambda function has the AWSLambdaBasicExecutionRole managed policy attached, which includes permission to write CloudWatch Logs. See https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaBasicExecutionRole.html
           - id: W89
             reason: CloudFormation custom function does not need the scaffolding of a VPC, to do so would add unnecessary complexity
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: CFN custom resource Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: CFN custom resource Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: CFN custom resource Lambda does not need VPC access
+          - id: CKV_AWS_173
+            comment: Workshop Lambda - environment variables do not contain sensitive data
           - id: W92
             reason: CloudFormation custom function does not need reserved concurrent executions, to do so would add unnecessary complexity
     Properties:
@@ -2367,6 +2445,16 @@ Resources:
             reason: Warning incorrectly reported. The role associated with the Lambda function has the AWSLambdaBasicExecutionRole managed policy attached, which includes permission to write CloudWatch Logs. See https://docs.aws.amazon.com/aws-managed-policy/latest/reference/AWSLambdaBasicExecutionRole.html
           - id: W89
             reason: CloudFormation custom function does not need the scaffolding of a VPC, to do so would add unnecessary complexity
+      checkov:
+        skip:
+          - id: CKV_AWS_115
+            comment: CFN custom resource Lambda - reserved concurrency not required
+          - id: CKV_AWS_116
+            comment: CFN custom resource Lambda - DLQ not required
+          - id: CKV_AWS_117
+            comment: CFN custom resource Lambda does not need VPC access
+          - id: CKV_AWS_173
+            comment: Workshop Lambda - environment variables do not contain sensitive data
           - id: W92
             reason: CloudFormation custom function does not need reserved concurrent executions, to do so would add unnecessary complexity
     Properties:
