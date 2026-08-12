@@ -1,6 +1,10 @@
 assets/*
 !assets/README.md
 
+# Workshop Studio infrastructure — lives in Workshop Studio repo, not here
+static/cfn/
+static/iam_policy.json
+
 # Environment — never commit credentials
 .env
 *.env.local
