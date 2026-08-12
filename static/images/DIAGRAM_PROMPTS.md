@@ -151,30 +151,7 @@ Style: clean comparison diagram, horizontal rows, Inter font, white background
 
 ---
 
-## Diagram 5: Agent Failure Modes
-**Filename:** `03-agent-failure-modes.png`
-**Dimensions:** 1600 × 900 px (16:9)
-
-**Canva prompt:**
-```
-Wide landscape technical diagram, dark navy background (#1a1a2e), 16:9 horizontal format.
-
-Three glowing warning cards arranged as a horizontal triptych — left card, center card, right card — each the same height and width, placed side by side like three panels of a comic strip, spanning the full width of the image.
-
-Left card has a red glowing border. Icon: red warning triangle at top. Title: "Hallucinated Availability". Illustration: a chat bubble saying "Yes, rooms available!" with a red X over it. Small label: "No inventory data in graph". Footer tag: "LLM fabricated from training data".
-
-Center card has an orange glowing border. Icon: orange warning triangle at top. Title: "Rule Bypass". Illustration: a booking form showing "Guests: 15" with a wrong checkmark. Small label: "Policy: max 10 guests". Footer tag: "Prompt instruction ignored".
-
-Right card has a yellow glowing border. Icon: yellow warning triangle at top. Title: "Duplicate Reservation". Illustration: two identical booking confirmation receipts. Small label: "Network retry = double booking". Footer tag: "No idempotency = data corruption".
-
-Below all three cards, a full-width green banner with text "Graph-grounded agents prevent all three" and three green checkmark icons evenly spaced.
-
-Style: dark background, neon glow accents, flat bold sans-serif font, horizontal panoramic layout
-```
-
----
-
-## Diagram 6: Grounded Agent Architecture
+## Diagram 5: Grounded Agent Architecture
 **Filename:** `03-grounded-agent-architecture.png`
 **Dimensions:** 1600 × 900 px (16:9)
 
