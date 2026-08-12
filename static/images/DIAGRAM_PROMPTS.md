@@ -1,6 +1,8 @@
 # Canva Diagram Prompts
 
-Use these prompts in [Canva's AI image generator](https://www.canva.com/ai-image-generator/) or Magic Media to create professional diagrams for this workshop. After generating, export as PNG at 1600×900px and save to this directory.
+Use these prompts in [Canva's AI image generator](https://www.canva.com/ai-image-generator/) or Magic Media to create professional diagrams for this workshop. Set canvas size to **1600 × 900 px (16:9 landscape)** before generating. Export as PNG and save to this directory.
+
+**Important:** Do not use the word "infographic" in prompts — it causes Canva AI to generate tall vertical layouts. Use "diagram", "illustration", or "visual" instead.
 
 ---
 
@@ -110,7 +112,7 @@ Style: flat design, Poppins font, soft shadows, white background, colored border
 
 **Canva prompt:**
 ```
-Clean comparison table / infographic on white background showing four Neo4j retrieval patterns.
+Clean comparison table on white background showing four Neo4j retrieval patterns, horizontal rows, landscape orientation.
 
 Four horizontal rows, each with:
 - Colored left badge (icon + pattern name)
@@ -144,7 +146,7 @@ Speed: ████░░░░░░ | Accuracy: ██████████
 
 Footer note (orange warning): "Text2CypherRetriever runs LLM-generated Cypher — use a read-only trust boundary in production"
 
-Style: data table infographic, clean horizontal layout, Inter font, white background
+Style: clean comparison diagram, horizontal rows, Inter font, white background
 ```
 
 ---
@@ -155,34 +157,19 @@ Style: data table infographic, clean horizontal layout, Inter font, white backgr
 
 **Canva prompt:**
 ```
-Landscape 16:9 infographic. HORIZONTAL layout — do NOT stack vertically. The three failure modes must sit SIDE BY SIDE in a single row across the full width of the image.
+Wide landscape technical diagram, dark navy background (#1a1a2e), 16:9 horizontal format.
 
-Dark background (#1a1a2e). Three equal-width columns arranged LEFT TO RIGHT filling the entire horizontal space.
+Three glowing warning cards arranged as a horizontal triptych — left card, center card, right card — each the same height and width, placed side by side like three panels of a comic strip, spanning the full width of the image.
 
-TOP ROW — three columns side by side, each taking roughly 1/3 of the width:
+Left card has a red glowing border. Icon: red warning triangle at top. Title: "Hallucinated Availability". Illustration: a chat bubble saying "Yes, rooms available!" with a red X over it. Small label: "No inventory data in graph". Footer tag: "LLM fabricated from training data".
 
-LEFT COLUMN (red accent border, red warning icon at top):
-Title: "Hallucinated Availability"
-Illustration: chat bubble "Yes, rooms available!" with red X
-Label below: "No inventory data in graph"
-Tag at bottom: "LLM fabricated from training data"
+Center card has an orange glowing border. Icon: orange warning triangle at top. Title: "Rule Bypass". Illustration: a booking form showing "Guests: 15" with a wrong checkmark. Small label: "Policy: max 10 guests". Footer tag: "Prompt instruction ignored".
 
-CENTER COLUMN (orange accent border, orange warning icon at top):
-Title: "Rule Bypass"
-Illustration: booking form "Guests: 15" with wrong checkmark
-Label below: "Policy: max 10 guests"
-Tag at bottom: "Prompt instruction ignored"
+Right card has a yellow glowing border. Icon: yellow warning triangle at top. Title: "Duplicate Reservation". Illustration: two identical booking confirmation receipts. Small label: "Network retry = double booking". Footer tag: "No idempotency = data corruption".
 
-RIGHT COLUMN (yellow accent border, yellow warning icon at top):
-Title: "Duplicate Reservation"
-Illustration: two identical booking confirmations side by side
-Label below: "Network retry = double booking"
-Tag at bottom: "No idempotency = data corruption"
+Below all three cards, a full-width green banner with text "Graph-grounded agents prevent all three" and three green checkmark icons evenly spaced.
 
-BOTTOM BANNER (full width, green background, spans all three columns):
-"Graph-grounded agents prevent all three" with three green checkmark icons
-
-Style: dark tech infographic, landscape orientation, neon accent colors, bold sans-serif font, columns must be horizontal not stacked
+Style: dark background, neon glow accents, flat bold sans-serif font, horizontal panoramic layout
 ```
 
 ---
@@ -233,7 +220,7 @@ Style: AWS architecture style, two-tone zones, flat icons, clean labels, profess
 
 ## Usage Notes
 
-- Generate each image at **1600 × 900 px** for crisp display at any Workshop Studio zoom level.
+- Set canvas to **1600 × 900 px (landscape 16:9)** before generating — this locks the horizontal format.
 - Export as **PNG** (not JPEG) to preserve sharp text edges.
 - After saving, reference in workshop content with\:
   `:image[Alt text]{src="/static/images/FILENAME.png" width=800}`
