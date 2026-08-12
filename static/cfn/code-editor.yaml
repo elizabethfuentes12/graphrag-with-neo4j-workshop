@@ -1884,6 +1884,7 @@ Resources:
                 Effect: Allow
                 Action:
                   - bedrock-agentcore:ListAgentRuntimes
+                  - bedrock-agentcore:ListAgentRuntimeVersions
                   - bedrock-agentcore:ListAgentRuntimeEndpoints
                   - bedrock-agentcore:ListGateways
                   - bedrock-agentcore:ListGatewayTargets
