@@ -6,6 +6,7 @@ Use these prompts in [Canva's AI image generator](https://www.canva.com/ai-image
 
 ## Diagram 1: RAG vs. Graph-RAG Problem
 **Filename:** `01-rag-vs-graphrag-problem.png`
+**Dimensions:** 1600 × 900 px (16:9)
 
 **Canva prompt:**
 ```
@@ -31,6 +32,7 @@ Style: AWS workshop style, flat design, Inter font, colors: #232F3E dark navy, #
 
 ## Diagram 2: RAG vs. Graph-RAG Architecture
 **Filename:** `01-rag-vs-graphrag-architecture.png`
+**Dimensions:** 1600 × 900 px (16:9)
 
 **Canva prompt:**
 ```
@@ -61,6 +63,7 @@ Style: AWS architecture diagram style, flat icons, white background, #4581C3 for
 
 ## Diagram 3: Retrieval Patterns Decision Tree
 **Filename:** `02-retrieval-decision-tree.png`
+**Dimensions:** 1600 × 900 px (16:9)
 
 **Canva prompt:**
 ```
@@ -103,6 +106,7 @@ Style: flat design, Poppins font, soft shadows, white background, colored border
 
 ## Diagram 4: Retrieval Patterns Comparison
 **Filename:** `02-retrieval-patterns-comparison.png`
+**Dimensions:** 1600 × 900 px (16:9)
 
 **Canva prompt:**
 ```
@@ -147,6 +151,7 @@ Style: data table infographic, clean horizontal layout, Inter font, white backgr
 
 ## Diagram 5: Agent Failure Modes
 **Filename:** `03-agent-failure-modes.png`
+**Dimensions:** 1600 × 900 px (16:9)
 
 **Canva prompt:**
 ```
@@ -178,6 +183,7 @@ Style: dark background tech infographic, neon accent colors, bold sans-serif, wa
 
 ## Diagram 6: Grounded Agent Architecture
 **Filename:** `03-grounded-agent-architecture.png`
+**Dimensions:** 1600 × 900 px (16:9)
 
 **Canva prompt:**
 ```
