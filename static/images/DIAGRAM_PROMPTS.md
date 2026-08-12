@@ -155,28 +155,34 @@ Style: data table infographic, clean horizontal layout, Inter font, white backgr
 
 **Canva prompt:**
 ```
-Warning-style infographic showing three AI agent failure modes on a dark (#1a1a2e) background with bright accent colors.
+Landscape 16:9 infographic. HORIZONTAL layout — do NOT stack vertically. The three failure modes must sit SIDE BY SIDE in a single row across the full width of the image.
 
-THREE COLUMN LAYOUT with red warning icons:
+Dark background (#1a1a2e). Three equal-width columns arranged LEFT TO RIGHT filling the entire horizontal space.
 
-COLUMN 1 (red accent): "Hallucinated Availability"
-- Illustration: chat bubble saying "Yes, rooms available next weekend!" with X mark
-- Below: small graph database icon with label "No inventory data in graph"
-- Tag: "LLM fabricated from training data"
+TOP ROW — three columns side by side, each taking roughly 1/3 of the width:
 
-COLUMN 2 (orange accent): "Rule Bypass"
-- Illustration: booking form showing "Guests: 15" with checkmark (wrong)
-- Below: rule document icon labeled "Policy: max 10 guests"
-- Tag: "Prompt instruction ignored"
+LEFT COLUMN (red accent border, red warning icon at top):
+Title: "Hallucinated Availability"
+Illustration: chat bubble "Yes, rooms available!" with red X
+Label below: "No inventory data in graph"
+Tag at bottom: "LLM fabricated from training data"
 
-COLUMN 3 (yellow accent): "Duplicate Reservation"
-- Illustration: two identical booking confirmation boxes stacked
-- Below: retry arrow icon labeled "Network retry = double booking"
-- Tag: "No idempotency = data corruption"
+CENTER COLUMN (orange accent border, orange warning icon at top):
+Title: "Rule Bypass"
+Illustration: booking form "Guests: 15" with wrong checkmark
+Label below: "Policy: max 10 guests"
+Tag at bottom: "Prompt instruction ignored"
 
-BOTTOM: Green section "Graph-grounded agents prevent all three" with checkmark icons
+RIGHT COLUMN (yellow accent border, yellow warning icon at top):
+Title: "Duplicate Reservation"
+Illustration: two identical booking confirmations side by side
+Label below: "Network retry = double booking"
+Tag at bottom: "No idempotency = data corruption"
 
-Style: dark background tech infographic, neon accent colors, bold sans-serif, warning/alert visual language
+BOTTOM BANNER (full width, green background, spans all three columns):
+"Graph-grounded agents prevent all three" with three green checkmark icons
+
+Style: dark tech infographic, landscape orientation, neon accent colors, bold sans-serif font, columns must be horizontal not stacked
 ```
 
 ---
