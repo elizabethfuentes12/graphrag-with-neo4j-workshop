@@ -24,7 +24,7 @@ notebooks/*.json.bak
 notebooks/faqs_*.json
 notebooks/faqs_*.index
 # Workshop Studio files — live in the WS repo, not here
-content/
+# (workshop-content/content/ IS allowed — it's the public copy for collaborators)
 contentspec.yaml
 FACILITATOR_GUIDE.md
 static/cfn/
