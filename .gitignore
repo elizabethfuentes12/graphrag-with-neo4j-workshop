@@ -23,3 +23,10 @@ notebooks/*.index
 notebooks/*.json.bak
 notebooks/faqs_*.json
 notebooks/faqs_*.index
+# Workshop Studio files — live in the WS repo, not here
+content/
+contentspec.yaml
+FACILITATOR_GUIDE.md
+static/cfn/
+static/iam_policy.json
+.vscode/
