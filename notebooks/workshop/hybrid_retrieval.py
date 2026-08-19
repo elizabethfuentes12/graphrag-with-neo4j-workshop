@@ -1,9 +1,23 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Fixed graph-enriched hybrid retrieval for Module 3.2's grounded booking agent.
+"""Fixed graph-enriched retrieval shared by Module 3.2 and the Module 4 Lambdas.
 
-The public tool accepts only ``query``. Index names, fusion behavior, result
-count, and graph traversal are deliberately fixed rather than caller-tunable.
+Two read paths live here and nothing else. ``search_hotel_knowledge`` is the
+semantic path over ``HybridCypherRetriever`` and accepts only ``query``. Index
+names, fusion behavior, result count, and graph traversal are deliberately
+fixed rather than caller-tunable. ``graph_query`` is the structured path over
+``Text2CypherRetriever`` and accepts only ``query`` as well.
+
+Both are exported as functions rather than as Lambda handlers on purpose. The
+handler is four lines of event unwrapping that belongs at the Lambda boundary,
+in ``notebooks/04-production-agent/lambda_tools/``. What crosses that boundary
+unchanged is this file, so the retrieval a participant runs in Module 3 is the
+same code the Gateway calls in Module 4.
+
+Neither function writes. ``search_hotel_knowledge`` runs reviewed static
+Cypher, and ``graph_query`` runs model-generated Cypher that
+``Text2CypherRetriever`` first plans with ``EXPLAIN`` and refuses unless the
+planner reports it read-only.
 """
 
 from __future__ import annotations
@@ -13,16 +27,18 @@ import os
 import re
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import Any, Mapping
+from typing import Any, Mapping, Sequence, TypedDict, cast
 
 import boto3
 from neo4j import GraphDatabase
 from neo4j_graphrag.embeddings.base import Embedder
-from neo4j_graphrag.retrievers import HybridCypherRetriever
+from neo4j_graphrag.llm.base import LLMInterface
+from neo4j_graphrag.retrievers import HybridCypherRetriever, Text2CypherRetriever
 from neo4j_graphrag.types import HybridSearchRanker, RetrieverResultItem
 
 from workshop import contracts, graph_connection
-from workshop.bedrock_providers import BedrockEmbeddings
+from workshop.bedrock_providers import BedrockEmbeddings, BedrockLLM
+from workshop.graph_schema import GRAPH_SCHEMA
 
 MAX_EVIDENCE_CHARS = 1_200
 MAX_EXACT_TERMS = 20
@@ -287,3 +303,143 @@ def search_hotel_knowledge(query: str) -> list[contracts.HotelEvidence]:
             item["hotel_name"] or "\uffff",
         ),
     )
+
+
+# --------------------------------------------------------------------------- #
+# The structured path: graph_query
+# --------------------------------------------------------------------------- #
+
+# A Text2Cypher prompt is only as safe as the schema it is given, so the schema
+# is rendered from GRAPH_SCHEMA rather than restated as a literal. A hand-typed
+# copy agrees with the extraction contract on the day it is written and drifts
+# the first time a property is added, which produces Cypher against properties
+# the build never wrote and an empty result with no error.
+MAX_GRAPH_QUERY_RECORDS = 25
+
+GRAPH_QUERY_EXAMPLES = (
+    "USER INPUT: What is the average guest rating of hotels in Paris? "
+    "CYPHER: MATCH (hotel:Hotel) WHERE toLower(hotel.address) CONTAINS 'paris' "
+    "AND hotel.guest_rating IS NOT NULL RETURN avg(hotel.guest_rating) AS average_rating",
+    "USER INPUT: How many hotels offer a spa? "
+    "CYPHER: MATCH (hotel:Hotel)-[:OFFERS_AMENITY]->(amenity:Amenity) "
+    "WHERE toLower(amenity.name) CONTAINS 'spa' RETURN count(DISTINCT hotel) AS hotel_count",
+    "USER INPUT: What is the guest rating of the hotel named Example Hotel? "
+    "CYPHER: MATCH (hotel:Hotel {name: 'Example Hotel'}) "
+    "RETURN hotel.guest_rating AS guest_rating",
+)
+
+GRAPH_QUERY_PROMPT = """
+Generate one read-only Cypher query that answers the user question.
+Use only the labels, properties, and relationships in the supplied schema.
+Never write, merge, or delete data, and never call a procedure.
+Return only the columns the question asks for, and nothing else.
+Return only the Cypher query, with no markdown fence and no explanation.
+Schema:
+{schema}
+Examples:
+{examples}
+User question: {query_text}
+""".strip()
+
+
+class GraphQueryResult(TypedDict):
+    """What the structured tool hands back: the Cypher, and what it returned."""
+
+    cypher: str
+    records: list[dict[str, Any]]
+
+
+def pinned_schema_text() -> str:
+    """Render GRAPH_SCHEMA as the schema block a Text2Cypher prompt takes."""
+    lines = ["Node properties:"]
+    for node in cast(Sequence[Mapping[str, Any]], GRAPH_SCHEMA["node_types"]):
+        properties = cast(
+            Sequence[Mapping[str, str]], node.get("properties", ())
+        )
+        rendered = ", ".join(
+            f"{prop['name']}: {prop.get('type', 'STRING')}" for prop in properties
+        )
+        lines.append(f"{node['label']} {{{rendered}}}")
+    lines.append("Relationships:")
+    for start, relationship, end in cast(
+        Sequence[tuple[str, str, str]], GRAPH_SCHEMA["patterns"]
+    ):
+        lines.append(f"(:{start})-[:{relationship}]->(:{end})")
+    return "\n".join(lines)
+
+
+def _format_graph_record(record: Mapping[str, Any]) -> RetrieverResultItem:
+    """Keep a returned row as named columns rather than a repr.
+
+    Without a formatter the base retriever stringifies each row, so a rating of
+    4.5 arrives as the text ``<Record guest_rating=4.5>``. That reads fine and
+    cannot be compared to a number, which is exactly the shape of failure this
+    tool has to make visible.
+    """
+    return RetrieverResultItem(content=_json_safe(dict(record)))
+
+
+def build_graph_query_retriever(
+    config: Neo4jConfig,
+    *,
+    llm: LLMInterface | None = None,
+) -> Text2CypherRetriever:
+    """Build the one fixed structured retriever around the cached driver."""
+    return Text2CypherRetriever(
+        driver=_get_driver(config),
+        llm=llm or BedrockLLM(),
+        neo4j_schema=pinned_schema_text(),
+        examples=list(GRAPH_QUERY_EXAMPLES),
+        custom_prompt=GRAPH_QUERY_PROMPT,
+        result_formatter=_format_graph_record,
+        neo4j_database=config.database,
+    )
+
+
+@lru_cache(maxsize=1)
+def _get_graph_query_retriever() -> Text2CypherRetriever:
+    secret_id = os.environ.get(contracts.READ_SECRET_ID_ENV)
+    config = (
+        Neo4jConfig.from_secret(secret_id)
+        if secret_id
+        else Neo4jConfig.from_environment()
+    )
+    return build_graph_query_retriever(config)
+
+
+def _json_safe(value: Any) -> Any:
+    """Return a value the Gateway can serialize, without losing a number.
+
+    Neo4j hands back temporal and spatial types that ``json.dumps`` refuses.
+    Stringifying everything would turn 4.5 into "4.5" and make an exact check
+    on a rating impossible, so only the types JSON has no equivalent for are
+    converted.
+    """
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, Mapping):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    return str(value)
+
+
+def graph_query(query: str) -> GraphQueryResult:
+    """Answer a structured hotel question with model-generated read-only Cypher.
+
+    This is the one place in the workshop where the database executes a
+    statement no human wrote. The generated Cypher is returned alongside its
+    records so a caller can always see what ran.
+    """
+    if not isinstance(query, str) or not query.strip():
+        raise ValueError("query must be a non-empty string")
+
+    result = _get_graph_query_retriever().search(query_text=query)
+    records = [
+        cast(dict[str, Any], item.content)
+        for item in result.items[:MAX_GRAPH_QUERY_RECORDS]
+    ]
+    return {
+        "cypher": str((result.metadata or {}).get("cypher", "")),
+        "records": records,
+    }

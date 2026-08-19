@@ -26,7 +26,7 @@ This workshop runs in **us-east-1 (N. Virginia)**. Your AWS account and Neo4j da
 | **Module 4: Production Agent with AgentCore** | AgentCore Gateway, IAM-authenticated MCP, cross-session memory |
 | **Module 5: Deploy to AgentCore Runtime** | Containerize the agent, launch it on Runtime, correlate one request end to end |
 | **Module 6: Inspectable Neo4j Memory** | Graph-backed preferences, full provenance, AgentCore comparison |
-| **Wrap-up and Cleanup** | Review, next steps, resource cleanup |
+| **Summary and Wrap-up** | The argument end to end, the two decision tables, and where to take it next |
 
 ---
 

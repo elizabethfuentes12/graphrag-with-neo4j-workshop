@@ -26,7 +26,7 @@ Uses Workshop Studio magic variables: `{{.AccountId}}`.
 
 ## `/neo4j-hotel-graph.dump`
 
-Neo4j database dump with the hotel knowledge graph pre-built. It does not contain the vector or full-text index; Module 1 creates those. Loaded by the Fargate init container at startup. Eliminates the 2-hour graph build step for participants.
+Neo4j database dump with the hotel knowledge graph pre-built. It does not contain the vector or full-text index; Module 1 creates those. Loaded by the Fargate init container at startup, so participants start from a built graph instead of watching the extraction run.
 
 ## `/images/`
 

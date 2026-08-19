@@ -33,3 +33,12 @@ FACILITATOR_GUIDE.md
 static/cfn/
 static/iam_policy.json
 .vscode/
+
+# Module 5 build context staging. `workshop/` and `reservation_command.py` are
+# copied into runtime_app/ by 5.1_deploy.ipynb immediately before the
+# container build, because Docker cannot reach outside its build context. The
+# originals are the versioned copies; these are regenerated every run.
+notebooks/05-agentcore-deploy/runtime_app/workshop/
+notebooks/05-agentcore-deploy/runtime_app/reservation_command.py
+notebooks/05-agentcore-deploy/runtime_app/.bedrock_agentcore.yaml
+notebooks/05-agentcore-deploy/runtime_app/Dockerfile.bak

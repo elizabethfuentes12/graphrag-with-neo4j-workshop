@@ -58,4 +58,4 @@ To correct a wrong preference\: `SET p.preference = "high floor, away from eleva
 
 ## Next
 
-Head to [Wrap-up and Cleanup](../wrap-up/).
+Head to [Summary](../summary/).

@@ -1,0 +1,27 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# SPDX-License-Identifier: MIT-0
+"""Lambda entry point for the structured Gateway target.
+
+The retrieval itself is ``workshop.hybrid_retrieval.graph_query``, the same
+``Text2CypherRetriever`` pattern Module 3.1 compares in-process. Everything
+below is the Lambda boundary. The deployment package installs the shared
+``workshop`` package rather than flat-copying its files, so this import
+resolves here exactly as it does in the notebook.
+
+This tool reads. The Cypher is model-generated, and ``Text2CypherRetriever``
+plans it with ``EXPLAIN`` and refuses to run anything the planner does not
+report as read-only.
+"""
+
+from typing import Any, Mapping
+
+from workshop.hybrid_retrieval import graph_query
+
+
+def handler(event: Mapping[str, Any], context: Any) -> dict[str, Any]:
+    """Return the generated Cypher and its records for the ``query`` input."""
+    del context
+    return dict(graph_query((event or {}).get("query", "")))
+
+
+__all__ = ["handler"]

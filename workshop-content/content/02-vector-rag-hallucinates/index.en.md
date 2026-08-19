@@ -22,7 +22,7 @@ Traditional RAG retrieves the top-k most similar document chunks and hands them 
 
 Open `notebooks/02-vector-rag-hallucinates/2.1_vector_rag_hallucinates.ipynb`.
 
-:image[Architecture: FAISS vector search and Neo4j graph as two parallel retrieval paths over the same 300 hotel documents]{src="../../images/01-rag-vs-graphrag-architecture.png" width=800}
+:image[Architecture: FAISS vector search and Neo4j graph as two parallel retrieval paths over the same hotel corpus]{src="../../images/01-rag-vs-graphrag-architecture.png" width=800}
 
 | Agent | Retrieval |
 |-------|-----------|

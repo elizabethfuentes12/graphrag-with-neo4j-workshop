@@ -7,10 +7,13 @@ and every one runs offline in a couple of seconds. That is the whole selection
 rule. Checks that would need credentials belong in a smoke test, and checks that
 would need a live graph belong in the readiness report inside the build.
 
-Deliberately not included: asserting that every filesystem path named in prose
-exists, and sweeping for banned wording. Both are valuable and both are several
-times the size of everything below, so they were left out until the maintenance
-burden justifies them.
+The last three checks were deliberately left out of the first version as too
+large for their value. The Phase 1 review changed that arithmetic: instructions
+pointing at files that do not exist, retired numbering, timing stamps, and a
+hardcoded hotel count were four of the eleven defects it found, and all four are
+mechanical. They are in now, scoped to `notebooks/` and `workshop-content/`.
+Planning documents are excluded on purpose, because recording a retired name is
+what they are for.
 
 Run from anywhere:
 
@@ -151,6 +154,190 @@ def module_folders_have_pages() -> list[str]:
     return problems
 
 
+IMAGE_TREES = (REPO_ROOT / "static" / "images", REPO_ROOT / "workshop-content" / "images")
+
+
+def image_trees_identical() -> list[str]:
+    """The two image trees ship the same files, byte for byte.
+
+    A page renders from `workshop-content/images/` and the repository documents
+    `static/images/`. A diagram updated in one and not the other is invisible
+    until someone opens the published page.
+    """
+    left, right = IMAGE_TREES
+    problems: list[str] = []
+    left_names = {path.name for path in left.iterdir() if path.is_file()}
+    right_names = {path.name for path in right.iterdir() if path.is_file()}
+    for name in sorted(left_names - right_names):
+        problems.append(f"{name} is in static/images/ but not workshop-content/images/")
+    for name in sorted(right_names - left_names):
+        problems.append(f"{name} is in workshop-content/images/ but not static/images/")
+    for name in sorted(left_names & right_names):
+        if (left / name).read_bytes() != (right / name).read_bytes():
+            problems.append(f"{name} differs between the two image trees")
+    return problems
+
+
+# Each pattern is a defect the Phase 1 review actually found. The message says
+# what to do instead, because the person who trips it is usually not the person
+# who wrote the rule.
+BANNED_PATTERNS = (
+    (re.compile(r"\bDemos?\s+\d", re.IGNORECASE), "retired 'Demo N' numbering"),
+    (re.compile(r"\bLabs?\s+\d", re.IGNORECASE), "retired 'Lab N' numbering"),
+    (re.compile(r"\bModules?\s+[78]\b"), "retired 'Module 7/8' numbering"),
+    (re.compile(r"customer-service-"), "retired e-commerce resource prefix"),
+    (re.compile(r"\(\s*\d+\s*(?:min|minutes|hours?)\s*\)", re.IGNORECASE), "timing stamp"),
+    (re.compile(r"\b\d+\s*(?:-|\s)\s*(?:minute|hour)\b", re.IGNORECASE), "timing estimate"),
+)
+
+# Applied to notebooks and content pages only. "Counts stay out of prose" is a
+# rule about what the participant reads, not about engineering comments in a
+# shared module explaining why a query is keyed the way it is.
+PROSE_PATTERNS = (
+    (re.compile(r"\b(?:287|292|295)\b"), "graph count in prose, read it from the graph"),
+    # "300 hotels" was the original pattern and it missed "300 hotel documents"
+    # in an image alt text, which is the same claim about the same graph.
+    (re.compile(r"\b300\s+hotel\w*", re.IGNORECASE), "graph count in prose, read it from the graph"),
+)
+PROSE_SUFFIXES = (".ipynb", ".md")
+
+# Folder and file names that moved or were deleted. Any survivor is a link or an
+# instruction pointing at something that is not there.
+RETIRED_NAMES = (
+    "01-graphrag-vs-rag",
+    "01-vectorial-rag-hallucinates",
+    "02-graphrag-fixes-it",
+    "03-production-agent",
+    "04-neo4j-memory",
+    "09-neo4j-mcp-demo",
+    "03_hybrid_retrieval.ipynb",
+    "03b_agentcore_memory.ipynb",
+    "04_neo4j_memory.ipynb",
+    "test_graphrag.ipynb",
+    "load_vector_data.py",
+    "setup_local_graph.py",
+    "deployment-tools",
+    "advanced-deployment",
+)
+
+SWEPT_TREES = (NOTEBOOKS, CONTENT)
+SWEPT_SUFFIXES = (".py", ".ipynb", ".md")
+
+
+def swept_files() -> list[Path]:
+    """Notebooks, shared modules, and content pages. Not the planning documents."""
+    files: list[Path] = []
+    for tree in SWEPT_TREES:
+        for path in sorted(tree.rglob("*")):
+            if path.suffix not in SWEPT_SUFFIXES or not path.is_file():
+                continue
+            if ".venv" in path.parts or "__pycache__" in path.parts:
+                continue
+            files.append(path)
+    return files
+
+
+def banned_patterns_absent() -> list[str]:
+    """No retired numbering, no timing stamp, and no graph count in prose."""
+    problems: list[str] = []
+    for path in swept_files():
+        rel = path.relative_to(REPO_ROOT)
+        text = path.read_text(encoding="utf-8")
+        patterns = BANNED_PATTERNS
+        if path.suffix in PROSE_SUFFIXES:
+            patterns += PROSE_PATTERNS
+        for pattern, reason in patterns:
+            for match in pattern.finditer(text):
+                line = text.count("\n", 0, match.start()) + 1
+                problems.append(f"{rel}:{line} {reason}: {match.group(0)!r}")
+        for name in RETIRED_NAMES:
+            if name in text:
+                line = text.count("\n", 0, text.index(name)) + 1
+                problems.append(f"{rel}:{line} retired name: {name}")
+    return problems
+
+
+PATH_SUFFIXES = frozenset(
+    {
+        ".py", ".ipynb", ".json", ".md", ".txt", ".zip", ".yaml", ".yml",
+        ".png", ".drawio", ".index", ".csv", ".sh", ".toml", ".cfg", ".dump",
+    }
+)
+QUOTED = re.compile(r"[`\"\']([^`\"\'\n]{1,200})[`\"\']")
+PATH_WORD = re.compile(r"^[\w./-]+$")
+NON_LOCAL_PREFIXES = ("http://", "https://", "s3://", "arn:", "/", "~", "-")
+
+# Named on purpose and correctly absent. Each entry says why, because an
+# allowlist nobody can justify is how a gate stops meaning anything.
+PATH_ALLOWLIST = {
+    ".env": "the participant creates it from .env.example",
+    "Lab_5_Agent_Memory/lib/memory_utils.py": "cites the upstream sample this module came from",
+}
+SCRIPT_SUFFIXES = (".py", ".ipynb")
+
+
+def _sibling_module_dirs(path: Path) -> tuple[Path, ...]:
+    """Resolve a module's two trees against each other.
+
+    A module is a notebook folder and a content folder sharing one name, so a
+    content page naturally names a file by its path inside the notebook folder:
+    `runtime_app/`, not `notebooks/05-agentcore-deploy/runtime_app/`. Without
+    this, writing the natural thing fails the check, and the check teaches
+    people to write unnatural prose to satisfy it.
+    """
+    for tree, sibling in ((CONTENT, NOTEBOOKS), (NOTEBOOKS, CONTENT)):
+        try:
+            module = path.relative_to(tree).parts[0]
+        except (ValueError, IndexError):
+            continue
+        return (tree / module, sibling / module)
+    return ()
+
+
+def repo_basenames() -> set[str]:
+    """Every filename in the repository, for resolving a script named without a path."""
+    return {
+        path.name
+        for path in REPO_ROOT.rglob("*")
+        if path.is_file() and ".venv" not in path.parts and ".git" not in path.parts
+    }
+
+
+def named_paths_exist() -> list[str]:
+    """Every repository path named in code or prose resolves to something.
+
+    `2.1` shelled out to a script that was not there and `4.1` told the
+    participant to `cd` into a directory that has never existed. Both read fine.
+    """
+    problems: list[str] = []
+    basenames = repo_basenames()
+    for path in swept_files():
+        rel = path.relative_to(REPO_ROOT)
+        text = path.read_text(encoding="utf-8")
+        for match in QUOTED.finditer(text):
+            for token in match.group(1).split():
+                if PATH_WORD.match(token) is None:
+                    continue
+                if token in PATH_ALLOWLIST or token.startswith(NON_LOCAL_PREFIXES):
+                    continue
+                suffix = Path(token).suffix
+                written_as_path = "/" in token
+                is_dir_token = token.endswith("/") and not suffix
+                if not written_as_path and suffix not in SCRIPT_SUFFIXES:
+                    continue
+                if suffix not in PATH_SUFFIXES and not is_dir_token:
+                    continue
+                if not written_as_path and token in basenames:
+                    continue
+                bases = (REPO_ROOT, path.parent, NOTEBOOKS, CONTENT)
+                bases += _sibling_module_dirs(path)
+                if any((base / token).exists() for base in bases):
+                    continue
+                line = text.count("\n", 0, match.start()) + 1
+                problems.append(f"{rel}:{line} names a path that does not exist: {token}")
+    return problems
+
+
 CHECKS = (
     ("notebook code cells parse", notebook_cells_parse),
     ("python files compile", python_files_compile),
@@ -158,6 +345,9 @@ CHECKS = (
     ("content references resolve", content_references_resolve),
     ("content weights are unique", content_weights_unique),
     ("module folders have content pages", module_folders_have_pages),
+    ("image trees are identical", image_trees_identical),
+    ("banned patterns are absent", banned_patterns_absent),
+    ("named paths exist", named_paths_exist),
 )
 
 
