@@ -9,8 +9,9 @@ hallucinates, a graph grounds it, and a grounded agent abstains honestly. Most o
 work around that, not a rethink of it.
 
 The workshop gains two modules. One shows how the graph gets built in the first place, and one shows how to
-deploy the finished agent to AgentCore Runtime. Module 4 was also rewritten: it ran on an e-commerce refund
-scenario that had nothing to do with the hotel story the rest of the workshop tells.
+deploy the finished agent to AgentCore Runtime. Module 4 was also rewritten. It ran on an e-commerce refund
+scenario, which asked participants to pick up a second domain for one module, so it now runs on hotels like
+everything around it.
 
 - **Three changes**: a new Module 1 where people build part of the graph themselves, a full renumbering
   of every module, and a new Module 5 that deploys the agent to AgentCore Runtime.
@@ -76,12 +77,15 @@ scenario that had nothing to do with the hotel story the rest of the workshop te
 
 **Module 4, from e-commerce to hotels**
 
-- **The old tools are gone**: `lookup_customer`, `get_order_history`, and `process_refund` were placeholders
-  returning canned data.
-- **Two real retrieval tools replace them**: `search_hotel_knowledge` and `graph_query`, both querying the
+- **The module now runs on hotels, the domain the rest of the day already uses**: it used to run a
+  customer-service refund story, which asked participants to carry a second, unrelated domain in their heads
+  for one module. Hotels were already there, so the scenario simply moved over to them.
+- **The three e-commerce tools have retired**: `lookup_customer`, `get_order_history`, and `process_refund`
+  returned canned data, so there was nothing for a participant to learn from them.
+- **Two real retrieval tools take their place**: `search_hotel_knowledge` and `graph_query`, both reading the
   same graph the earlier modules built.
-- **The point of the module**: the retrieval code from Module 3 does not change. Only the boundary around it
-  moves, from in-process to a managed Gateway endpoint.
+- **The point of the module survives the change**: the retrieval code from Module 3 stays exactly as it is.
+  Only the boundary around it moves, from in-process to a managed Gateway endpoint.
 
 **Naming, which the shipped IAM policy decides for us**
 
