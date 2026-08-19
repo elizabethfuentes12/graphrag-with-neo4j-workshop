@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Narrow, idempotent reservation-request command for Lab 4.
+"""Narrow, idempotent reservation-request command for Module 3.2.
 
 The command reads one enabled Neo4j rule, matches one prepared fixture hotel,
 and writes one workshop-owned ``ReservationRequest``. It does not book a room,

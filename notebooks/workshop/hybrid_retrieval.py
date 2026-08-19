@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Fixed graph-enriched hybrid retrieval for Lab 2 onward.
+"""Fixed graph-enriched hybrid retrieval for Module 3.2's grounded booking agent.
 
 The public tool accepts only ``query``. Index names, fusion behavior, result
 count, and graph traversal are deliberately fixed rather than caller-tunable.
@@ -162,7 +162,7 @@ def build_retriever(
         vector_index_name=contracts.CHUNK_VECTOR_INDEX,
         fulltext_index_name=contracts.CHUNK_FULLTEXT_INDEX,
         retrieval_query=RETRIEVAL_QUERY,
-        # The same class Lab 1 wrote the chunk vectors with, so the query and
+        # The same class Module 1 wrote the chunk vectors with, so the query and
         # the stored vectors cannot drift onto different models or widths.
         embedder=embedder or BedrockEmbeddings(),
         result_formatter=_format_record,

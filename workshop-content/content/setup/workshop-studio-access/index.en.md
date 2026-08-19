@@ -104,7 +104,7 @@ Proceed to [Module 2](../../02-vector-rag-hallucinates/).
 ## Troubleshooting
 
 :::expand{header="Neo4j connection refused" defaultExpanded=false}
-The ECS Fargate task may still be starting (takes 2–3 minutes after stack creation). Wait 2 minutes and retry. You can check the task status in the ECS console under the workshop cluster.
+The ECS Fargate task may still be starting after stack creation. Wait for it to come up, then retry. You can check the task status in the ECS console under the workshop cluster.
 :::
 
 :::expand{header="Bedrock access denied" defaultExpanded=false}

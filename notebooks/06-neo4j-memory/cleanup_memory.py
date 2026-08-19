@@ -17,7 +17,7 @@ Requires live Neo4j credentials but no AWS access. Without them the script
 prints a skip message and exits 0.
 
 Run with:
-    uv run --with-requirements requirements.txt python cleanup_memory.py
+    uv run --with-requirements ../requirements.txt python cleanup_memory.py
 """
 
 from __future__ import annotations

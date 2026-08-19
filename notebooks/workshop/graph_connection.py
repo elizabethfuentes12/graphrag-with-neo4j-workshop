@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Neo4j connection settings shared by every lab that opens a driver.
+"""Neo4j connection settings shared by every module that opens a driver.
 
 `NEO4J_USERNAME` defaults to `"neo4j"`, which is what Aura provisions; the older
 `NEO4J_USER` spelling is not read. There is no default for `NEO4J_URI` or for
@@ -18,8 +18,9 @@ from a module several imports away from the one being read, and nothing that onl
 needs a constant can load at all. Callers that cannot proceed without Neo4j call
 `require_neo4j_env()` in their setup cell, so a participant still finds out
 immediately and sees the check happen instead of it being hidden in an import.
-Lab 3's notebook instead reads the same variables itself and skips its live cells
-when they are unset, because it is written to be readable without a database.
+Module 3.2's notebook instead reads the same variables itself and skips its live
+cells when they are unset, because it is written to be readable without a
+database.
 
 Values are read at call time rather than bound at import, so a `.env` the caller
 loads after importing this module is still honoured.
@@ -30,8 +31,8 @@ import os
 NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
 
 # Aura's default database is always `neo4j`, and a participant whose .env omits
-# the name should not get a different failure in Lab 2 than in Lab 1. The build
-# path defaults it, so the read and write paths default it the same way.
+# the name should not get a different failure in Module 2 than in Module 1. The
+# build path defaults it, so the read and write paths default it the same way.
 DEFAULT_NEO4J_DATABASE = "neo4j"
 
 # The two with no safe default. `NEO4J_USERNAME` is absent because it has one,
@@ -50,7 +51,7 @@ def require_neo4j_env() -> None:
     if missing:
         raise RuntimeError(
             f"Missing required Neo4j environment values: {', '.join(missing)}. "
-            "Set them (see .env.example) before running the workshop labs. Neither "
+            "Set them (see .env.example) before running the workshop modules. Neither "
             "has a default, so a missing one fails loudly here instead of sending a "
             "bad credential to Neo4j or a good one to a localhost that is not "
             "listening."

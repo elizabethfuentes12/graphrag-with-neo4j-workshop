@@ -1,9 +1,9 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Index setup and readiness checks shared by the Lab 1 build paths.
+"""Index setup and readiness checks shared by the Module 1 build paths.
 
 The notebook only retrieves. Graph preparation owns index creation and checks
-the deterministic fixtures every Lab 1 build path needs.
+the deterministic fixtures every Module 1 build path needs.
 """
 
 from __future__ import annotations
@@ -23,9 +23,9 @@ from workshop.retrieval_contract import (
     EMBEDDING_DIMENSIONS,
 )
 
-# The source documents every lab after Lab 1 asks a question against. A build
-# that samples the corpus has to include these or a later lab opens onto a
-# graph that cannot answer its own hero question.
+# The source documents every module after Module 1 asks a question against. A
+# build that samples the corpus has to include these or a later module opens
+# onto a graph that cannot answer its own hero question.
 REQUIRED_SOURCE_FILES = (
     "hotel-paris-001.txt",
     "hotel-paris-002.txt",
@@ -137,7 +137,7 @@ def _session(driver: Driver):
     Indexes, counts, and fixture checks all have to land on the database the
     build wrote to. Left on the driver's home database, a participant who sets
     `NEO4J_DATABASE` gets data in one place and indexes in another, and every
-    later lab retrieves nothing while every call succeeds.
+    later module retrieves nothing while every call succeeds.
     """
     return driver.session(database=graph_database())
 
@@ -302,7 +302,7 @@ def fixture_problems(driver: Driver) -> list[str]:
 def report_readiness(driver: Driver, expected_documents: int) -> list[str]:
     """Print readiness counts and return all graph fixture problems."""
     documents, chunks, labels, relationships = graph_counts(driver)
-    print("\nLab 1 readiness report:")
+    print("\nModule 1 readiness report:")
     print(f"  documents: {documents} (expected {expected_documents})")
     print(f"  chunks: {chunks} (expected {documents})")
     print(f"  extracted labels: {labels}")

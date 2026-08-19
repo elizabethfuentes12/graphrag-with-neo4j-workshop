@@ -18,6 +18,9 @@ __pycache__/
 # Jupyter outputs (strip before committing with: jupyter nbconvert --clear-output)
 .ipynb_checkpoints/
 
+# Corpus extracted from hotel-faqs.zip at run time, not a source artifact
+notebooks/*/data/
+
 # Large data files (go in assets/ S3 bucket, not repo)
 notebooks/*.index
 notebooks/*.json.bak

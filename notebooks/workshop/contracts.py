@@ -8,11 +8,11 @@ Runtime package, and the retrieval Lambda without causing network calls or
 resource changes. `retrieval_contract`, the one thing it imports, is pure
 constants with no imports of its own, so that property survives.
 
-The five embedding and index names are re-exported rather than redefined. Lab 1
-writes the embeddings and creates the indexes; Labs 2 and 3 read them. A second
-definition here would let a reader change the index name in one file, pass every
-check in that file's lab, and leave the read path pointed at an index the build
-never created.
+The five embedding and index names are re-exported rather than redefined.
+Module 1 writes the embeddings and creates the indexes; Modules 2 and 3 read
+them. A second definition here would let a reader change the index name in one
+file, pass every check in that file's module, and leave the read path pointed
+at an index the build never created.
 
 The database name is not here. `graph_database()` lives in `graph_connection`
 alongside the other environment reads, which keeps this module free of `os`.

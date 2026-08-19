@@ -39,7 +39,7 @@ def lego_progress(completed: int):
 
 
 # ---------------------------------------------------------------------------
-# Live tool tracing and token metrics for Module 3
+# Live tool tracing and token metrics for Module 4
 # ---------------------------------------------------------------------------
 #
 # `strands` is imported at module scope rather than inside the hook. It is the
@@ -64,7 +64,7 @@ def _truncate(value: object, limit: int = TRACE_VALUE_CHARS) -> str:
 class ToolTraceHook(HookProvider):
     """Print each tool call as the agent makes it.
 
-    Module 3 Part 2 is about watching a Gateway tool call and a memory retrieval
+    Module 4 Part 2 is about watching a Gateway tool call and a memory retrieval
     interleave in one turn. Without a trace the participant sees only the final
     answer and has to take on faith that a tool ran at all, which is exactly the
     claim the module is trying to demonstrate.

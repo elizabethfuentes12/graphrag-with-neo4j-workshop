@@ -1,10 +1,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Build-time settings that belong to Lab 1 alone.
+"""Build-time settings that belong to Module 1 alone.
 
 Chunk sizing, the extraction token ceiling, and the lite document sample only
 matter while the graph is being built, so they stay here rather than in the
-shared `workshop` package. The things later labs also need moved out:
+shared `workshop` package. The things later modules also need moved out:
 
 * the pinned extraction schema is `workshop.graph_schema`
 * the Neo4j connection is `workshop.graph_connection`
@@ -32,7 +32,7 @@ EXTRACTION_MAX_TOKENS = 16000
 # Document selection
 # ---------------------------------------------------------------------------
 
-# Lab 2 asks about Paris and Cairo by name, so the lite sample has to contain
+# Module 2 asks about Paris and Cairo by name, so the lite sample has to contain
 # them. `sorted(...)[:30]` is alphabetical and stops at Boston.
 REQUIRED_CITIES = ("paris", "cairo")
 

@@ -1,23 +1,29 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Shared knowledge-graph build machinery for Lab 1.
+"""Shared knowledge-graph build machinery for Module 1.
 
-`prepare_graph.py` and the notebook both call `run_build` here, so the pinned
-schema, the canary check, the scoped wipe, and the verification queries have one
-definition and the script path and the notebook path cannot drift apart the way
-they previously did (one verified on `h.id`, the other on `h.name`, and neither
-matched the notebook).
+Two entry points share the pinned schema, the extraction pipeline, the
+verification queries, and the report, so the script path and the notebook path
+cannot drift apart the way they previously did (one verified on `h.id`, the
+other on `h.name`, and neither matched the notebook).
 
-Build order matters and is deliberate:
+`run_additive_build` is what Module 1's notebook calls. It extracts a handful
+of held-out documents into the graph the participant restored from the dump,
+and it deletes nothing except a previous copy of those same documents. Work
+the participant already has is never at risk.
+
+`run_build` is the facilitator's rebuild-from-scratch tool, reached through
+`prepare_graph.py`. It wipes first, and its order is deliberate:
 
     wipe -> canary (3 docs) -> verify typing -> wipe canary -> ingest all
     -> retry the failures -> report
 
-The wipe happens *before* the canary. The graph this lab builds is
-disposable, rebuilt from scratch on every run, so there is nothing
-worth preserving across a failed build. Wiping first also means the canary
-runs against an empty graph, so entity resolution has nothing to merge into
-and the check reflects exactly what this run extracted.
+The wipe precedes the canary because a from-scratch rebuild has nothing worth
+preserving across a failed build, and because the canary then runs against an
+empty graph, so entity resolution has nothing to merge into and the check
+reflects exactly what that run extracted. Neither reason holds for
+`run_additive_build`, which is why it is a separate function rather than
+`run_build` behind a flag.
 """
 
 import asyncio
@@ -58,7 +64,7 @@ DOC_TIMEOUT_SECONDS = 180
 
 # The canary samples several documents rather than one. LLM extraction is
 # stochastic, so a single-document gate intermittently fails a healthy
-# pipeline, and a participant who hits that concludes the lab is broken.
+# pipeline, and a participant who hits that concludes the module is broken.
 CANARY_DOCS = 3
 
 # A document that failed once is tried once more. Extraction failures are
@@ -67,8 +73,11 @@ CANARY_DOCS = 3
 RETRY_PASSES = 1
 
 # Everything neo4j-graphrag writes carries this label, so the wipe can be
-# scoped to this lab's own output instead of `MATCH (n) DETACH DELETE n`,
-# which would also take out anything else sharing the instance.
+# scoped to pipeline output instead of `MATCH (n) DETACH DELETE n`, which would
+# also take out anything else sharing the instance. Note what it does not buy:
+# the label marks pipeline output, not one run's output. Any dump restored into
+# this graph that was itself produced by this pipeline carries the label, and
+# the wipe takes it with everything else.
 KG_LABEL = "__KGBuilder__"
 
 
@@ -129,8 +138,13 @@ def snapshot_chunk_ids(driver: Driver) -> set[str]:
         }
 
 
-def clear_lab_graph(driver: Driver) -> None:
-    """Delete only the nodes this lab created."""
+def clear_extracted_graph(driver: Driver) -> None:
+    """Delete every node the extraction pipeline ever wrote.
+
+    Not scoped to a single run: see the note on `KG_LABEL`. Only `run_build`,
+    the rebuild-from-scratch path, may call this. `run_additive_build` uses
+    `clear_document` so it touches nothing but its own documents.
+    """
     with session(driver) as neo4j_session:
         neo4j_session.run(f"MATCH (n:`{KG_LABEL}`) DETACH DELETE n")
 
@@ -139,8 +153,14 @@ def clear_lab_graph(driver: Driver) -> None:
 # document being cleared. `perform_entity_resolution=True` merges a hotel two
 # documents both mention into one node, and deleting that node would take a
 # healthy document's extraction with it.
+# Keyed on `source_filename`, not `path`. `path` is the pipeline's own idea of
+# where the text came from, and because `ingest` passes `text=` rather than a
+# file handle, every document in the graph gets the synthetic path
+# `document.txt`. Matching on it would find nothing on a good day and all 295
+# documents on a bad one. `source_filename` is the value `ingest` attaches
+# through `document_metadata`, and it is unique per document.
 DELETE_DOCUMENT_ENTITIES = """
-MATCH (d:Document {path: $filename})<-[:FROM_DOCUMENT]-(c:Chunk)
+MATCH (d:Document {source_filename: $filename})<-[:FROM_DOCUMENT]-(c:Chunk)
 WITH collect(c) AS chunks
 UNWIND chunks AS chunk
 MATCH (entity)-[:FROM_CHUNK]->(chunk)
@@ -150,7 +170,7 @@ DETACH DELETE entity
 """
 
 DELETE_DOCUMENT_LEXICAL = """
-MATCH (d:Document {path: $filename})
+MATCH (d:Document {source_filename: $filename})
 OPTIONAL MATCH (c:Chunk)-[:FROM_DOCUMENT]->(d)
 DETACH DELETE c, d
 """
@@ -168,6 +188,39 @@ def clear_document(driver: Driver, filename: str) -> None:
     with session(driver) as neo4j_session:
         neo4j_session.run(DELETE_DOCUMENT_ENTITIES, filename=filename).consume()
         neo4j_session.run(DELETE_DOCUMENT_LEXICAL, filename=filename).consume()
+
+
+def check_documents_addressable(driver: Driver, paths: list[Path]) -> list[str]:
+    """Return a list of problems with the `source_filename` on this run's documents.
+
+    Guards the invariant `clear_document` depends on: every ingested file must
+    land as exactly one `:Document` reachable by its own filename. The property
+    arrives through `document_metadata`, which is pipeline behaviour rather than
+    anything this module controls, so a library upgrade could stop populating it
+    and nothing else here would notice. The symptom would be silent: retries and
+    re-runs would quietly duplicate documents instead of replacing them, and
+    Module 1's closing query would return no rows over a graph that looks fine.
+    """
+    problems: list[str] = []
+    with session(driver) as neo4j_session:
+        counts = {
+            record["filename"]: record["count"]
+            for record in neo4j_session.run(
+                """
+                MATCH (d:Document)
+                WHERE d.source_filename IN $filenames
+                RETURN d.source_filename AS filename, count(d) AS count
+                """,
+                filenames=[path.name for path in paths],
+            )
+        }
+    for path in paths:
+        found = counts.get(path.name, 0)
+        if found == 0:
+            problems.append(f"{path.name} has no :Document carrying its source_filename")
+        elif found > 1:
+            problems.append(f"{path.name} has {found} :Document nodes, expected 1")
+    return problems
 
 
 async def ingest(pipeline: SimpleKGPipeline, paths: list[Path]) -> list[Path]:
@@ -222,14 +275,14 @@ async def retry_failures(
 
 
 def check_schema_held(driver: Driver, chunk_ids: set[str]) -> list[str]:
-    """Return a list of problems with what the canary chunks extracted.
+    """Return a list of problems with what `chunk_ids` extracted.
 
     Entities are reached by traversing `(:Chunk)<-[:FROM_CHUNK]-(entity)` from
     the chunks this run created, so the check is correct whether the entity was
     newly inserted or merged into an existing node by entity resolution.
 
     An empty list means extraction honoured the pinned schema in
-    `workshop.graph_schema`, which is the contract Labs 2 through 5 query.
+    `workshop.graph_schema`, which is the contract every later module queries.
     """
     problems: list[str] = []
     ids = list(chunk_ids)
@@ -255,13 +308,13 @@ def check_schema_held(driver: Driver, chunk_ids: set[str]) -> list[str]:
             problems.append(f"off-schema labels present: {stray}")
 
         if not labels.get("Hotel"):
-            problems.append("no :Hotel node was extracted from the canary chunks")
+            problems.append("no :Hotel node was extracted from these chunks")
             return problems
 
         # Extraction is stochastic: an LLM can miss a field on any single
         # document without the pipeline being broken. The gate is therefore
-        # "at least one canary document extracted a complete Hotel", not
-        # "every one did". The off-schema label check above stays strict,
+        # "at least one document extracted a complete Hotel", not "every one
+        # did". The off-schema label check above stays strict,
         # because inventing an `Address` node is a schema failure rather than
         # a bad roll.
         hotels = list(
@@ -298,7 +351,7 @@ def check_schema_held(driver: Driver, chunk_ids: set[str]) -> list[str]:
         print(f"  conforming hotels: {len(conforming)}/{len(hotels)}")
         if not conforming:
             problems.append(
-                f"none of the {len(hotels)} canary hotels had name, address, "
+                f"none of the {len(hotels)} extracted hotels had name, address, "
                 "guest_rating and a contracted relationship"
             )
 
@@ -405,7 +458,10 @@ async def run_build(paths: list[Path], title: str) -> int:
 
     missing_sources = missing_source_fixtures(paths)
     if missing_sources:
-        print("Source documents that later labs depend on are missing from this build:")
+        print(
+            "Source documents that later modules depend on are missing "
+            "from this build:"
+        )
         for filename in missing_sources:
             print(f"  - {filename}")
         return 1
@@ -414,8 +470,8 @@ async def run_build(paths: list[Path], title: str) -> int:
     print(f"Database: {graph_database()}\n")
     driver = connect()
     try:
-        print("Clearing the previous graph this lab built...")
-        clear_lab_graph(driver)
+        print("Clearing the previous graph this module built...")
+        clear_extracted_graph(driver)
         print("✅ Cleared\n")
 
         canary = paths[:CANARY_DOCS]
@@ -428,19 +484,19 @@ async def run_build(paths: list[Path], title: str) -> int:
         new_chunks = snapshot_chunk_ids(driver) - baseline
         if not new_chunks:
             print("\n❌ Canary produced no :Chunk. Extraction did not run.")
-            clear_lab_graph(driver)  # leave a clean, empty graph on failure
+            clear_extracted_graph(driver)  # leave a clean, empty graph on failure
             return 1
         problems = check_schema_held(driver, new_chunks)
         if problems:
             print("\n❌ Canary failed. The graph was cleared; fix and re-run:")
             for problem in problems:
                 print(f"  - {problem}")
-            clear_lab_graph(driver)  # remove the canary's partial docs
+            clear_extracted_graph(driver)  # remove the canary's partial docs
             return 1
         print("✅ Canary passed: extraction matches the documented schema\n")
 
         print("Clearing the canary's documents before the full ingest...")
-        clear_lab_graph(driver)
+        clear_extracted_graph(driver)
         print("✅ Cleared\n")
 
         failures = await ingest(pipeline, paths)
@@ -480,6 +536,13 @@ async def run_build(paths: list[Path], title: str) -> int:
                 "overlapped this one, or a partial run was left behind."
             )
             return 1
+
+        addressing = check_documents_addressable(driver, paths)
+        if addressing:
+            print("\n❌ Documents are not addressable by source_filename:")
+            for problem in addressing:
+                print(f"  - {problem}")
+            return 1
         if failures:
             print(
                 "⚠️ One or more client acknowledgements were lost, but every "
@@ -493,7 +556,104 @@ async def run_build(paths: list[Path], title: str) -> int:
 
         readiness_problems = report_readiness(driver, expected_documents=expected)
         if readiness_problems:
-            print("\n❌ Fixture validation for the later labs failed:")
+            print("\n❌ Fixture validation for the later modules failed:")
+            for problem in readiness_problems:
+                print(f"  - {problem}")
+            return 1
+
+        report(driver)
+        print("\n✅ Done!")
+        return 0
+    finally:
+        driver.close()
+
+
+async def run_additive_build(paths: list[Path], title: str) -> int:
+    """Extract `paths` into the graph already restored from the dump.
+
+    Module 1's entry point, and the counterpart to `run_build`. The difference
+    is the whole point: this never calls `clear_extracted_graph`, so the
+    documents the participant restored survive, and so does anything they
+    built earlier in the session.
+
+    There is no canary. The canary exists so a schema break surfaces after
+    three documents rather than after three hundred; at this size the build is
+    its own canary, and `check_schema_held` runs over the chunks this call
+    created either way.
+
+    Returns an exit code.
+    """
+    if not paths:
+        print("No documents selected.")
+        return 1
+
+    driver = connect()
+    try:
+        print(f"{title}: {len(paths)} documents")
+        print(f"Database: {graph_database()}\n")
+
+        # Scoped to these files alone, so re-running the notebook cell replaces
+        # this extraction instead of writing a second copy of it. Every node
+        # here is written with `CREATE` rather than `MERGE`, so without this a
+        # second run leaves two :Document and two :Chunk nodes per file.
+        for path in paths:
+            clear_document(driver, path.name)
+
+        # Counted after the clear, so the expected total below is the same on a
+        # first run and on a re-run.
+        already_loaded = count_documents(driver)
+        print(f"The graph already holds {already_loaded} documents.\n")
+
+        baseline = snapshot_chunk_ids(driver)
+        pipeline = build_pipeline(driver)
+        failures = await ingest(pipeline, paths)
+        failures = await retry_failures(driver, pipeline, failures)
+        if failures:
+            print(f"\n{len(failures)} document(s) failed after the retry pass:")
+            for path in failures:
+                print(f"  - {path.name}")
+            print(
+                "\nRe-run this cell. It clears only these documents before "
+                "retrying, so the rest of the graph is untouched."
+            )
+            return 1
+
+        new_chunks = snapshot_chunk_ids(driver) - baseline
+        if not new_chunks:
+            print("\n❌ No :Chunk was created. Extraction did not run.")
+            return 1
+
+        addressing = check_documents_addressable(driver, paths)
+        if addressing:
+            print("\n❌ Documents are not addressable by source_filename:")
+            for problem in addressing:
+                print(f"  - {problem}")
+            print(
+                "\nRe-running this cell cannot repair that, because the clear "
+                "step keys on the same property. See `check_documents_addressable`."
+            )
+            return 1
+
+        problems = check_schema_held(driver, new_chunks)
+        if problems:
+            print("\n❌ Extraction did not match the documented schema:")
+            for problem in problems:
+                print(f"  - {problem}")
+            return 1
+        print("✅ Extraction matches the documented schema\n")
+
+        # The dump ships without either index, so this is where they first come
+        # online. Idempotent regardless, so a re-run is harmless. Module 1
+        # still runs this so the participant watches the indexes come online
+        # against the vectors their own extraction just wrote.
+        print("Creating and verifying the retrieval indexes...")
+        ensure_retrieval_indexes(driver)
+        print("✅ Retrieval indexes are online and match the embedding contract")
+
+        expected = already_loaded + len(paths)
+        readiness_problems = report_readiness(driver, expected_documents=expected)
+        if readiness_problems:
+            print("\n❌ Fixture validation for the later modules failed:")
             for problem in readiness_problems:
                 print(f"  - {problem}")
             return 1

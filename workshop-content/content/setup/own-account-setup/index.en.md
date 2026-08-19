@@ -7,7 +7,7 @@ weight: 2
 
 - AWS account with admin or PowerUser access in **us-east-1**
 - Bedrock model access enabled (step 1 below)
-- ~$2 budget for a 2-hour session
+- Roughly $2 of AWS spend for the resources this workshop creates
 
 ---
 
@@ -18,7 +18,7 @@ weight: 2
 3. Enable\:
    - **Amazon Nova 2 Multimodal Embeddings** (`amazon.nova-2-multimodal-embeddings-v1:0`)
    - **Claude Sonnet 4** (`us.anthropic.claude-sonnet-4-6`)
-4. Click **Save changes** (takes 1–2 minutes)
+4. Click **Save changes**
 
 ---
 
@@ -46,7 +46,7 @@ aws cloudformation create-stack \
   --region us-east-1
 :::
 
-Wait for completion (~8 minutes)\:
+Wait for completion\:
 
 :::code{language=bash showCopyAction=true}
 aws cloudformation wait stack-create-complete \

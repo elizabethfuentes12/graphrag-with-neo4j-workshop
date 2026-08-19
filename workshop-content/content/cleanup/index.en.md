@@ -5,8 +5,6 @@ weight: 100
 
 # Resource Cleanup
 
-**Duration: 5-10 minutes**
-
 Follow these steps to delete all workshop resources and avoid unexpected charges.
 
 

@@ -66,9 +66,9 @@ from neo4j_agent_memory import Neo4jConfig as MemoryNeo4jConfig
 from neo4j_agent_memory.embeddings.bedrock import BedrockEmbedder
 from pydantic import SecretStr
 
-# Decision 2 in the Demo 08 plan: the memory vector indexes use Titan Text
-# Embeddings V2, a separate embedding contract from the Nova model that
-# embeds the hotel chunks. Titan V2 produces 1024-dimensional vectors.
+# The memory vector indexes use Titan Text Embeddings V2, a separate embedding
+# contract from the Nova model that embeds the hotel chunks. Titan V2 produces
+# 1024-dimensional vectors.
 MEMORY_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
 MEMORY_EMBEDDING_DIMENSIONS = 1024
 
@@ -77,8 +77,9 @@ MEMORY_EMBEDDING_DIMENSIONS = 1024
 # exist with MEMORY_EMBEDDING_DIMENSIONS after the first connect.
 MEMORY_VECTOR_INDEXES = ("message_embedding_idx", "preference_embedding_idx")
 
-# Workshop ownership marker for the memory records this demo writes, following
-# Demo 06's convention (contracts.WORKSHOP_OWNER = "neo4j-ftw-demo-6").
+# Workshop ownership marker for the memory records this demo writes. It mirrors
+# contracts.WORKSHOP_OWNER, a fixed namespace string ("neo4j-ftw-demo-6") the
+# shared workshop code reuses as its ownership tag.
 # cleanup_memory.py deletes only records carrying this marker, so cleanup can
 # never reach the hotel graph or another module's data.
 WORKSHOP_OWNER = "neo4j-ftw-demo-8"
@@ -89,14 +90,17 @@ WORKSHOP_OWNER = "neo4j-ftw-demo-8"
 # still removed.
 DEMO_ID_PREFIX = "demo08-"
 
-# One committed fixture keeps the participant path deterministic. The current
-# Module 1 graph does not assign stable hotel ids, so this exact fixture name is
-# the narrow lookup key until that shared schema adds one.
+# One committed fixture keeps the participant path deterministic. Every Hotel
+# node gets a hotel_id when it is created: the two fixture hotels are pinned
+# from workshop/fixtures/hotel_ids.json and the rest get randomUUID(). This
+# module anchors on the fixture's name rather than its id, and each query below
+# guards on exactly one matching Hotel, so the name is the narrow lookup key
+# here.
 HERO_HOTEL_NAME = "AnyCompany Cairo Nile View"
 
-# Decision 3 in the Demo 08 plan: preference-to-message provenance is one
-# explicit workshop-owned relationship, because the library links extracted
-# entities to their source messages but has no equivalent for preferences.
+# Preference-to-message provenance is one explicit workshop-owned relationship,
+# because the library links extracted entities to their source messages but has
+# no equivalent for preferences.
 PROVENANCE_RELATIONSHIP = "DERIVED_FROM"
 HOTEL_RELATIONSHIP = "ABOUT_HOTEL"
 
@@ -163,7 +167,7 @@ def build_memory_settings(config: MemoryDemoConfig) -> MemorySettings:
     constructed, and entity extraction is off (``ExtractorType.NONE``). The
     demo writes memory explicitly, so nothing needs a model to extract
     entities from text. ``multi_tenant=True`` makes every write require a
-    ``user_identifier`` (Demo 08 plan, decision 6).
+    ``user_identifier``.
     """
     # 0.5.0 requires this object to size the indexes even though its settings
     # layer emits a migration warning saying the same shape is deprecated.

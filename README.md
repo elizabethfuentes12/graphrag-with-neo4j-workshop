@@ -16,7 +16,7 @@ An AWS Workshop Studio workshop teaching four progressive skills: detecting RAG 
 
 | Module | Notebooks | What You Build |
 |--------|-----------|----------------|
-| 01 — Build the Graph *(page and notebook not yet written)* | `1.1_build_graph.ipynb` | Live extraction of five held-out hotel documents, pinned schema, constraints, both retrieval indexes |
+| [01 — Build the Graph](./workshop-content/content/01-build-graph/) | `1.1_build_graph.ipynb` | Live extraction of five held-out hotel documents, pinned schema, both retrieval indexes |
 | [02 — Vector RAG Hallucinates](./workshop-content/content/02-vector-rag-hallucinates/) | `2.1_vector_rag_hallucinates.ipynb` | Two agents, four hallucination tests, token comparison |
 | [03 — Retrieval Patterns and the Grounded Booking Agent](./workshop-content/content/03-retrieval-patterns/) | `3.1_retrieval_patterns.ipynb` + `3.2_grounded_booking_agent.ipynb` | Four retrievers, decision table, grounded booking agent |
 | [04 — Production Agent with AgentCore](./workshop-content/content/04-production-agent/) | `4.1_agentcore_gateway.ipynb` + `4.2_agentcore_memory.ipynb` | Gateway Lambda tools, IAM-authenticated MCP, cross-session memory |
@@ -84,9 +84,9 @@ This repository is deployed as an [AWS Workshop Studio](https://workshops.aws) w
 | Directory | Purpose |
 |-----------|---------|
 | `workshop-content/content/` | Workshop Studio markdown pages |
-| `notebooks/` | Jupyter notebooks (one per module) |
-| `static/` | Architecture diagrams and IAM policies |
-| `contentspec.yaml` | Workshop Studio configuration |
+| `workshop-content/images/` | Diagram images referenced by the workshop pages |
+| `notebooks/` | Jupyter notebooks (one or two per module) |
+| `static/` | Architecture diagrams (PNG exports and drawio sources) |
 
 ---
 

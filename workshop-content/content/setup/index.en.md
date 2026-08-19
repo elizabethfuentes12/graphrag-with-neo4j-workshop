@@ -3,7 +3,7 @@ title: "Setup"
 weight: 10
 ---
 
-## Get Your Environment Ready (~10 minutes)
+## Get Your Environment Ready
 
 Choose your path\:
 

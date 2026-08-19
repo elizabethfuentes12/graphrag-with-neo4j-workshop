@@ -43,7 +43,7 @@ Run both agents and compare their outputs. The RAG agent reads three document ch
 
 :::code{language=cypher}
 MATCH (h:Hotel) WHERE h.address CONTAINS 'Paris'
-RETURN avg(h.guestRating) AS avg_rating
+RETURN avg(h.guest_rating) AS avg_rating
 :::
 
 ---

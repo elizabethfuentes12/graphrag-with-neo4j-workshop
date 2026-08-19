@@ -1,6 +1,12 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Idempotent self-paced preparation of the Lab 1 graph and its indexes."""
+"""Idempotent self-paced rebuild of the workshop graph and its indexes.
+
+The from-scratch path, for a facilitator or a self-paced participant who has no
+dump to restore. It calls `graph_builder.run_build`, which wipes first. The
+in-session path is `graph_builder.run_additive_build`, which Module 1's notebook
+calls to extend a restored graph without deleting anything.
+"""
 
 import argparse
 import asyncio
@@ -69,13 +75,13 @@ def selected_paths(mode: str) -> list[Path]:
     return sorted(DATA_DIR.glob("*.txt"))
 
 
-def lab4_problems(driver: Driver, *, apply_fixtures: bool) -> list[str]:
-    """Return what still stands between this graph and Lab 4.
+def booking_agent_problems(driver: Driver, *, apply_fixtures: bool) -> list[str]:
+    """Return what still stands between this graph and the Module 3.2 agent.
 
     Step 7 of the notebook seeds the fixture hotel IDs, the three `demo06_*`
     constraints, and the `max_guests` rule. The script path has to do the same,
-    or a facilitator who builds here hands Lab 4 a graph that cannot run. The
-    seed is `MERGE` and `SET` throughout, so repeating it changes nothing.
+    or a facilitator who builds here hands Module 3.2 a graph that cannot run.
+    The seed is `MERGE` and `SET` throughout, so repeating it changes nothing.
     """
     database = graph_database()
     manifest = load_manifest()
@@ -86,21 +92,21 @@ def lab4_problems(driver: Driver, *, apply_fixtures: bool) -> list[str]:
     return readiness_problems(driver, database, manifest)
 
 
-def seed_lab4_fixtures() -> int:
-    """Apply and verify the graph-owned data Labs 4 and 5 read.
+def seed_booking_agent_fixtures() -> int:
+    """Apply and verify the graph-owned data the Module 3.2 booking agent reads.
 
     `run_build` closes its own driver, so this opens a fresh one after the
     build and leaves the graph in the same state the notebook's step 7 does.
     """
-    print("\nSeeding the fixtures Labs 4 and 5 depend on...")
+    print("\nSeeding the fixtures the Module 3.2 booking agent depends on...")
     driver = connect()
     try:
-        problems = lab4_problems(driver, apply_fixtures=True)
+        problems = booking_agent_problems(driver, apply_fixtures=True)
     finally:
         driver.close()
 
     if problems:
-        print("\n❌ The graph is not ready for Lab 4:")
+        print("\n❌ The graph is not ready for Module 3.2:")
         for problem in problems:
             print(f"  - {problem}")
         return 1
@@ -113,15 +119,15 @@ def seed_lab4_fixtures() -> int:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare and verify the Lab 1 graph and its retrieval indexes."
+        description="Rebuild and verify the workshop graph and its retrieval indexes."
     )
     parser.add_argument(
         "--mode",
         choices=("lite", "full"),
         default="lite",
         help=(
-            "lite builds the 30-document sample in about 15 minutes; "
-            "full builds all 300 in about 2 hours. Default: lite."
+            "lite builds the 30-document sample; "
+            "full builds all 300. Default: lite."
         ),
     )
     parser.add_argument(
@@ -178,18 +184,18 @@ def main() -> int:
         if not args.rebuild:
             problems.extend(report_readiness(driver, expected_documents=len(paths)))
             problems.extend(
-                lab4_problems(driver, apply_fixtures=not args.check_only)
+                booking_agent_problems(driver, apply_fixtures=not args.check_only)
             )
             needs_build = bool(problems)
             # The acceptance queries print whether or not a build runs, so a
-            # ready graph still shows what Lab 2 will be asking it.
+            # ready graph still shows what Module 2 will be asking it.
             if not problems:
                 report(driver)
     finally:
         driver.close()
 
     if not needs_build:
-        print("\n✅ Lab 1 is ready; no rebuild needed.")
+        print("\n✅ The workshop graph is ready; no rebuild needed.")
         return 0
     if not args.rebuild:
         print("\nGraph preparation is incomplete:")
@@ -202,7 +208,7 @@ def main() -> int:
     exit_code = asyncio.run(run_build(paths, title))
     if exit_code != 0:
         return exit_code
-    return seed_lab4_fixtures()
+    return seed_booking_agent_fixtures()
 
 
 if __name__ == "__main__":

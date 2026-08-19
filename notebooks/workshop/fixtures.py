@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: MIT-0
 """Idempotent Neo4j preparation and readiness checks for the reservation fixtures.
 
-This module verifies the indexes Lab 1 owns. It only writes the two fixture
+This module verifies the indexes Module 1 owns. It only writes the two fixture
 hotel IDs, ordinary uniqueness constraints, and the maximum-guests rule.
 
-The hero constants live here rather than in the lab that narrates them because
-`readiness_problems` checks the graph against them. They are the fixture
-definition, not presentation: a hero address changed in one place and verified
-against another would report a graph as unready for a reason no participant
-could act on.
+The hero constants live here rather than in the module that narrates them
+because `readiness_problems` checks the graph against them. They are the
+fixture definition, not presentation: a hero address changed in one place and
+verified against another would report a graph as unready for a reason no
+participant could act on.
 """
 
 from __future__ import annotations
@@ -238,7 +238,7 @@ def _fixture_problems(
             continue
         if record.get("documents") == 0:
             problems.append(
-                f"{source_filename} has no source Document; rebuild the Lab 1 graph "
+                f"{source_filename} has no source Document; rebuild the Module 1 graph "
                 "so Document.source_filename is recorded"
             )
         for field in ("documents", "chunks", "hotels"):
@@ -344,7 +344,7 @@ def apply_reservation_fixtures(
     """Apply the idempotent graph-owned data the reservation write path depends on.
 
     Return any blocking problems that prevent preparation, for example a
-    missing Lab 1 graph. When the returned list is empty, the fixture IDs,
+    missing Module 1 graph. When the returned list is empty, the fixture IDs,
     constraints, and maximum-guests rule have been applied.
     """
     with _session(driver, database) as session:
@@ -465,8 +465,9 @@ def main() -> int:
     uri, auth, database = _configuration()
     # notifications_min_severity="OFF" matches the drivers hybrid_retrieval and
     # reservation_command open. Without it this readiness step prints Neo4j
-    # planner notices the Lab 2 and Lab 4 paths both suppress, so the same
-    # query looks different depending on which file opened the connection.
+    # planner notices the Module 3.2 retrieval and reservation paths both
+    # suppress, so the same query looks different depending on which file
+    # opened the connection.
     driver = GraphDatabase.driver(uri, auth=auth, notifications_min_severity="OFF")
     problems: list[str] = []
     try:
@@ -481,7 +482,7 @@ def main() -> int:
     if problems:
         _report(problems)
         return 1
-    print("Lab 4 fixtures are ready.")
+    print("Module 3.2 fixtures are ready.")
     return 0
 
 

@@ -1,12 +1,12 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Modules shared by more than one workshop lab.
+"""Code shared by more than one workshop module.
 
-A module belongs here when two or more labs consume it. A module used by exactly
-one lab lives in that lab's folder and is imported flat, so the import style tells
-a reader which tier they are in: `from workshop.graph_schema import GRAPH_SCHEMA`
-is shared and editing it affects other labs, while `from reservation_command
-import ...` is that lab's own file.
+A file belongs here when two or more modules consume it. A file used by exactly
+one module lives in that module's folder and is imported flat, so the import
+style tells a reader which tier they are in: `from workshop.graph_schema import
+GRAPH_SCHEMA` is shared and editing it affects other modules, while `from
+reservation_command import ...` is that module's own file.
 
 Import submodules directly, for example::
 
