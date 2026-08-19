@@ -14,12 +14,14 @@ An AWS Workshop Studio workshop teaching four progressive skills: detecting RAG 
 
 ## Modules
 
-| Module | Notebooks | What You Build | Time |
-|--------|-----------|---------------|------|
-| [01 — Graph-RAG vs. RAG](./content/01-graphrag-vs-rag/) | `01_graphrag_vs_rag.ipynb` | Two agents, four hallucination tests, token comparison | ~30 min |
-| [02 — Neo4j Retrieval Patterns](./content/02-neo4j-retrieval-patterns/) | `02_neo4j_retrieval_patterns.ipynb` + `03_hybrid_retrieval.ipynb` | Four retrievers, decision table, grounded booking agent | ~40 min |
-| [03 — AgentCore + Neo4j Integration](./content/03-agentcore-neo4j-integration/) | `04_agentcore_gateway.ipynb` + `05_agentcore_memory.ipynb` | Gateway Lambda tools, IAM-authenticated MCP, cross-session memory | ~35 min |
-| [04 — Inspectable Neo4j Memory](./content/04-neo4j-memory/) | `06_neo4j_memory.ipynb` | Graph-backed preference storage with full provenance tracing | ~25 min |
+| Module | Notebooks | What You Build |
+|--------|-----------|----------------|
+| 01 — Build the Graph *(page and notebook not yet written)* | `1.1_build_graph.ipynb` | Live extraction of five held-out hotel documents, pinned schema, constraints, both retrieval indexes |
+| [02 — Vector RAG Hallucinates](./workshop-content/content/02-vector-rag-hallucinates/) | `2.1_vector_rag_hallucinates.ipynb` | Two agents, four hallucination tests, token comparison |
+| [03 — Retrieval Patterns and the Grounded Booking Agent](./workshop-content/content/03-retrieval-patterns/) | `3.1_retrieval_patterns.ipynb` + `3.2_grounded_booking_agent.ipynb` | Four retrievers, decision table, grounded booking agent |
+| [04 — Production Agent with AgentCore](./workshop-content/content/04-production-agent/) | `4.1_agentcore_gateway.ipynb` + `4.2_agentcore_memory.ipynb` | Gateway Lambda tools, IAM-authenticated MCP, cross-session memory |
+| 05 — Deploy to AgentCore Runtime *(page and notebook not yet written)* | `5.1_deploy.ipynb` | Containerized agent on AgentCore Runtime, one request correlated end to end |
+| [06 — Inspectable Neo4j Memory](./workshop-content/content/06-neo4j-memory/) | `6.1_neo4j_memory.ipynb` | Graph-backed preference storage with full provenance tracing |
 
 ---
 
@@ -70,18 +72,18 @@ uv venv && uv pip install -r requirements.txt
 
 # 3. Run modules in order
 uv run jupyter lab
-# Open 01_graphrag_vs_rag.ipynb and follow the instructions
+# Open 02-vector-rag-hallucinates/2.1_vector_rag_hallucinates.ipynb and follow the instructions
 ```
 
 ---
 
 ## Workshop Content
 
-This repository is deployed as an [AWS Workshop Studio](https://workshops.aws) workshop. The `content/` directory contains the workshop pages. Participants run the notebooks in `notebooks/` during the session.
+This repository is deployed as an [AWS Workshop Studio](https://workshops.aws) workshop. The `workshop-content/content/` directory contains the workshop pages. Participants run the notebooks in `notebooks/` during the session.
 
 | Directory | Purpose |
 |-----------|---------|
-| `content/` | Workshop Studio markdown pages |
+| `workshop-content/content/` | Workshop Studio markdown pages |
 | `notebooks/` | Jupyter notebooks (one per module) |
 | `static/` | Architecture diagrams and IAM policies |
 | `contentspec.yaml` | Workshop Studio configuration |

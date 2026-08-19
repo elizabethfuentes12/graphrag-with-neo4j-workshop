@@ -17,16 +17,16 @@ This workshop runs in **us-east-1 (N. Virginia)**. Your AWS account and Neo4j da
 
 ## Workshop Flow
 
-| Module | Duration | What You Will Build |
-|--------|----------|---------------------|
-| **Setup** | 10 min | Open Code Editor, verify Neo4j and :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} access |
-| **Module 1: Vector RAG Hallucinates** | 25 min | Two agents, four hallucination failure modes, side-by-side comparison |
-| **Module 2: GraphRAG Fixes It** | 35 min | Four retrieval patterns + grounded booking agent with safe reservations |
-| **Module 3: Production Agent with AgentCore** | 35 min | AgentCore Gateway, IAM-authenticated MCP, cross-session memory |
-| **Module 4: Inspectable Neo4j Memory** | 25 min | Graph-backed preferences, full provenance, AgentCore comparison |
-| **Wrap-up and Cleanup** | 10 min | Review, next steps, resource cleanup |
-
-**Total: ~2 hours**
+| Module | What You Will Build |
+|--------|---------------------|
+| **Setup** | Open Code Editor, verify Neo4j and :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} access |
+| **Module 1: Build the Graph** | Extract five held-out hotel documents into the graph, pin the schema, create the constraints and both retrieval indexes |
+| **Module 2: Vector RAG Hallucinates** | Two agents, four hallucination failure modes, side-by-side comparison |
+| **Module 3: Retrieval Patterns and the Grounded Booking Agent** | Four retrieval patterns, plus a grounded booking agent that abstains and writes safely |
+| **Module 4: Production Agent with AgentCore** | AgentCore Gateway, IAM-authenticated MCP, cross-session memory |
+| **Module 5: Deploy to AgentCore Runtime** | Containerize the agent, launch it on Runtime, correlate one request end to end |
+| **Module 6: Inspectable Neo4j Memory** | Graph-backed preferences, full provenance, AgentCore comparison |
+| **Wrap-up and Cleanup** | Review, next steps, resource cleanup |
 
 ---
 

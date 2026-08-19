@@ -1,11 +1,11 @@
 ---
-title: "Module 2: GraphRAG Fixes It"
-weight: 30
+title: "Module 3: Retrieval Patterns and the Grounded Booking Agent"
+weight: 40
 ---
 
 ## Four Retrieval Patterns
 
-This module covers four :link[Neo4j]{href="https://neo4j.com/" external=true} retrieval patterns that replace generic vector search with structured graph retrieval. Open `notebooks/02_neo4j_retrieval_patterns.ipynb` to explore each one.
+This module covers four :link[Neo4j]{href="https://neo4j.com/" external=true} retrieval patterns that replace generic vector search with structured graph retrieval. Open `notebooks/03-retrieval-patterns/3.1_retrieval_patterns.ipynb` to explore each one.
 
 :image[Decision tree: which Neo4j retriever to choose based on query type]{src="../../images/02-retrieval-decision-tree.png" width=800}
 
@@ -28,7 +28,7 @@ It runs LLM-generated Cypher directly. Always route through a read-only gateway.
 
 ## Part 2 — Grounded Booking Agent
 
-Open `notebooks/03_hybrid_retrieval.ipynb`.
+Open `notebooks/03-retrieval-patterns/3.2_grounded_booking_agent.ipynb`.
 
 :image[Grounded agent architecture: Neo4j enforces retrieval, rules, and writes; Amazon Bedrock handles reasoning only]{src="../../images/03-grounded-agent-architecture.png" width=800}
 
@@ -64,4 +64,4 @@ Re-submit the same reservation. Because the graph checks the `request_id` before
 
 ## Next
 
-Head to [Module 3](../03-production-agent/).
+Head to [Module 4](../04-production-agent/).

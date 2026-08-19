@@ -1,11 +1,11 @@
 ---
-title: "Module 3: Production Agent with AgentCore"
-weight: 40
+title: "Module 4: Production Agent with AgentCore"
+weight: 50
 ---
 
 ## From Local to Production
 
-The booking agent from Module 2 runs entirely in-process. Three things break at production scale:
+The booking agent from Module 3 runs entirely in-process. Three things break at production scale:
 
 | Gap | Fix |
 |---|---|
@@ -19,7 +19,7 @@ The booking agent from Module 2 runs entirely in-process. Three things break at 
 
 ## Part 1 — Gateway and Lambda Tools
 
-Open `notebooks/03a_agentcore_gateway.ipynb`.
+Open `notebooks/04-production-agent/4.1_agentcore_gateway.ipynb`.
 
 :::alert{type="warning" header="AWS resources created"}
 Three Lambda functions + AgentCore Gateway. The cleanup notebook removes them.
@@ -45,7 +45,7 @@ The proxy signs every request with your AWS credentials — nothing changes in t
 
 ## Part 2 — AgentCore Memory
 
-Open `notebooks/03b_agentcore_memory.ipynb`.
+Open `notebooks/04-production-agent/4.2_agentcore_memory.ipynb`.
 
 :::alert{type="warning" header="AWS resources created"}
 AgentCore Memory resource. Incurs charges until deleted.
@@ -63,9 +63,9 @@ AgentCore extracts asynchronously. The notebook polls and shows what was extract
 **Session 2** — brand-new `session_id`, same `actor_id`. The agent recalls the preferences without being told again.
 
 :::alert{type="info" header="The trade-off"}
-Fast to wire up, but the extraction is asynchronous and opaque. Module 4 shows what you give up.
+Fast to wire up, but the extraction is asynchronous and opaque. Module 6 shows what you give up.
 :::
 
 ## Next
 
-Head to [Module 4](../04-neo4j-memory/).
+Head to [Module 6](../06-neo4j-memory/).

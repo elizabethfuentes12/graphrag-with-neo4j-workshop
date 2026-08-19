@@ -1,6 +1,6 @@
 ---
-title: "Module 1: Vectorial RAG Hallucinates"
-weight: 20
+title: "Module 2: Vector RAG Hallucinates"
+weight: 30
 ---
 
 ## Why Vectorial RAG Gets the Wrong Answer
@@ -20,7 +20,7 @@ Traditional RAG retrieves the top-k most similar document chunks and hands them 
 
 ## Two Agents, One Dataset
 
-Open `notebooks/01_graphrag_vs_rag.ipynb`.
+Open `notebooks/02-vector-rag-hallucinates/2.1_vector_rag_hallucinates.ipynb`.
 
 :image[Architecture: FAISS vector search and Neo4j graph as two parallel retrieval paths over the same 300 hotel documents]{src="../../images/01-rag-vs-graphrag-architecture.png" width=800}
 
@@ -74,4 +74,4 @@ It will return results from similar-looking documents and the LLM may fabricate 
 
 ## Next
 
-Head to [Module 2](../02-graphrag-fixes-it/).
+Head to [Module 3](../03-retrieval-patterns/).

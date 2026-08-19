@@ -1,6 +1,6 @@
 ---
 title : "Summary"
-weight : 40
+weight : 80
 ---
 
 Follow these steps!

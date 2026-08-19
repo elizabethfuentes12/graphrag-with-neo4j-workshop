@@ -1,6 +1,6 @@
 ---
 title: "Cleanup"
-weight: 60
+weight: 100
 ---
 
 # Resource Cleanup

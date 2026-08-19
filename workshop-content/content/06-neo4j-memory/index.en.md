@@ -1,6 +1,6 @@
 ---
-title: "Module 4: Inspectable Neo4j Memory"
-weight: 50
+title: "Module 6: Inspectable Neo4j Memory"
+weight: 70
 ---
 
 ## Why You Cannot Debug AgentCore Memory
@@ -13,7 +13,7 @@ weight: 50
 
 ## Graph Memory Structure
 
-Open `notebooks/04_neo4j_memory.ipynb`.
+Open `notebooks/06-neo4j-memory/6.1_neo4j_memory.ipynb`.
 
 ```
 (User)-[:HAS_PREFERENCE]->(Preference)-[:DERIVED_FROM]->(Message)

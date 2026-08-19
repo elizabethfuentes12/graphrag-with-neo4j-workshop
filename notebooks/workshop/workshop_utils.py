@@ -14,13 +14,15 @@ def lego_progress(completed: int):
     """Print a visual progress tower showing modules completed so far.
 
     Args:
-        completed: number of modules completed (1-4).
+        completed: number of modules completed (0-6).
     """
     modules = [
-        "Module 1 — Vectorial RAG Hallucinates",
-        "Module 2 — Graph-RAG Fixes It",
-        "Module 3 — Production Agent with AgentCore",
-        "Module 4 — Inspectable Neo4j Memory",
+        "Module 1: Build the Graph",
+        "Module 2: Vector RAG Hallucinates",
+        "Module 3: Retrieval Patterns and the Grounded Booking Agent",
+        "Module 4: Production Agent with AgentCore",
+        "Module 5: Deploy to AgentCore Runtime",
+        "Module 6: Inspectable Neo4j Memory",
     ]
     total = len(modules)
     print("\n" + "=" * 56)

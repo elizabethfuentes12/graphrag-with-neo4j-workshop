@@ -1,6 +1,6 @@
 ---
 title: "Wrap-up"
-weight: 50
+weight: 90
 ---
 
 # Workshop Wrap-up
@@ -9,19 +9,19 @@ weight: 50
 
 ## What You Accomplished
 
-In just 2 hours, you:
+You:
 
-### Module 1: Witnessed the Problem
+### Module 2: Witnessed the Problem
 - Saw pure vector RAG **hallucinate** on relational queries
 - Understood **why** semantic similarity fails for multi-hop reasoning
 - Measured the gap between vector retrieval and ground truth
 
-### Module 2: Implemented Solutions
+### Module 3: Implemented Solutions
 - **Hybrid Retrieval** - Vector entry points + graph expansion
 - **Template Cypher** - LLM-parameterized query patterns
 - **Text2Cypher** - Full natural language to graph query generation
 
-### Module 3: Built Production Infrastructure
+### Modules 4 and 5: Built Production Infrastructure
 - **AgentCore Runtime** - Agent orchestration with tool use
 - **MCP Gateway** - Model Context Protocol integration layer
 - **Neo4j MCP Server** - Official graph database tools
