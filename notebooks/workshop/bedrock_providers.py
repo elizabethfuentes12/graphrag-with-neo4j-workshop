@@ -23,6 +23,7 @@ from neo4j_graphrag.embeddings.base import Embedder
 from neo4j_graphrag.message_history import MessageHistory
 from neo4j_graphrag.types import LLMMessage
 
+from workshop.aws_region import aws_region
 from workshop.retrieval_contract import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL_ID,
@@ -135,7 +136,7 @@ class BedrockEmbeddings(Embedder):
         # Resolve the region inside the body: an os.environ default argument is
         # evaluated once at import, before the caller can set AWS_REGION.
         if region_name is None:
-            region_name = os.environ.get("AWS_REGION", "us-east-1")
+            region_name = aws_region()
         self.model_id = model_id
         self.dimensions = dimensions
         # `bedrock_client` exists so a test can assert the request payload
@@ -175,7 +176,7 @@ class BedrockLLM(LLMInterface):
         # Resolve the region inside the body: an os.environ default argument is
         # evaluated once at import, before the caller can set AWS_REGION.
         if region_name is None:
-            region_name = os.environ.get("AWS_REGION", "us-east-1")
+            region_name = aws_region()
         # Same reason, and it is the whole point of the MODEL_ID override:
         # defaulting to the DEFAULT_MODEL_ID literal here would bind the model
         # at import and leave Module 1's extraction calls on the built-in one

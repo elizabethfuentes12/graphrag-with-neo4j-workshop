@@ -64,6 +64,8 @@ from neo4j_agent_memory import (
 )
 from neo4j_agent_memory import Neo4jConfig as MemoryNeo4jConfig
 from neo4j_agent_memory.embeddings.bedrock import BedrockEmbedder
+
+from workshop.aws_region import aws_region
 from pydantic import SecretStr
 
 # The memory vector indexes use Titan Text Embeddings V2, a separate embedding
@@ -156,7 +158,7 @@ def load_config() -> MemoryDemoConfig:
         username=os.getenv("NEO4J_USERNAME", "neo4j"),
         password=password,
         database=os.getenv("NEO4J_DATABASE", "neo4j"),
-        region=os.getenv("AWS_REGION", "us-east-1"),
+        region=aws_region(),
     )
 
 

@@ -43,6 +43,7 @@ from graph_config import (
 )
 from workshop.bedrock_providers import BedrockEmbeddings, BedrockLLM
 from workshop.graph_connection import graph_database, neo4j_auth, neo4j_uri
+from workshop.aws_region import aws_region
 from workshop.graph_schema import (
     GRAPH_SCHEMA,
     OFF_SCHEMA_LABELS,
@@ -99,11 +100,11 @@ def build_pipeline(driver: Driver) -> SimpleKGPipeline:
     query.
     """
     llm = BedrockLLM(
-        region_name=os.environ.get("AWS_REGION", "us-east-1"),
+        region_name=aws_region(),
         max_tokens=EXTRACTION_MAX_TOKENS,
     )
     embedder = BedrockEmbeddings(
-        region_name=os.environ.get("AWS_REGION", "us-east-1"),
+        region_name=aws_region(),
     )
     return SimpleKGPipeline(
         llm=llm,
