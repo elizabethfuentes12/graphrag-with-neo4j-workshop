@@ -73,7 +73,9 @@ Note the values for\: `CodeEditorURL`, `Neo4jURI`, `Neo4jUser`, `Neo4jPassword`.
 
 1. Open **CodeEditorURL** in a browser
 2. Open a terminal (**Terminal → New Terminal**)
-3. Set environment variables and verify (same as [Workshop Studio path](../workshop-studio-access/), Step 3 onward)
+3. Set environment variables, install the dependencies, and run `setup/verify_setup.py` (same as [Workshop Studio path](../workshop-studio-access/), Step 3 onward)
+
+With every line of that script reporting `ok`, proceed to [Module 1](../../01-build-graph/).
 
 ---
 

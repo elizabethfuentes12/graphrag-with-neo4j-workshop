@@ -42,3 +42,9 @@ notebooks/05-agentcore-deploy/runtime_app/workshop/
 notebooks/05-agentcore-deploy/runtime_app/reservation_command.py
 notebooks/05-agentcore-deploy/runtime_app/.bedrock_agentcore.yaml
 notebooks/05-agentcore-deploy/runtime_app/Dockerfile.bak
+
+# Executed notebook copies from setup/run_notebooks.py --keep-output
+setup/notebook-output/
+
+# pytest, from the checks in setup/
+.pytest_cache/

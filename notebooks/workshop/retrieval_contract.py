@@ -19,3 +19,10 @@ CHUNK_FULLTEXT_INDEX = "hotel_chunk_fulltext"
 # module folder: Module 6 embeds with it, Setup checks Bedrock access to it
 # before the workshop starts, and the facilitator prose quotes it.
 MEMORY_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
+
+# Titan v2 will return more than one width on request, so the width is half of
+# the same contract as the name: a memory index built at one width and queried
+# with a vector of another fails at query time, not at write time. It is
+# defined beside the model instead of beside each caller so that changing the
+# model cannot leave a stale width behind in Setup or in Module 6.
+MEMORY_EMBEDDING_DIMENSIONS = 1024

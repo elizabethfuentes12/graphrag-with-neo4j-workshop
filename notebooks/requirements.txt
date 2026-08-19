@@ -9,3 +9,9 @@ bedrock-agentcore>=0.1.0
 bedrock-agentcore-starter-toolkit>=0.1.0
 mcp>=1.0.0
 python-dotenv>=1.0.0
+
+# Needed only by setup/run_notebooks.py, the notebook runner. Workshop
+# participants do not need these to run the notebooks themselves.
+nbconvert>=7.17.1
+nbformat>=5.11.1
+ipykernel>=7.3.0

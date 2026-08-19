@@ -262,6 +262,9 @@ def _fixture_problems(
     return problems
 
 
+UNIQUENESS_CONSTRAINT_TYPES = frozenset({"UNIQUENESS", "NODE_PROPERTY_UNIQUENESS"})
+
+
 def _constraint_problems(records: Iterable[Mapping[str, Any]]) -> list[str]:
     constraints = {record["name"]: record for record in records}
     expected = {
@@ -278,7 +281,11 @@ def _constraint_problems(records: Iterable[Mapping[str, Any]]) -> list[str]:
         if record is None:
             problems.append(f"missing constraint {name}")
             continue
-        if record.get("type") != "UNIQUENESS":
+        # Aura reports 'NODE_PROPERTY_UNIQUENESS' where Neo4j 5.x reported
+        # 'UNIQUENESS'. Both name the same constraint, and what this check
+        # is asking is whether the constraint enforces uniqueness, not which
+        # server spelled the answer.
+        if record.get("type") not in UNIQUENESS_CONSTRAINT_TYPES:
             problems.append(f"constraint {name} is not UNIQUENESS")
         if record.get("labelsOrTypes") != labels:
             problems.append(f"constraint {name} targets the wrong label")

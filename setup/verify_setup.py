@@ -56,14 +56,6 @@ MINIMUM_PYTHON = (3, 11)
 CHAT_PROBE = "What is 2 + 2? Reply with the digit only."
 CHAT_EXPECTED_ANSWER = "4"
 
-# Titan v2's width, which is what `neo4j-agent-memory` assumes for this model
-# in Module 6. It is requested explicitly below and compared to what comes
-# back, so a model that silently returned a different width fails here rather
-# than in Module 6 against a memory index built at another size. It is not in
-# `retrieval_contract` because that module is owned elsewhere; if it moves
-# there, delete this constant and import it.
-MEMORY_EMBEDDING_DIMENSIONS = 1024
-
 # The module names the workshop actually imports, with the distribution that
 # provides each one. Import names and distribution names differ often enough
 # that a participant reading `No module named 'dotenv'` needs to be told which
@@ -216,7 +208,13 @@ def load_environment() -> list[Path]:
     in that order here, and never overriding an already-set value, makes this
     script read exactly the settings the notebooks will read.
     """
-    from dotenv import load_dotenv
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        # Reported properly by the dependency check, which runs before
+        # anything reads a setting. Raising here would replace that report
+        # with a traceback and hide every check after it.
+        return []
 
     loaded: list[Path] = []
     for candidate in (NOTEBOOKS / ".env", REPO_ROOT / ".env"):
@@ -318,7 +316,10 @@ def check_bedrock_memory_embeddings() -> list[str]:
     import boto3
 
     from workshop.aws_region import aws_region
-    from workshop.retrieval_contract import MEMORY_EMBEDDING_MODEL
+    from workshop.retrieval_contract import (
+        MEMORY_EMBEDDING_DIMENSIONS,
+        MEMORY_EMBEDDING_MODEL,
+    )
 
     client = boto3.client("bedrock-runtime", region_name=aws_region())
     response = client.invoke_model(
