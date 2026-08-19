@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Narrow, idempotent reservation-request command for Demo 06.
+"""Narrow, idempotent reservation-request command for Lab 4.
 
 The command reads one enabled Neo4j rule, matches one prepared fixture hotel,
 and writes one workshop-owned ``ReservationRequest``. It does not book a room,
@@ -23,7 +23,7 @@ from botocore.exceptions import BotoCoreError, ClientError
 from neo4j import Driver, GraphDatabase, Transaction
 from neo4j.exceptions import AuthError, ConstraintError, DriverError, Neo4jError
 
-import contracts
+from workshop import contracts, graph_connection
 
 LOGGER = logging.getLogger(__name__)
 
@@ -90,7 +90,17 @@ RETURN request.request_id AS request_id,
 
 @dataclass(frozen=True)
 class Neo4jCommandConfig:
-    """Connection values used by the reservation Lambda."""
+    """Connection values used by the reservation Lambda.
+
+    Near-identical to ``hybrid_retrieval.Neo4jConfig``, and deliberately not
+    imported from it. The Lambda deployment package installs this package with
+    ``--no-deps``, so every import this module makes has to resolve from the
+    Lambda's own short dependency list. ``hybrid_retrieval`` imports
+    ``neo4j-graphrag``, which the reservation handler never uses and which would
+    add tens of megabytes to the zip; importing from it here builds fine and
+    fails at Lambda cold start. Keep the two in step by hand, and keep the
+    shared constants they both read in ``contracts``.
+    """
 
     uri: str
     username: str
@@ -100,7 +110,7 @@ class Neo4jCommandConfig:
     @classmethod
     def from_environment(cls) -> "Neo4jCommandConfig":
         """Load local connection values without making a network call."""
-        values = {name: os.environ.get(name) for name in contracts.LOCAL_NEO4J_ENV}
+        values = {name: os.environ.get(name) for name in contracts.REQUIRED_NEO4J_ENV}
         missing = [name for name, value in values.items() if not value]
         if missing:
             names = ", ".join(missing)
@@ -109,7 +119,7 @@ class Neo4jCommandConfig:
             uri=values["NEO4J_URI"] or "",
             username=values["NEO4J_USERNAME"] or "",
             password=values["NEO4J_PASSWORD"] or "",
-            database=values["NEO4J_DATABASE"] or "",
+            database=graph_connection.graph_database(),
         )
 
     @classmethod
@@ -429,7 +439,7 @@ def _execute_command(
         return _rejected(
             command,
             contracts.ReservationReason.UNKNOWN_HOTEL,
-            "Hotel is not a prepared Demo 06 fixture.",
+            "Hotel is not a prepared workshop fixture.",
         )
     if targets.get("hotel_count") != 1 or targets.get("hotel_id") != command.hotel_id:
         raise CommandStateError("fixture hotel identity is ambiguous")

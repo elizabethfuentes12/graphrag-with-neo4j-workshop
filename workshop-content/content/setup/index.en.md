@@ -27,7 +27,7 @@ After completing your path, confirm\:
 
 - [ ] Code Editor opens in the browser
 - [ ] `NEO4J_URI`, `NEO4J_USERNAME`, `NEO4J_PASSWORD` are set in the terminal
-- [ ] Neo4j connection test returns 296 hotels
+- [ ] Neo4j connection test returns a hotel count
 - [ ] Bedrock embedding call returns 1024 dimensions
 
 ::children{depth=1 variant=list}

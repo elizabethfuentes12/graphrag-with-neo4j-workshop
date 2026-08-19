@@ -21,7 +21,7 @@ from neo4j_graphrag.embeddings.base import Embedder
 from neo4j_graphrag.retrievers import HybridCypherRetriever
 from neo4j_graphrag.types import HybridSearchRanker, RetrieverResultItem
 
-from workshop import contracts
+from workshop import contracts, graph_connection
 from workshop.bedrock_providers import BedrockEmbeddings
 
 MAX_EVIDENCE_CHARS = 1_200
@@ -103,7 +103,7 @@ class Neo4jConfig:
             uri=values["NEO4J_URI"] or "",
             username=values["NEO4J_USERNAME"] or "",
             password=values["NEO4J_PASSWORD"] or "",
-            database=contracts.graph_database(),
+            database=graph_connection.graph_database(),
         )
 
     @classmethod

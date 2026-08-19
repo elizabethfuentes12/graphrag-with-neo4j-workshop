@@ -1,20 +1,23 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Frozen service and graph contracts for the grounded write path.
+"""Frozen service and graph contracts for the grounded retrieval and write paths.
 
-This module intentionally contains no AWS or Neo4j clients. It is safe to
-import from local tests, notebooks, the Runtime package, and the reservation
-Lambda without causing network calls or resource changes. `retrieval_contract`,
-the one thing it does import, is pure constants and keeps that property.
+This module intentionally contains no AWS or Neo4j clients and reads no
+environment variables. It is safe to import from local tests, notebooks, the
+Runtime package, and the retrieval Lambda without causing network calls or
+resource changes. `retrieval_contract`, the one thing it imports, is pure
+constants with no imports of its own, so that property survives.
 
 The five embedding and index names are re-exported rather than redefined. Lab 1
-writes the embeddings and creates the indexes; Lab 4 reads them. A second
+writes the embeddings and creates the indexes; Labs 2 and 3 read them. A second
 definition here would let a reader change the index name in one file, pass every
-test in that file's lab, and leave the write path pointed at an index the build
+check in that file's lab, and leave the read path pointed at an index the build
 never created.
+
+The database name is not here. `graph_database()` lives in `graph_connection`
+alongside the other environment reads, which keeps this module free of `os`.
 """
 
-import os
 from enum import StrEnum
 from typing import Final, Literal, NotRequired, TypedDict
 
@@ -36,44 +39,27 @@ MAX_GUESTS_RULE_ID: Final = "demo-06-maximum-guests"
 MAX_GUESTS: Final = 10
 OVER_LIMIT_GUESTS: Final = 15
 
+# The three with no safe default, as read by callers that build their own config
+# dict. `graph_connection.REQUIRED_ENV_VARS` is the shorter list the setup check
+# uses, because the username defaults there.
 REQUIRED_NEO4J_ENV: Final = (
     "NEO4J_URI",
     "NEO4J_USERNAME",
     "NEO4J_PASSWORD",
 )
-# Aura's default database is always `neo4j`, and a participant whose .env omits
-# the name should not get a different failure in Lab 2 than in Lab 1. The build
-# path defaults it, so the read and write paths default it the same way.
-DEFAULT_NEO4J_DATABASE: Final = "neo4j"
 LOCAL_NEO4J_ENV: Final = (*REQUIRED_NEO4J_ENV, "NEO4J_DATABASE")
 READ_SECRET_ID_ENV: Final = "NEO4J_READ_SECRET_ID"
 COMMAND_SECRET_ID_ENV: Final = "NEO4J_COMMAND_SECRET_ID"
 SECRET_FIELDS: Final = ("uri", "username", "password", "database")
 
 
-def graph_database() -> str:
-    """Return the Neo4j database every workshop session should open.
-
-    Read at call time rather than bound at import, so a `.env` the caller loads
-    afterwards is still honoured. Anything that opens a session or creates an
-    index goes through this, because a driver left on its home database while
-    the build writes elsewhere puts the data in one place and the indexes in
-    another, and that reads back as empty results with no error.
-    """
-    return os.environ.get("NEO4J_DATABASE") or DEFAULT_NEO4J_DATABASE
-
-
 class ReservationStatus(StrEnum):
-    """Stable top-level reservation-command outcomes."""
-
     ACCEPTED = "accepted"
     REJECTED = "rejected"
     ERROR = "error"
 
 
 class ReservationReason(StrEnum):
-    """Stable reason codes for non-success command outcomes."""
-
     MAX_GUESTS_EXCEEDED = "max_guests_exceeded"
     UNKNOWN_HOTEL = "unknown_hotel"
     INVALID_DATES = "invalid_dates"
@@ -82,8 +68,6 @@ class ReservationReason(StrEnum):
 
 
 class HotelEvidence(TypedDict):
-    """One bounded, graph-enriched hybrid retrieval result."""
-
     chunk_evidence: str
     combined_score: float
     exact_terms: list[str]
@@ -95,8 +79,6 @@ class HotelEvidence(TypedDict):
 
 
 class ReservationCommandInput(TypedDict):
-    """The complete input accepted by the reservation command."""
-
     request_id: str
     hotel_id: str
     check_in: str
@@ -105,8 +87,6 @@ class ReservationCommandInput(TypedDict):
 
 
 class ReservationCommandResponse(TypedDict):
-    """JSON-safe response shape shared by every command outcome."""
-
     status: Literal["accepted", "rejected", "error"]
     request_id: str
     hotel_id: str
@@ -126,7 +106,6 @@ class ReservationCommandResponse(TypedDict):
 
 
 def retrieval_input_schema() -> dict[str, object]:
-    """Return the closed JSON schema for the local retrieval tool."""
     return {
         "type": "object",
         "properties": {
@@ -142,16 +121,13 @@ def retrieval_input_schema() -> dict[str, object]:
 
 
 def reservation_input_schema() -> dict[str, object]:
-    """Return the closed JSON schema for the Gateway command target."""
     return {
         "type": "object",
         "properties": {
             "request_id": {
                 "type": "string",
                 "format": "uuid",
-                "description": (
-                    "Caller-created UUID. Reuse it if this command is retried."
-                ),
+                "description": "Caller-created UUID. Reuse it if this command is retried.",
             },
             "hotel_id": {
                 "type": "string",
@@ -174,13 +150,7 @@ def reservation_input_schema() -> dict[str, object]:
                 "description": "Requested number of guests.",
             },
         },
-        "required": [
-            "request_id",
-            "hotel_id",
-            "check_in",
-            "check_out",
-            "guests",
-        ],
+        "required": ["request_id", "hotel_id", "check_in", "check_out", "guests"],
         "additionalProperties": False,
     }
 

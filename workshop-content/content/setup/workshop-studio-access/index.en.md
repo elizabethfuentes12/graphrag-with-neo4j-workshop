@@ -89,9 +89,11 @@ EOF
 
 **Expected output\:**
 :::code{language=bash}
-✅ Neo4j: 296 hotels
+✅ Neo4j: <N> hotels
 ✅ Bedrock Nova 2: 1024-dim embeddings
 :::
+
+Any hotel count above zero means the graph dump loaded. The exact number depends on the dump you were given.
 
 :::alert{type="success" header="Ready"}
 Proceed to [Module 1](../../01-vectorial-rag-hallucinates/).

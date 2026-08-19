@@ -1,9 +1,15 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Idempotent Neo4j preparation and readiness checks for the Lab 4 fixtures.
+"""Idempotent Neo4j preparation and readiness checks for the reservation fixtures.
 
 This module verifies the indexes Lab 1 owns. It only writes the two fixture
 hotel IDs, ordinary uniqueness constraints, and the maximum-guests rule.
+
+The hero constants live here rather than in the lab that narrates them because
+`readiness_problems` checks the graph against them. They are the fixture
+definition, not presentation: a hero address changed in one place and verified
+against another would report a graph as unready for a reason no participant
+could act on.
 """
 
 from __future__ import annotations
@@ -13,6 +19,7 @@ import json
 import os
 import sys
 from dataclasses import dataclass
+from importlib.resources import files
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 from uuid import UUID
@@ -20,12 +27,12 @@ from uuid import UUID
 from dotenv import load_dotenv
 from neo4j import Driver, GraphDatabase
 
-from workshop import contracts
+from workshop import contracts, graph_connection
 
-MANIFEST_PATH = Path(__file__).parent / "fixtures" / "hotel_ids.json"
+MANIFEST_PATH = Path(str(files("workshop") / "fixtures" / "hotel_ids.json"))
 HERO_SOURCE = "hotel-cairo-001.txt"
 HERO_NAME = "AnyCompany Cairo Nile View"
-HERO_ADDRESS = "789 Corniche el-Nil, Cairo 11519"
+HERO_ADDRESS = "789 Corniche el-Nil, Cairo 11519, Egypt"
 HERO_RATING = 4.5
 HERO_AMENITY_TERMS = ("pool", "spa", "fitness", "wifi", "restaurant")
 # Interpolated rather than written out, so the sentence a participant reads
@@ -329,12 +336,12 @@ def _session(driver: Driver, database: str):
     return driver.session(database=database)
 
 
-def apply_lab4_fixtures(
+def apply_reservation_fixtures(
     driver: Driver,
     database: str,
     manifest: FixtureManifest,
 ) -> list[str]:
-    """Apply the idempotent graph-owned data the Lab 4 write path depends on.
+    """Apply the idempotent graph-owned data the reservation write path depends on.
 
     Return any blocking problems that prevent preparation, for example a
     missing Lab 1 graph. When the returned list is empty, the fixture IDs,
@@ -424,19 +431,19 @@ def _configuration() -> tuple[str, tuple[str, str], str]:
     return (
         os.environ["NEO4J_URI"],
         (os.environ["NEO4J_USERNAME"], os.environ["NEO4J_PASSWORD"]),
-        contracts.graph_database(),
+        graph_connection.graph_database(),
     )
 
 
 def _report(problems: Iterable[str]) -> None:
     """Print the readiness report header and each corrective action."""
-    print("Lab 4 fixtures are not ready:")
+    print("Reservation fixtures are not ready:")
     for problem in problems:
         print(f"  - {problem}")
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Prepare or verify the Lab 4 graph fixtures.")
+    parser = argparse.ArgumentParser(description="Prepare or verify the reservation graph fixtures.")
     parser.add_argument(
         "--check-only",
         action="store_true",
@@ -465,7 +472,7 @@ def main() -> int:
     try:
         driver.verify_connectivity()
         if not args.check_only:
-            problems = apply_lab4_fixtures(driver, database, manifest)
+            problems = apply_reservation_fixtures(driver, database, manifest)
         if not problems:
             problems = readiness_problems(driver, database, manifest)
     finally:

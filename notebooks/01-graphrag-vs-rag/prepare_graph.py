@@ -9,8 +9,10 @@ import sys
 import zipfile
 from pathlib import Path
 
-# Add notebooks/ root to path so the workshop package can be found
-sys.path.append(str(Path(__file__).parent.parent))  # workshop package
+# Add notebooks/ root to path so the workshop package can be found. `insert`
+# rather than `append`: the notebooks bootstrap the same way, and a single
+# convention is one less thing that behaves differently between the two.
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
 os.environ["OTEL_SDK_DISABLED"] = "true"
@@ -23,8 +25,8 @@ from neo4j import Driver  # noqa: E402
 
 from graph_builder import connect, graph_database, report, run_build  # noqa: E402
 from graph_config import select_lite_files  # noqa: E402
-from workshop.graph_setup import (  # noqa: E402
-    apply_lab4_fixtures,
+from workshop.fixtures import (  # noqa: E402
+    apply_reservation_fixtures,
     load_manifest,
     readiness_problems,
 )
@@ -78,7 +80,7 @@ def lab4_problems(driver: Driver, *, apply_fixtures: bool) -> list[str]:
     database = graph_database()
     manifest = load_manifest()
     if apply_fixtures:
-        blockers = apply_lab4_fixtures(driver, database, manifest)
+        blockers = apply_reservation_fixtures(driver, database, manifest)
         if blockers:
             return blockers
     return readiness_problems(driver, database, manifest)

@@ -36,7 +36,7 @@ from graph_config import (
     EXTRACTION_MAX_TOKENS,
 )
 from workshop.bedrock_providers import BedrockEmbeddings, BedrockLLM
-from workshop.graph_connection import NEO4J_URI, neo4j_auth
+from workshop.graph_connection import graph_database, neo4j_auth, neo4j_uri
 from workshop.graph_schema import (
     GRAPH_SCHEMA,
     OFF_SCHEMA_LABELS,
@@ -72,20 +72,9 @@ RETRY_PASSES = 1
 KG_LABEL = "__KGBuilder__"
 
 
-def graph_database() -> str:
-    """Return the Neo4j database every session in this build opens.
-
-    Read at call time rather than at import so a `.env` loaded by the caller is
-    already in the environment. `NEO4J_DATABASE` used to be honoured by the
-    fixture seed and ignored here, which left a non-default database holding
-    half the lab.
-    """
-    return os.environ.get("NEO4J_DATABASE", "neo4j")
-
-
 def connect() -> Driver:
     """Open a Neo4j driver using NEO4J_USERNAME / NEO4J_PASSWORD."""
-    return GraphDatabase.driver(NEO4J_URI, auth=neo4j_auth())
+    return GraphDatabase.driver(neo4j_uri(), auth=neo4j_auth())
 
 
 def session(driver: Driver):

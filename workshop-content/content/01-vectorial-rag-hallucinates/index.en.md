@@ -12,7 +12,7 @@ Traditional RAG retrieves the top-k most similar document chunks and hands them 
 | Failure mode | Query example | What RAG does | What should happen |
 |---|---|---|---|
 | **Aggregation** | "Average guest rating in Paris?" | LLM estimates from 3 chunks | `AVG()` across all hotels |
-| **Counting** | "How many hotels have a pool?" | LLM counts 3 docs, misses 293 | `COUNT()` on the full graph |
+| **Counting** | "How many hotels have a pool?" | LLM counts 3 docs, misses the rest | `COUNT()` on the full graph |
 | **Multi-hop** | "Cairo hotels with spa AND pool?" | Vector similarity, partial match | Traverse Hotel → Amenity → Amenity |
 | **Out-of-domain** | "Hotels in Antarctica?" | Returns similar docs, LLM fabricates | Empty result, honest "no data" |
 
@@ -52,7 +52,7 @@ RETURN avg(h.guestRating) AS avg_rating
 
 **Query:** "How many hotels in the database have a swimming pool?"
 
-Run both agents. The RAG agent counts occurrences across the three retrieved chunks and returns an undercount. The Graph-RAG agent executes a `COUNT()` query across all 296 hotels in the knowledge graph and returns the exact number.
+Run both agents. The RAG agent counts occurrences across the three retrieved chunks and returns an undercount. The Graph-RAG agent executes a `COUNT()` query across every hotel in the knowledge graph and returns the exact number.
 
 ---
 

@@ -15,7 +15,7 @@ from typing import Any, Iterable, Mapping, Sequence, cast
 from neo4j import Driver
 from neo4j_graphrag.indexes import create_fulltext_index, create_vector_index
 
-from workshop.contracts import graph_database
+from workshop.graph_connection import graph_database
 from workshop.graph_schema import GRAPH_SCHEMA, SCHEMA_NODE_LABELS
 from workshop.retrieval_contract import (
     CHUNK_FULLTEXT_INDEX,
