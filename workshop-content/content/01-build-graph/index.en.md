@@ -51,7 +51,7 @@ The dump deliberately ships without the vector index and the full-text index. Th
 | `hotel_chunk_embeddings` | Vector, cosine similarity | Vector and hybrid retrievers in Module 3 |
 | `hotel_chunk_fulltext` | Full-text on `Chunk.text` | The keyword half of hybrid retrieval |
 
-The three uniqueness constraints already ship in the dump. The notebook verifies them rather than creating them, because Module 3's duplicate-request check depends on one of them being real.
+The three uniqueness constraints already ship in the dump. This notebook does not touch them — the one Module 3's duplicate-request check depends on is verified there, not here.
 
 ---
 

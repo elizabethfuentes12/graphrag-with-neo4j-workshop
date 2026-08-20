@@ -81,9 +81,15 @@ AgentCore Memory resource. Incurs charges until deleted.
 AgentCore extracts asynchronously. The notebook polls and shows what was extracted:
 
 :::code{language=bash}
-🧠 Preferences (1): Prefers high floor, away from elevator
-🧠 Facts (2): Name is Alice Chen | Loyalty number LY-88421
+🧠 Preferences extracted (1 record(s)):
+  • Prefers high floor, away from elevator
+
+🧠 Facts extracted (2 record(s)):
+  • Name is Alice Chen
+  • Loyalty number LY-88421
 :::
+
+Extraction is LLM-driven, so the exact record count and wording can vary between runs — the shape above is typical, not guaranteed.
 
 **Session 2** — brand-new `session_id`, same `actor_id`. The agent recalls the preferences without being told again.
 

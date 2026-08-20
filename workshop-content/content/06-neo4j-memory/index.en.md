@@ -33,12 +33,14 @@ Every preference is linked to the exact source message and the real `Hotel` node
 **Full audit trail in one Cypher query\:**
 
 :::code{language=cypher showCopyAction=true}
+CYPHER 25
 MATCH (u:User {identifier: $actor})
       -[:HAS_PREFERENCE]->(p:Preference)
       -[:DERIVED_FROM]->(m:Message)
       <-[:HAS_MESSAGE]-(c:Conversation),
       (p)-[:ABOUT_HOTEL]->(h:Hotel {name: $hotel_name})
-RETURN u.identifier, p.preference, m.content, c.session_id, h.name
+RETURN u.identifier AS actor, p.preference AS preference, m.content AS source_message,
+       c.session_id AS source_session, h.name AS hotel
 :::
 
 To correct a wrong preference\: `SET p.preference = "high floor, away from elevator"`. No delete, no re-extract.

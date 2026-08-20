@@ -18,7 +18,7 @@ This module covers four :link[Neo4j]{href="https://neo4j.com/" external=true} re
 
 ### Pattern 2: HybridRetriever
 
-With `alpha=0.2`, the retriever weights fulltext search at 80% and vector similarity at 20%. This configuration surfaces an exact hotel name that ranks 12th under pure vector search. Try adjusting `alpha` to see how the balance changes the results.
+With `alpha=0.2`, the retriever weights fulltext search at 80% and vector similarity at 20%. This configuration surfaces an exact identifier — a postal code — that ranks 12th under pure vector search. Try adjusting `alpha` to see how the balance changes the results.
 
 :::alert{type="warning" header="Text2CypherRetriever in production"}
 It runs LLM-generated Cypher directly. Always route through a read-only gateway. Part 2 uses a fixed `HybridCypherRetriever` instead, so no model-generated Cypher reaches the write path.
@@ -42,7 +42,7 @@ Run this query. The `HybridCypherRetriever` finds the hotel by name using full-t
 
 > **"Does AnyCompany Cairo Nile View guarantee room availability next weekend?"**
 
-Run this query. The agent retrieves the hotel's `guaranteedAvailability` property directly from the graph and returns the exact value, rather than inferring it from document text.
+Run this query. There is no `guaranteedAvailability` property in the graph — Neo4j holds hotel knowledge, not live inventory. The agent abstains instead of inferring an answer from document text.
 
 ### 15-guest reservation → rejected
 

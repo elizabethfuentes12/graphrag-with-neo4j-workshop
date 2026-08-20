@@ -13,7 +13,7 @@ Traditional RAG retrieves the top-k most similar document chunks and hands them 
 |---|---|---|---|
 | **Aggregation** | "Average guest rating in Paris?" | LLM estimates from 3 chunks | `AVG()` across all hotels |
 | **Counting** | "How many hotels have a pool?" | LLM counts 3 docs, misses the rest | `COUNT()` on the full graph |
-| **Multi-hop** | "Cairo hotels with spa AND pool?" | Vector similarity, partial match | Traverse Hotel → Amenity → Amenity |
+| **Multi-hop** | "Cairo hotels with spa AND pool?" | Vector similarity, partial match | Traverse Hotel → Amenity, matched against both amenity types |
 | **Out-of-domain** | "Hotels in Antarctica?" | Returns similar docs, LLM fabricates | Empty result, honest "no data" |
 
 ---
@@ -39,7 +39,7 @@ The workshop environment includes a pre-built FAISS index — skip the data-load
 
 **Query:** "What is the average guest rating of all hotels in Paris?"
 
-Run both agents and compare their outputs. The RAG agent reads three document chunks and generates an estimate from partial data. The Graph-RAG agent executes the following Cypher query across all hotels instead\:
+Run both agents and compare their outputs. The RAG agent reads three document chunks and generates an estimate from partial data. The Graph-RAG agent generates and executes Cypher along these lines across all hotels instead\:
 
 :::code{language=cypher}
 MATCH (h:Hotel) WHERE h.address CONTAINS 'Paris'
@@ -58,7 +58,7 @@ Run both agents. The RAG agent counts occurrences across the three retrieved chu
 
 ## Test 3: Multi-Hop
 
-**Query:** "Which hotels in Cairo have both a spa and a swimming pool?"
+**Query:** "Which hotels in Cairo have both a spa and a swimming pool, and what are their guest ratings?"
 
 Run both agents. The RAG agent relies on semantic similarity and may miss hotels that lack an explicit combined keyword mention in their documents. The Graph-RAG agent traverses the graph from each Hotel node through its Amenity relationships and returns only the hotels connected to both amenity types.
 

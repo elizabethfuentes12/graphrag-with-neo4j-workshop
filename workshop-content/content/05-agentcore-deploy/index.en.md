@@ -27,7 +27,7 @@ Open `notebooks/05-agentcore-deploy/5.1_deploy.ipynb`.
 :::alert{type="warning" header="AWS resources created"}
 One IAM execution role, one ECR repository, one CodeBuild project, and one AgentCore Runtime. The container build takes three to five minutes.
 
-The Runtime, the ECR image, and the CodeBuild project keep accruing charges for as long as they exist, and nothing in this workshop deletes them. At an AWS Workshop Studio event the account is reclaimed for you when the event ends. If you are running this in your own account, remove those three yourself when you are finished.
+The Runtime, the ECR image, and the CodeBuild project keep accruing charges for as long as they exist, and nothing in this workshop deletes them. At an AWS Workshop Studio event the account is reclaimed for you when the event ends. If you are running this in your own account, remove those three, plus the IAM execution role, yourself when you are finished.
 :::
 
 ```

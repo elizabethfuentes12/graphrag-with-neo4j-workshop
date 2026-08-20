@@ -8,7 +8,7 @@ Five hotel FAQ documents go to Claude on Amazon Bedrock, and come back as typed 
 
 **At a Glance**
 - **Failure it stops:** a graph where one document produced an `Address` node, the next put the address on a `Location`, and no single Cypher pattern matches both.
-- **Neo4j:** writes `Hotel`, `Room`, `Amenity`, `Policy`, `Service`, and `Chunk` nodes; verifies the three uniqueness constraints the dump already ships; creates the `hotel_chunk_embeddings` vector index and the `hotel_chunk_fulltext` full-text index.
+- **Neo4j:** writes `Hotel`, `Room`, `Amenity`, `Policy`, `Service`, and `Chunk` nodes; creates the `hotel_chunk_embeddings` vector index and the `hotel_chunk_fulltext` full-text index. The three uniqueness constraints the dump already ships are untouched here; Module 3 verifies the one its duplicate-request check depends on.
 - **AWS:** Claude on Amazon Bedrock does the extraction; Amazon Nova embeds each chunk.
 - **You'll build:** five hotels that were deliberately held out of the shipped dump. They join the graph permanently and nothing deletes them afterwards.
 
