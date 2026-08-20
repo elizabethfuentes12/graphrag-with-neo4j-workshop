@@ -66,13 +66,18 @@ from neo4j_agent_memory import Neo4jConfig as MemoryNeo4jConfig
 from neo4j_agent_memory.embeddings.bedrock import BedrockEmbedder
 
 from workshop.aws_region import aws_region
+from workshop.retrieval_contract import (
+    MEMORY_EMBEDDING_DIMENSIONS,
+    MEMORY_EMBEDDING_MODEL,
+)
 from pydantic import SecretStr
 
 # The memory vector indexes use Titan Text Embeddings V2, a separate embedding
 # contract from the Nova model that embeds the hotel chunks. Titan V2 produces
-# 1024-dimensional vectors.
-MEMORY_EMBEDDING_MODEL = "amazon.titan-embed-text-v2:0"
-MEMORY_EMBEDDING_DIMENSIONS = 1024
+# 1024-dimensional vectors. The model id and dimensions live in
+# workshop.retrieval_contract, not here, because Setup checks Bedrock access
+# to the same model before the workshop starts and would otherwise drift from
+# this module silently.
 
 # The library-managed vector indexes this demo exercises
 # (SchemaManager._MANAGED_VECTOR_INDEXES). The smoke test verifies these
