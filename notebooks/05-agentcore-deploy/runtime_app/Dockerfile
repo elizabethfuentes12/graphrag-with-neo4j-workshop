@@ -33,6 +33,9 @@ USER bedrock_agentcore
 
 EXPOSE 8080
 
+# No HEALTHCHECK: AgentCore Runtime manages container liveness itself, so one
+# here would be redundant rather than forgotten.
+
 # `reservation_command.py` is not in this directory in git either.
 # 5.1_deploy.ipynb copies it here for the same reason. Listed explicitly
 # rather than `COPY . .`, so the already-installed wheel above is not also

@@ -355,27 +355,31 @@ def apply_reservation_fixtures(
     constraints, and maximum-guests rule have been applied.
     """
     with _session(driver, database) as session:
-        session.run(HOTEL_ID_CONSTRAINT).consume()
-        session.run(REQUEST_ID_CONSTRAINT).consume()
-        session.run(RULE_ID_CONSTRAINT).consume()
+        session.execute_write(lambda tx: tx.run(HOTEL_ID_CONSTRAINT).consume())
+        session.execute_write(lambda tx: tx.run(REQUEST_ID_CONSTRAINT).consume())
+        session.execute_write(lambda tx: tx.run(RULE_ID_CONSTRAINT).consume())
         resolution = list(
             session.run(FIXTURE_RESOLUTION_QUERY, fixtures=manifest.rows())
         )
         problems = _fixture_problems(resolution, manifest, require_ids=False)
         if problems:
             return problems
-        session.run(
-            APPLY_FIXTURE_IDS_QUERY,
-            fixtures=manifest.rows(),
-        ).consume()
-        session.run(
-            UPSERT_RULE_QUERY,
-            rule_id=contracts.MAX_GUESTS_RULE_ID,
-            max_guests=contracts.MAX_GUESTS,
-            rejection_message=RULE_REJECTION_MESSAGE,
-            steering_message=RULE_STEERING_MESSAGE,
-            workshop_owner=contracts.WORKSHOP_OWNER,
-        ).consume()
+        session.execute_write(
+            lambda tx: tx.run(
+                APPLY_FIXTURE_IDS_QUERY,
+                fixtures=manifest.rows(),
+            ).consume()
+        )
+        session.execute_write(
+            lambda tx: tx.run(
+                UPSERT_RULE_QUERY,
+                rule_id=contracts.MAX_GUESTS_RULE_ID,
+                max_guests=contracts.MAX_GUESTS,
+                rejection_message=RULE_REJECTION_MESSAGE,
+                steering_message=RULE_STEERING_MESSAGE,
+                workshop_owner=contracts.WORKSHOP_OWNER,
+            ).consume()
+        )
     return []
 
 

@@ -21,7 +21,13 @@ from workshop.hybrid_retrieval import graph_query
 def handler(event: Mapping[str, Any], context: Any) -> dict[str, Any]:
     """Return the generated Cypher and its records for the ``query`` input."""
     del context
-    return dict(graph_query((event or {}).get("query", "")))
+    query = (event or {}).get("query")
+    if not isinstance(query, str) or not query:
+        return {"error": "query must be a non-empty string"}
+    try:
+        return dict(graph_query(query))
+    except ValueError as error:
+        return {"error": str(error)}
 
 
 __all__ = ["handler"]

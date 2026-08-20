@@ -28,7 +28,9 @@ reflects exactly what that run extracted. Neither reason holds for
 
 import asyncio
 import os
+from datetime import datetime, timezone
 from pathlib import Path
+from uuid import uuid4
 
 from neo4j import Driver, GraphDatabase
 from neo4j_graphrag.experimental.components.text_splitters.fixed_size_splitter import (
@@ -72,6 +74,17 @@ CANARY_DOCS = 3
 # usually a throttle or a timeout rather than a bad document, and without a
 # retry one lost document costs a full rebuild.
 RETRY_PASSES = 1
+
+# `ingest`'s `asyncio.wait_for` timeout cannot cancel a Bedrock call already
+# handed to a worker thread (see `bedrock_providers.BEDROCK_CONFIG`), so a
+# "timed-out" document can still be writing to Neo4j after `retry_failures`
+# decides to clear and re-ingest it. `_recent_write_exists` treats a document
+# whose most recent attempt started within this window as still plausibly
+# in flight, and `retry_failures` defers clearing it rather than racing that
+# write. This is a heuristic, not a guarantee: it narrows the window instead
+# of closing it. The real fix is a cancellable future (see the
+# `ProcessPoolExecutor` note in `bedrock_providers.py`).
+RECENT_WRITE_SECONDS = 30
 
 # Everything neo4j-graphrag writes carries this label, so the wipe can be
 # scoped to pipeline output instead of `MATCH (n) DETACH DELETE n`, which would
@@ -187,8 +200,12 @@ def clear_document(driver: Driver, filename: str) -> None:
     would fire on a graph that is otherwise complete.
     """
     with session(driver) as neo4j_session:
-        neo4j_session.run(DELETE_DOCUMENT_ENTITIES, filename=filename).consume()
-        neo4j_session.run(DELETE_DOCUMENT_LEXICAL, filename=filename).consume()
+        neo4j_session.execute_write(
+            lambda tx: tx.run(DELETE_DOCUMENT_ENTITIES, filename=filename).consume()
+        )
+        neo4j_session.execute_write(
+            lambda tx: tx.run(DELETE_DOCUMENT_LEXICAL, filename=filename).consume()
+        )
 
 
 def check_documents_addressable(driver: Driver, paths: list[Path]) -> list[str]:
@@ -231,12 +248,21 @@ async def ingest(pipeline: SimpleKGPipeline, paths: list[Path]) -> list[Path]:
     for i, path in enumerate(paths, 1):
         text = path.read_text(encoding="utf-8")
         print(f"  [{i}/{total}] {path.name}...", end=" ", flush=True)
+        # `run_id` and `ingest_started_at` land on this document's :Document
+        # node through `document_metadata` (the same mechanism that attaches
+        # `source_filename`). `_recent_write_exists` reads `ingest_started_at`
+        # back to tell a comfortably-finished failure from one that might
+        # still be writing. See `RECENT_WRITE_SECONDS`.
         try:
             await asyncio.wait_for(
                 pipeline.run_async(
                     file_path=path.name,
                     text=text,
-                    document_metadata={"source_filename": path.name},
+                    document_metadata={
+                        "source_filename": path.name,
+                        "run_id": uuid4().hex,
+                        "ingest_started_at": datetime.now(timezone.utc).isoformat(),
+                    },
                 ),
                 timeout=DOC_TIMEOUT_SECONDS,
             )
@@ -250,6 +276,33 @@ async def ingest(pipeline: SimpleKGPipeline, paths: list[Path]) -> list[Path]:
     return failures
 
 
+def _recent_write_exists(
+    driver: Driver, filename: str, within_seconds: int = RECENT_WRITE_SECONDS
+) -> bool:
+    """Return whether `filename`'s most recent ingest attempt started recently.
+
+    A proxy for "might still be writing", not a direct measurement of it: a
+    worker thread running `BedrockLLM.invoke` past the `asyncio.wait_for`
+    timeout carries on writing after the timeout fires, and this graph has no
+    per-write timestamp to observe that directly. `ingest_started_at` is set
+    once, when the attempt begins, so a document whose only committed value is
+    from moments ago is still a plausible in-flight write.
+    """
+    with session(driver) as neo4j_session:
+        record = neo4j_session.run(
+            """
+            MATCH (d:Document {source_filename: $filename})
+            WHERE d.ingest_started_at IS NOT NULL
+              AND datetime(d.ingest_started_at)
+                  > datetime() - duration({seconds: $within_seconds})
+            RETURN count(d) > 0 AS recent
+            """,
+            filename=filename,
+            within_seconds=within_seconds,
+        ).single()
+    return bool(record and record["recent"])
+
+
 async def retry_failures(
     driver: Driver,
     pipeline: SimpleKGPipeline,
@@ -260,6 +313,12 @@ async def retry_failures(
     Without this, a single throttled document costs a fifteen-minute rebuild:
     the count assertion below fires, and the next run clears the graph and
     starts over. Returns whatever still failed after `RETRY_PASSES`.
+
+    A document is only cleared if `_recent_write_exists` says its last attempt
+    did not start within `RECENT_WRITE_SECONDS`. One that did is left alone
+    this pass instead: clearing it here could race a write still landing from
+    the timed-out attempt (see `RECENT_WRITE_SECONDS`), leaving a corrupted or
+    duplicated partial extraction underneath the retry.
     """
     remaining = failures
     for attempt in range(1, RETRY_PASSES + 1):
@@ -269,9 +328,21 @@ async def retry_failures(
             f"\nRetry pass {attempt} of {RETRY_PASSES}: "
             f"{len(remaining)} document(s) to re-ingest"
         )
+        ready = []
         for path in remaining:
+            if _recent_write_exists(driver, path.name):
+                print(
+                    f"  {path.name}: deferring, a write landed within the last "
+                    f"{RECENT_WRITE_SECONDS}s (possible in-flight write)"
+                )
+                continue
             clear_document(driver, path.name)
-        remaining = await ingest(pipeline, remaining)
+            ready.append(path)
+        if not ready:
+            continue
+        still_failed = await ingest(pipeline, ready)
+        deferred = [path for path in remaining if path not in ready]
+        remaining = still_failed + deferred
     return remaining
 
 
@@ -326,8 +397,9 @@ def check_schema_held(driver: Driver, chunk_ids: set[str]) -> list[str]:
                 OPTIONAL MATCH (h)-[r]->(n)
                 WHERE type(r) IN ['HAS_ROOM', 'OFFERS_AMENITY',
                                   'HAS_POLICY', 'PROVIDES_SERVICE']
-                RETURN DISTINCT h.name AS name, h.address AS address,
-                       h.guest_rating AS guest_rating, count(r) AS relationships
+                RETURN DISTINCT elementId(h) AS id, h.name AS name,
+                       h.address AS address, h.guest_rating AS guest_rating,
+                       count(r) AS relationships
                 """,
                 ids=ids,
             )

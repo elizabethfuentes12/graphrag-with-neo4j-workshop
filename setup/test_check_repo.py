@@ -205,3 +205,45 @@ def test_an_unparseable_cell_is_caught(fake_repo: Path) -> None:
 def test_a_python_file_that_does_not_compile_is_caught(fake_repo: Path) -> None:
     (fake_repo / "notebooks" / "broken.py").write_text("def f(:\n", encoding="utf-8")
     assert check_repo.python_files_compile() != []
+
+
+# --------------------------------------------------------------------------
+# RETIRED_NAMES / BANNED_PATTERNS staleness
+# --------------------------------------------------------------------------
+#
+# Both lists are maintained by hand, unlike the module registry in
+# `run_notebooks.py`, which `test_every_module_with_a_notebook_folder_is_registered`
+# cross-checks against the notebook folders actually on disk. These two tests
+# apply the same idea here: they read the real `notebooks/` tree (not
+# `fake_repo`), because what they are proving stale is the list itself, not
+# any behavior of `banned_patterns_absent()`.
+
+
+def _current_module_folders() -> set[str]:
+    return {path.name for path in check_repo.NOTEBOOKS.glob("[0-9]*") if path.is_dir()}
+
+
+def test_retired_names_do_not_shadow_a_current_module_folder() -> None:
+    """A retired name that now names a live folder would ban linking to it."""
+    stale = _current_module_folders() & set(check_repo.RETIRED_NAMES)
+    assert stale == set(), (
+        f"RETIRED_NAMES still bans current module folder(s): {sorted(stale)}. "
+        "Remove the stale entry from RETIRED_NAMES in check_repo.py."
+    )
+
+
+def test_banned_module_number_pattern_stays_ahead_of_the_current_module_count() -> None:
+    """The retired 'Module 7/8' pattern must not start flagging a real module."""
+    highest = max(int(name[:2]) for name in _current_module_folders())
+    for number in range(1, highest + 1):
+        text = f"Module {number} covers something."
+        flagged = [
+            reason
+            for pattern, reason in check_repo.BANNED_PATTERNS
+            if pattern.search(text)
+        ]
+        assert flagged == [], (
+            f"BANNED_PATTERNS flags current Module {number}: {flagged}. "
+            "Update the retired-numbering pattern in check_repo.py to stay "
+            "ahead of the current module count."
+        )

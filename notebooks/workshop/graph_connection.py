@@ -28,8 +28,6 @@ loads after importing this module is still honoured.
 
 import os
 
-NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
-
 # Aura's default database is always `neo4j`, and a participant whose .env omits
 # the name should not get a different failure in Module 2 than in Module 1. The
 # build path defaults it, so the read and write paths default it the same way.

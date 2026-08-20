@@ -18,6 +18,13 @@ Neither function writes. ``search_hotel_knowledge`` runs reviewed static
 Cypher, and ``graph_query`` runs model-generated Cypher that
 ``Text2CypherRetriever`` first plans with ``EXPLAIN`` and refuses unless the
 planner reports it read-only.
+
+The driver behind both retrievers is cached with ``lru_cache`` and is never
+closed by this module. That is fine for a warm, recycled Lambda container,
+which is the only caller that matters in production. A notebook that calls
+``search_hotel_knowledge`` or ``graph_query`` repeatedly across a long
+session and wants to release the connection can close the cached driver and
+then call ``_get_driver.cache_clear()`` to drop the reference.
 """
 
 from __future__ import annotations
@@ -25,7 +32,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from functools import lru_cache
 from typing import Any, Mapping, Sequence, TypedDict, cast
 
@@ -103,8 +110,8 @@ class Neo4jConfig:
     """
 
     uri: str
-    username: str
-    password: str
+    username: str = field(repr=False)
+    password: str = field(repr=False)
     database: str
 
     @classmethod

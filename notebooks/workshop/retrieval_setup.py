@@ -15,6 +15,7 @@ from typing import Any, Iterable, Mapping, Sequence, cast
 from neo4j import Driver
 from neo4j_graphrag.indexes import create_fulltext_index, create_vector_index
 
+from workshop.fixtures import _index_problems
 from workshop.graph_connection import graph_database
 from workshop.graph_schema import GRAPH_SCHEMA, SCHEMA_NODE_LABELS
 from workshop.retrieval_contract import (
@@ -168,69 +169,14 @@ def ensure_retrieval_indexes(driver: Driver) -> None:
     verify_retrieval_indexes(driver)
 
 
-def _index_contract_problems(records: Iterable[Mapping[str, Any]]) -> list[str]:
-    """Return mismatches between SHOW INDEXES records and the retrieval contract."""
-    indexes = {record["name"]: record for record in records}
-    problems: list[str] = []
-
-    expected = {
-        CHUNK_VECTOR_INDEX: {
-            "type": "VECTOR",
-            "labels": ["Chunk"],
-            "properties": ["embedding"],
-        },
-        CHUNK_FULLTEXT_INDEX: {
-            "type": "FULLTEXT",
-            "labels": ["Chunk"],
-            "properties": ["text"],
-        },
-    }
-    for name, contract in expected.items():
-        record = indexes.get(name)
-        if record is None:
-            problems.append(f"missing index {name!r}")
-            continue
-        if record.get("state") != "ONLINE":
-            problems.append(f"index {name!r} is {record.get('state')!r}, not 'ONLINE'")
-        if record.get("type") != contract["type"]:
-            problems.append(
-                f"index {name!r} has type {record.get('type')!r}, "
-                f"expected {contract['type']!r}"
-            )
-        if record.get("labelsOrTypes") != contract["labels"]:
-            problems.append(
-                f"index {name!r} targets {record.get('labelsOrTypes')!r}, "
-                f"expected {contract['labels']!r}"
-            )
-        if record.get("properties") != contract["properties"]:
-            problems.append(
-                f"index {name!r} covers {record.get('properties')!r}, "
-                f"expected {contract['properties']!r}"
-            )
-
-    vector = indexes.get(CHUNK_VECTOR_INDEX)
-    if vector is not None:
-        config = vector.get("options", {}).get("indexConfig", {})
-        dimensions = config.get("vector.dimensions")
-        similarity = config.get("vector.similarity_function")
-        if dimensions != EMBEDDING_DIMENSIONS:
-            problems.append(
-                f"index {CHUNK_VECTOR_INDEX!r} has {dimensions!r} dimensions, "
-                f"expected {EMBEDDING_DIMENSIONS}"
-            )
-        normalized_similarity = (
-            similarity.lower() if isinstance(similarity, str) else similarity
-        )
-        if normalized_similarity != "cosine":
-            problems.append(
-                f"index {CHUNK_VECTOR_INDEX!r} uses {similarity!r}, "
-                "expected 'cosine'"
-            )
-    return problems
-
-
 def verify_retrieval_indexes(driver: Driver) -> None:
-    """Raise with a precise message unless both retrieval indexes are ready."""
+    """Raise with a precise message unless both retrieval indexes are ready.
+
+    The index-contract check itself lives in `workshop.fixtures._index_problems`
+    rather than being reimplemented here, so a future change to the vector or
+    fulltext contract has one call site to update instead of two that can drift
+    apart.
+    """
     with _session(driver) as session:
         records = list(
             session.run(
@@ -243,7 +189,7 @@ def verify_retrieval_indexes(driver: Driver) -> None:
                 names=[CHUNK_VECTOR_INDEX, CHUNK_FULLTEXT_INDEX],
             )
         )
-    problems = _index_contract_problems(records)
+    problems = _index_problems(records)
     if problems:
         details = "\n  - ".join(problems)
         raise ReadinessError(f"Retrieval index check failed:\n  - {details}")

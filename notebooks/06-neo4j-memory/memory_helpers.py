@@ -79,11 +79,6 @@ from pydantic import SecretStr
 # to the same model before the workshop starts and would otherwise drift from
 # this module silently.
 
-# The library-managed vector indexes this demo exercises
-# (SchemaManager._MANAGED_VECTOR_INDEXES). The smoke test verifies these
-# exist with MEMORY_EMBEDDING_DIMENSIONS after the first connect.
-MEMORY_VECTOR_INDEXES = ("message_embedding_idx", "preference_embedding_idx")
-
 # Workshop ownership marker for the memory records this demo writes. It mirrors
 # contracts.WORKSHOP_OWNER, a fixed namespace string ("neo4j-ftw-demo-6") the
 # shared workshop code reuses as its ownership tag.
@@ -245,14 +240,19 @@ def _run_query(
     query: str,
     parameters: dict,
     *,
+    write: bool = False,
     driver: Driver | None = None,
 ) -> list[dict]:
-    """Run one workshop-owned query and return its records.
+    """Run one workshop-owned query through a managed transaction.
 
     ``memory.query.cypher`` is read-only by design, so workshop-owned writes
     go through a direct driver session. The same small helper also supports
-    the actor-anchored read. A caller-supplied ``driver`` is reused and left
-    open; otherwise a short-lived driver is created and closed.
+    the actor-anchored read. ``write`` selects ``session.execute_write`` for
+    queries that mutate the graph and ``session.execute_read`` otherwise, so
+    each query gets the driver's automatic retry-on-transient-error behavior
+    instead of running as a bare auto-commit statement. A caller-supplied
+    ``driver`` is reused and left open; otherwise a short-lived driver is
+    created and closed.
     """
     owns_driver = driver is None
     if driver is None:
@@ -261,7 +261,8 @@ def _run_query(
         )
     try:
         with driver.session(database=config.database) as session:
-            return [dict(record) for record in session.run(query, parameters)]
+            run_transaction = session.execute_write if write else session.execute_read
+            return run_transaction(lambda tx: tx.run(query, parameters).data())
     finally:
         if owns_driver:
             driver.close()
@@ -302,6 +303,7 @@ def link_preference_to_message_and_hotel(
             "hotel_name": hotel_name,
             "owner": WORKSHOP_OWNER,
         },
+        write=True,
         driver=driver,
     )
     return bool(rows and rows[0]["linked"])
@@ -376,6 +378,7 @@ def tag_demo_records(
             "user_identifiers": list(user_identifiers),
             "owner": WORKSHOP_OWNER,
         },
+        write=True,
         driver=driver,
     )
     return int(rows[0]["marked"]) if rows else 0

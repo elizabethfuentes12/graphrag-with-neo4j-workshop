@@ -51,6 +51,10 @@ from workshop.retrieval_contract import (
 # trade being made here, throughput under throttling against a thread that can
 # outlive its document. Raise DOC_TIMEOUT_SECONDS or lower read_timeout if you
 # want the inner chain back inside the outer bound.
+#
+# The longer-term fix is swapping `asyncio.to_thread` for a `ProcessPoolExecutor`
+# future: a process can be terminated on timeout where a thread cannot, so
+# "timed out" would finally mean "stopped" instead of "abandoned but running."
 BEDROCK_CONFIG = Config(
     read_timeout=45, retries={"max_attempts": 5, "mode": "adaptive"}
 )

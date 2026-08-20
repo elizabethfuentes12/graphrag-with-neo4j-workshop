@@ -190,6 +190,9 @@ def _get_driver(config: Neo4jCommandConfig) -> Driver:
 
 
 def _extract_payload(event: Mapping[str, Any]) -> Mapping[str, Any]:
+    if not isinstance(event, Mapping):
+        raise InvalidCommand("event must be a JSON object")
+
     parameters = event.get("parameters")
     if isinstance(parameters, Mapping):
         return parameters

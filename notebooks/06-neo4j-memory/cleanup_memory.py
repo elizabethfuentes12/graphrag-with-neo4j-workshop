@@ -88,9 +88,12 @@ def run_cleanup(config: MemoryDemoConfig) -> int:
     )
     try:
         with driver.session(database=config.database) as session:
-            hotels_before = session.run(COUNT_HOTELS).single()["hotels"]
+            hotels_before = session.execute_read(
+                lambda tx: tx.run(COUNT_HOTELS).single()["hotels"]
+            )
 
-            deleted = 0
+            nodes_deleted = 0
+            relationships_deleted = 0
             for query, params in (
                 (DELETE_DEMO_HOTEL_LINKS, {"owner": WORKSHOP_OWNER}),
                 (DELETE_PREFIXED_SESSIONS, {"prefix": DEMO_ID_PREFIX}),
@@ -100,16 +103,28 @@ def run_cleanup(config: MemoryDemoConfig) -> int:
                     {"owner": WORKSHOP_OWNER},
                 ),
             ):
-                counters = session.run(query, params).consume().counters
-                deleted += counters.nodes_deleted
-            print(f"Deleted {deleted} memory record(s).")
+                counters = session.execute_write(
+                    lambda tx, query=query, params=params: tx.run(
+                        query, params
+                    ).consume().counters
+                )
+                nodes_deleted += counters.nodes_deleted
+                relationships_deleted += counters.relationships_deleted
+            print(
+                f"Deleted {nodes_deleted} node(s) and "
+                f"{relationships_deleted} relationship(s)."
+            )
 
-            session.run(
-                REMOVE_SHARED_PREFERENCE_MARKERS,
-                {"owner": WORKSHOP_OWNER},
-            ).consume()
+            session.execute_write(
+                lambda tx: tx.run(
+                    REMOVE_SHARED_PREFERENCE_MARKERS,
+                    {"owner": WORKSHOP_OWNER},
+                ).consume()
+            )
 
-            hotels_after = session.run(COUNT_HOTELS).single()["hotels"]
+            hotels_after = session.execute_read(
+                lambda tx: tx.run(COUNT_HOTELS).single()["hotels"]
+            )
             if hotels_after != hotels_before:
                 raise AssertionError(
                     f"Hotel count changed during cleanup: {hotels_before} "

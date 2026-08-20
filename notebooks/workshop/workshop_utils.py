@@ -1,4 +1,16 @@
-"""Workshop utility helpers — visual progress and logging control."""
+"""Workshop utility helpers shared by Module 4's notebooks.
+
+Four concerns live here, each used by more than one Module 4 notebook:
+
+- log suppression (`quiet_logs`), which quiets verbose third-party SDK
+  loggers so notebook output stays readable;
+- progress display (`lego_progress`), which prints the workshop-wide
+  module-progress tower;
+- a Strands trace hook (`ToolTraceHook`), which prints each tool call an
+  agent makes as it happens; and
+- result printing (`show_result`), which prints an agent turn's text answer
+  followed by its token usage.
+"""
 import logging
 
 

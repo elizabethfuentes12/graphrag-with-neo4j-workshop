@@ -58,6 +58,8 @@ Docker copies only its build context. The agent needs two things that live elsew
 
 Step 2 of the notebook stages both into `runtime_app/` immediately before the build. The staged copies are gitignored and rewritten on every run, so one versioned copy of each stays the source of truth and an edit reaches the next build.
 
+Staging `workshop/` builds it as a wheel (`uv build --wheel`) rather than copying the source tree, and the same step writes a `BUILD_INFO.txt` recording the git commit and whether the tree was dirty at build time, so the image carries its own provenance instead of relying on a build log that does not survive into it.
+
 ---
 
 ## Five Smoke Tests

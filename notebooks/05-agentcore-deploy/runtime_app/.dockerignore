@@ -10,6 +10,10 @@ __pycache__/
 .venv/
 venv/
 .env
+*.pem
+*.key
+credentials
+.aws/
 
 # Testing and tooling
 .pytest_cache/
