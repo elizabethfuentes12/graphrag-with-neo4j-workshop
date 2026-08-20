@@ -147,7 +147,7 @@ def load_config() -> MemoryDemoConfig:
         RuntimeError: If NEO4J_PASSWORD is not set anywhere.
     """
     load_dotenv(_DEMO_DIR / ".env")
-    load_dotenv(_DEMO_DIR.parent / ".env")
+    load_dotenv(_DEMO_DIR.parent.parent / ".env")
 
     password = os.getenv("NEO4J_PASSWORD")
     if not password:
