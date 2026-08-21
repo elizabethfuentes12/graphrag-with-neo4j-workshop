@@ -59,7 +59,7 @@ Every domain relationship starts at `Hotel`, so each document produces a one-hop
 
 ## Why You Extract Five Documents
 
-The corpus contains 300 hotel FAQ documents. The graph dump restored during Setup contains 295 of them, extracted with the same pinned schema used in this module. Extracting all 300 takes hours. You extract the five remaining documents in about four minutes.
+The source archive contains the workshop hotel FAQ corpus. The graph dump restored during Setup contains the preloaded documents, extracted with the same pinned schema used in this module. Building the full corpus takes hours. You extract five held-out documents in about four minutes.
 
 You extract the `-002` document for Tokyo, Sydney, Rio de Janeiro, Cape Town, and Prague. These documents keep the build separate from the fixtures used by later modules\:
 
@@ -67,7 +67,7 @@ You extract the `-002` document for Tokyo, Sydney, Rio de Janeiro, Cape Town, an
 - The dump retains the `-001` hotel for each city, which keeps those cities in the graph during extraction.
 - The list excludes Cairo because Module 3 asks about a Cairo hotel by name. That question uses data already present in the dump.
 
-Every aggregation and multi-hop query in later modules runs across the full graph, including your five hotels.
+Later modules run retrieval against the combined graph, including your five hotels.
 
 ---
 
@@ -176,4 +176,4 @@ Accurate tool results provide the foundation for grounded answers. If a tool ret
 
 ## Next
 
-Head to [Module 2](../02-vector-rag-hallucinates/).
+Head to [Module 2](../02-connected-context/).

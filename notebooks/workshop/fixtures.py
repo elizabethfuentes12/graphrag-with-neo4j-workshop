@@ -476,7 +476,7 @@ def main() -> int:
     uri, auth, database = _configuration()
     # notifications_min_severity="OFF" matches the drivers hybrid_retrieval and
     # reservation_command open. Without it this readiness step prints Neo4j
-    # planner notices the Module 3.2 retrieval and reservation paths both
+    # planner notices the Module 3.1 retrieval and reservation paths both
     # suppress, so the same query looks different depending on which file
     # opened the connection.
     driver = GraphDatabase.driver(uri, auth=auth, notifications_min_severity="OFF")
@@ -493,7 +493,7 @@ def main() -> int:
     if problems:
         _report(problems)
         return 1
-    print("Module 3.2 fixtures are ready.")
+    print("Module 3.1 fixtures are ready.")
     return 0
 
 

@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Fixed graph-enriched retrieval shared by Module 3.2 and the Module 4 Lambdas.
+"""Fixed graph-enriched retrieval shared by Module 3.1 and the Module 4 Lambdas.
 
 Two read paths live here and nothing else. ``search_hotel_knowledge`` is the
 semantic path over ``HybridCypherRetriever`` and accepts only ``query``. Index

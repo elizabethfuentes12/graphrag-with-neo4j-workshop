@@ -39,7 +39,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 NOTEBOOKS = REPO_ROOT / "notebooks"
-MODULE_2 = NOTEBOOKS / "02-vector-rag-hallucinates"
+MODULE_2 = NOTEBOOKS / "02-connected-context"
 
 for _path in (NOTEBOOKS, MODULE_2):
     if str(_path) not in sys.path:
@@ -145,7 +145,7 @@ def main() -> int:
 
         fixture_problems = fixtures.apply_reservation_fixtures(driver, graph_database(), manifest)
         if fixture_problems:
-            print("Could not apply the Module 3.2 fixtures:")
+            print("Could not apply the Module 3.1 fixtures:")
             for problem in fixture_problems:
                 print(f"  - {problem}")
             return 1
@@ -160,7 +160,7 @@ def main() -> int:
             print(f"  - {problem}")
         return 1
 
-    print("\nRepair complete. Module 3.2 fixtures are ready.")
+    print("\nRepair complete. Module 3.1 fixtures are ready.")
     return 0
 
 

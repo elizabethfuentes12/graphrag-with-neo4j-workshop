@@ -1,13 +1,13 @@
 ---
-title: "GraphRAG with Neo4j on AWS: Controlling Agent Hallucination"
+title: "GraphRAG with Neo4j on AWS: From Search to Grounded Agents"
 weight: 0
 ---
 
-## Stop Your Agent from Making Things Up
+## Build Agents from Connected Evidence
 
-AI agents that answer from vector search will guess. An agent grounded in a knowledge graph answers only from what is actually connected — and says nothing when it is not.
+Semantic search finds source text that is relevant to a question. Graph traversal can extend that match with named fields, relationships, and provenance. The two signals solve different parts of the retrieval problem.
 
-This workshop uses a hotel booking scenario to show four hallucination failure modes, build the retrievers that prevent them, and wire a production agent with :link[Amazon Bedrock AgentCore]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}, :link[Neo4j]{href="https://neo4j.com/" external=true} retrieval tools, and inspectable graph memory.
+This workshop uses a hotel booking scenario to compare four retrieval patterns, select a fixed production retriever, and wire a grounded agent with :link[Amazon Bedrock AgentCore]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}, :link[Neo4j]{href="https://neo4j.com/" external=true} retrieval tools, and inspectable graph memory.
 
 :::alert{type="info" header="Region"}
 This workshop runs in **us-east-1 (N. Virginia)**. Your AWS account and Neo4j database are pre-configured.
@@ -21,8 +21,8 @@ This workshop runs in **us-east-1 (N. Virginia)**. Your AWS account and Neo4j da
 |--------|---------------------|
 | **Setup** | Open Code Editor, verify Neo4j and :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} access |
 | **Module 1: Build the Graph** | Extract five held-out hotel documents into the graph, pin the extraction schema, create both retrieval indexes |
-| **Module 2: Vector RAG Hallucinates** | Two agents, four hallucination failure modes, side-by-side comparison |
-| **Module 3: Retrieval Patterns and the Grounded Booking Agent** | Four retrieval patterns, plus a grounded booking agent that abstains and writes safely |
+| **Module 2: From Similarity Search to Connected Context** | Semantic retrieval, exact-term search, and connected graph context |
+| **Module 3: Build the Grounded Booking Agent** | Grounded answers, abstention, and protected reservation writes |
 | **Module 4: Production Agent with AgentCore** | AgentCore Gateway, IAM-authenticated MCP, cross-session memory |
 | **Module 5: Deploy to AgentCore Runtime** | Containerize the agent, launch it on Runtime, correlate one request end to end |
 | **Module 6: Inspectable Neo4j Memory** | Graph-backed preferences, full provenance, AgentCore comparison |
@@ -41,18 +41,18 @@ This workshop runs in **us-east-1 (N. Virginia)**. Your AWS account and Neo4j da
 
 ## What You Will Learn
 
-1. Why vector RAG hallucinates on aggregation, counting, multi-hop, and out-of-domain queries
-2. How to choose between Vector, Hybrid, VectorCypher, and Text2Cypher retrievers
-3. How to build a grounded agent that abstains honestly and enforces rules atomically
+1. How a pinned schema and provenance make extracted knowledge predictable to query
+2. When to use Vector, Hybrid, VectorCypher, and Text2Cypher retrieval
+3. How to build a grounded agent that declines unsupported requests and enforces rules atomically
 4. How to deploy tools to AgentCore Gateway and connect agents over IAM-authenticated MCP
-5. Why explicit graph memory gives you auditability that managed memory cannot
+5. How explicit graph memory supports audit and correction
 
 ---
 
 ## Prerequisites
 
 - Basic Python and AWS CLI familiarity
-- No local setup required — everything runs in your Code Editor environment
+- No local setup required; everything runs in your Code Editor environment
 
 :::alert{type="warning" header="Cost"}
 This workshop creates AWS resources that incur charges. Follow the cleanup instructions at the end. Estimated cost\: under $2.

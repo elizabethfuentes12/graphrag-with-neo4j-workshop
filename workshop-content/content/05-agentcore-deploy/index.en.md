@@ -7,16 +7,16 @@ weight: 60
 
 The grounded booking agent from Module 3 runs in a Jupyter kernel on your laptop. Your local environment holds the Neo4j password, and your AWS credentials authorize the Bedrock calls.
 
-In this module, you package a deployment-oriented version of the agent in a container managed by :link[Amazon Bedrock AgentCore Runtime]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}. It reuses the retrieval code, grounding instructions, and reservation command from Module 3.2. It also exposes the command as an agent tool and adds Runtime request handling.
+In this module, you package a deployment-oriented version of the agent in a container managed by :link[Amazon Bedrock AgentCore Runtime]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}. It reuses the retrieval code, grounding instructions, and reservation command from Module 3.1. It also exposes the command as an agent tool and adds Runtime request handling.
 
-| Module 3.2 | Module 5.1 |
+| Module 3.1 | Module 5.1 |
 |---|---|
 | Runs in your kernel | Runs in a container AgentCore starts |
 | Your laptop holds the Neo4j password | The Runtime holds it, injected at launch |
 | Reachable only from Jupyter | Invoked through `InvokeAgentRuntime` by authorized AWS clients |
 | Session is your kernel's memory | Each invocation uses a caller-provided session ID |
 
-The deployment changes where the agent runs and how callers invoke it. Module 3.2 used one retrieval tool and called the reservation command directly in its write examples. Module 5 gives the deployed agent both operations as tools and preserves the grounding instructions that tell it to decline questions the graph cannot answer.
+The deployment changes where the agent runs and how callers invoke it. Module 3.1 used one retrieval tool and called the reservation command directly in its write examples. Module 5 gives the deployed agent both operations as tools and preserves the grounding instructions that tell it to decline questions the graph cannot answer.
 
 ---
 
@@ -54,7 +54,7 @@ Both tools connect directly to Neo4j from the deployed process. Neo4j enforces t
 Docker can copy files only from its build context. The agent depends on two files outside that context:
 
 - `notebooks/workshop/`, the package every module shares
-- `notebooks/03-retrieval-patterns/reservation_command.py`, the graph-enforced write path
+- `notebooks/03-grounded-booking-agent/reservation_command.py`, the graph-enforced write path
 
 Step 2 stages both dependencies in `runtime_app/` immediately before the build. Git ignores the staged copies, and the notebook replaces them on every run. The original files remain the source of truth for each build.
 

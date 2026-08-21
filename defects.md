@@ -86,7 +86,7 @@ Note: `2.1_vector_rag_hallucinates.ipynb` and its `README.md` already have uncom
 
 #### M2-1. The vector agent does not work at all, and the committed index has no compatibility contract
 
-- **Status, 2026-08-21:** The base artifact is rebuilt. `faqs_vector.index` is now an `IndexFlatIP` at `d` 1024 with `ntotal` 300 and L2-normalized vectors, `faqs_vector.manifest.json` and `rebuild_faiss_index.py` exist, the loader rejects a non-inner-product index, and 13 artifact tests pass. The artifact agent is completing `vectors_sha256` and the fixed graph `vector_source`; committing the new artifacts and every notebook-side item below remain open.
+- **Status, 2026-08-21:** The artifact half is complete and committed in `2de1d08`. `faqs_vector.index` is an `IndexFlatIP` at `d` 1024 with `ntotal` 300 and L2-normalized vectors. The manifest records and the loader validates `vectors_sha256`, the fixed graph `vector_source`, metric, normalization, shared embedding contract, document count, and corpus checksum. All 16 focused artifact tests and Ruff pass. Every notebook-side item below remains open.
 - **Where:** `2.1_vector_rag_hallucinates.ipynb` cells 5 and 8.
 - **What was wrong:** The committed `faqs_vector.index` was 384-dimensional. `_embed()` asks for 1024 dimensions, which is `EMBEDDING_DIMENSIONS` in `workshop.retrieval_contract`. FAISS raised a bare `AssertionError`. The `except` block in `search_faqs` swallows it and returns the string `"Query error:"`, which is still true and still has to be fixed.
 - **Why it matters:** All four demonstrations in the module are empty. The vector agent never receives a single document. It answers by declining politely, which is the opposite of the point the module is making.
@@ -317,15 +317,16 @@ Note: `2.1_vector_rag_hallucinates.ipynb` and its `README.md` already have uncom
 
 ## Recommended order of work
 
-1. **M2-1**, the dimension mismatch and missing artifact contract. The base index is rebuilt at 1024 dimensions from the graph's chunk vectors, the metric is settled, and the manifest, rebuild script, and tests exist. The artifact agent is completing `vectors_sha256` and `vector_source`; committing the artifacts and the notebook-side validator and error-handling work remain open.
-2. **M2-2 and M2-2a**, the hidden truncation and invalid Paris aggregation example. Pass complete documents and use the five-hotel Orlando set so `k=3` is provably incomplete.
-3. **M2-3, M2-4, M2-5, M2-6**, the four environment and configuration bugs. All are small, all are already solved correctly in Module 1, and all can be done in one pass.
-4. **M1-1**, the one-line cleanup fix in Module 1's optional demo.
-5. **M2-7 and M2-2b**, tests 3 and 2. Replace Cairo with the verified Chicago comparison, add its lite-build selection and its reporting readiness cell, and give the pool count its source-derived answer of 175.
-6. **M2-13**, test 4 and test status. Reframe it around observable retrieval behaviour, retain all four tests, and mark Tests 2 and 4 optional in the learner path.
-7. **M2-8**, the two images. Authored from scratch as `.drawio` sources by their own owner and exported into both image trees. Required before any live delivery.
-8. **M2-14, M2-15, M2-16, M2-17, M2-18**, the remaining code and consistency fixes.
-9. **The prose pass**, covering the style items, the missing explanations, and the Module 1 relationship.
+1. **M2-1**, the dimension mismatch and missing artifact contract. The artifact half is complete and committed: the index is rebuilt at 1024 dimensions from the graph's chunk vectors, the metric is settled, and the manifest, rebuild script, vector checksum, fixed source, and tests are in place. The notebook-side validator and error-handling work remain open.
+2. **Phase 1.5**, the empirical comparison gate. Run 1 is complete and its conclusions are retracted: the vector arm received an anti-fabrication instruction the graph arm did not, and the judge used the graph's own extraction output as ground truth. Run 2 corrects both, removes the graph tool's row caps, adds traversal questions, and raises the trial and judge-sample counts. The module title stays undecided until run 2 lands. See the Phase 1.5 section for the full defect list.
+3. **M2-2 and M2-2a**, the hidden truncation and invalid Paris aggregation example. Pass complete documents and use the five-hotel Orlando set so `k=3` is provably incomplete.
+4. **M2-3, M2-4, M2-5, M2-6**, the four environment and configuration bugs. All are small, all are already solved correctly in Module 1, and all can be done in one pass.
+5. **M1-1**, the one-line cleanup fix in Module 1's optional demo.
+6. **M2-7 and M2-2b**, tests 3 and 2. Replace Cairo with the verified Chicago comparison, add its lite-build selection and its reporting readiness cell, and give the pool count its source-derived answer of 175.
+7. **M2-13**, test 4 and test status. Reframe it around observable retrieval behaviour, retain all four tests, and mark Tests 2 and 4 optional in the learner path.
+8. **M2-8**, the two images. Authored from scratch as `.drawio` sources by their own owner and exported into both image trees. Required before any live delivery.
+9. **M2-14, M2-15, M2-16, M2-17, M2-18**, the remaining code and consistency fixes.
+10. **The prose pass**, covering the style items, the missing explanations, and the Module 1 relationship.
 
 The single highest-value change is rebuilding the FAISS baseline with an explicit compatibility contract. Build it from the chunk vectors the graph already holds: that costs nothing, it is repeatable, and it puts both arms on one embedding space, which is the comparison the module is trying to make. It restores every demonstration without collapsing Module 2 into Module 3. The next highest-value change is replacing Paris with Orlando: a working index is not enough if the headline example can retrieve the complete qualifying set and answer correctly.
 
@@ -346,6 +347,7 @@ Restore Module 2 as a reliable comparison between standalone FAISS document retr
 - Tests 1 and 3 are the core learner path. Tests 2 and 4 remain in the notebook as optional exercises.
 - All four tests remain in automated execution coverage even when some are optional for learners.
 - The raw retrieval result is the deterministic evidence. The LLM answer is an observed outcome and is not used as the sole pass condition.
+- "Vector RAG Hallucinates" is a hypothesis until Phase 1.5 measures the repaired baseline. The title and learner-facing claims may change based on that evidence.
 - Existing unrelated working-tree changes are preserved.
 
 ### Risks
@@ -356,13 +358,15 @@ Restore Module 2 as a reliable comparison between standalone FAISS document retr
 - The corpus carries 125 explicit "not available" amenity sections. LLM extraction can turn a negation into a positive amenity, which silently breaks any test that depends on a hotel being excluded.
 - Full documents increase the model context compared with the current 500-character previews. Token usage and context limits must be measured after truncation is removed.
 - LLM wording remains stochastic. Assertions about exact model prose will be brittle.
+- Phase 1.5 requires repeated, cost-bearing Bedrock calls. Its report must record the model, region, artifact checksum, graph state, run time, and trial count so later runs can explain different outcomes.
 - The repository already contains unrelated uncommitted notebook and content edits, so each worker needs exclusive file ownership and a narrow patch.
 
 ### Parallel execution model
 
 Use at most three worker agents at a time alongside the coordinating agent. Work proceeds in waves so tasks with stable interfaces run together and content work waits for the final queries and outputs.
 
-- **Artifact agent, active:** Owns the FAISS rebuild script, `faqs_vector.index`, `faqs_vector.manifest.json`, and focused artifact-contract tests. It is completing the two integrity fields added in the refined plan. It does not edit `defects.md`, the Module 2 notebook, or learner content.
+- **Artifact agent, complete:** Delivered the FAISS rebuild script, `faqs_vector.index`, `faqs_vector.manifest.json`, shared loader and query normalization, and focused artifact-contract tests. It did not edit the Module 2 notebook or learner content.
+- **Evaluation agent, complete:** Delivered `setup/phase15/`, holding the comparison harness, the deterministic reference-fact module, the report generator, the raw evidence, and the findings. It edited no notebook, learner content, fixture, or diagram.
 - **Notebook agent, pending:** Owns the Module 2 notebook runtime: environment loading, pinned model, shared Neo4j connection helpers, manifest validation at load, complete document delivery, visible retrieval evidence, fresh agents per test, and exception handling. It must not rebuild or replace the committed FAISS artifacts.
 - **Fixture agent, pending:** Owns `graph_config.py`, the lite-build selection, the readiness cells, and their tests. Its job is to make the five rated Orlando hotels and the filtering Chicago pair present in the full build and reported in any build, not to gate the notebook on an extraction it cannot control. It does not edit the notebook or images.
 - **Content agent, pending:** Starts after the Orlando and Chicago contracts are stable. Owns the Module 2 README and the workshop page. It does not write the notebook, and it does not draw the diagrams.
@@ -373,9 +377,9 @@ Use at most three worker agents at a time alongside the coordinating agent. Work
 
 ### Phase 1: Rebuild and contract the FAISS artifact
 
-**Status: In progress, final integrity fields and artifact commit remain**
+**Status: Complete**
 
-`notebooks/workshop/faiss_artifacts.py`, `notebooks/02-vector-rag-hallucinates/rebuild_faiss_index.py`, `faqs_vector.manifest.json`, `setup/test_faiss_artifacts.py`, and `setup/test_rebuild_faiss_index.py` all exist, and `faqs_vector.index` has been rebuilt in place. Verified: `IndexFlatIP`, `d` 1024, `ntotal` 300, vector norms exactly 1.0, manifest checksum matching the corpus, 13 tests passing. The artifact agent is now adding `vectors_sha256`, the fixed graph `vector_source`, and their negative tests. Committing the artifacts remains separate.
+`notebooks/workshop/faiss_artifacts.py`, `notebooks/02-vector-rag-hallucinates/rebuild_faiss_index.py`, `faqs_vector.manifest.json`, `setup/test_faiss_artifacts.py`, and `setup/test_rebuild_faiss_index.py` are committed with the rebuilt `faqs_vector.index`. Verified: `IndexFlatIP`, `d` 1024, `ntotal` 300, vector norms within floating-point tolerance of 1.0, manifest and vector checksums matching, fixed Aura provenance, 16 tests passing, and Ruff clean.
 
 **Outcome:** A reproducible 1024-dimension FAISS artifact that fails loudly when its model, purpose, metric, corpus, ordering, vector bytes, or dimensions drift.
 
@@ -387,14 +391,244 @@ Use at most three worker agents at a time alongside the coordinating agent. Work
 - [x] Add the manifest dataclass, the corpus checksum, and a loader that validates the contract fields, `index.d`, `index.ntotal`, and the document count.
 - [x] Add negative tests that prove each mismatch produces a descriptive failure.
 - [x] Extend the manifest and the validator with `faiss_metric` and `vector_normalization`, and add their negative tests.
-- [ ] Extend them with `vectors_sha256` and the fixed graph `vector_source`, and add those negative tests. The seven fields present today are all shape and provenance labels; nothing yet detects a corrupted vector body whose `d` and `ntotal` still read correctly.
+- [x] Extend them with `vectors_sha256` and the fixed graph `vector_source`, and add negative tests that reject source drift and same-shape vector-content tampering.
 - [x] Rebuild `faqs_vector.index` at 1024 dimensions.
-- [ ] Commit the rebuilt `faqs_vector.index` and `faqs_vector.manifest.json`. Both are currently uncommitted working-tree changes.
+- [x] Commit the rebuilt `faqs_vector.index` and `faqs_vector.manifest.json`.
 - [x] Run the artifact tests and record the rebuilt index size, vector count, dimension, and metric.
 
 **Validation:** The index loads as 1024-dimensional with 300 vectors at the recorded metric; the manifest matches the shared contract, the exact corpus bytes, and the vectors actually stored; deliberately altered test fixtures fail for the expected reason; a vector-byte corruption that leaves `d` and `ntotal` intact is still rejected.
 
 **Notes:** The graph export removes the cost and throttling exposure of a 300-call rebuild. Aura access and a complete graph are facilitator-side artifact-build prerequisites; participants still use the committed FAISS artifact without Aura access on the vector arm.
+
+### Phase 1.5: Test the repaired FAISS baseline against Neo4j
+
+**Status: Run 1 complete and retracted. Run 2 complete with one grading defect. Gate
+decision recorded below.**
+
+Run 2 ran 2026-08-21 as six parallel slices, one per question, each covering both arms and
+both prompt conditions at 10 trials per cell. That is 240 trials and 720 judge calls. All
+six slices exited cleanly and every cell holds exactly 10 trials. Run 2's factuality
+labels are usable. Its grounding labels are not, for the reason given under Defect E.
+
+#### Run 1, 2026-08-21: retracted
+
+Run 1 executed 48 fresh-agent trials, 6 per question per arm, against
+`us.anthropic.claude-sonnet-5` in `us-east-1` and the staging Aura instance. No tool
+error was swallowed and every trial's raw evidence was saved. The run reported that the
+vector arm produced zero fabrications and concluded that the module title was refuted.
+
+**That conclusion is withdrawn.** The judged comparison carries four design defects, and
+the first one alone can produce the observed result. The raw evidence is kept at
+`setup/phase15/evidence/phase15-merged.json` and the tables at
+`setup/phase15/PHASE-1.5-REPORT.md`, because the deterministic measurements in them
+remain valid. The conclusions in `setup/phase15/PHASE-1.5-FINDINGS.md` do not.
+
+**The scoreboard also does not say what the run 1 summary said.** On the judge's own
+labels the graph arm scored 24 correct out of 24 and the vector arm scored 15 correct, 8
+partial, and 1 incorrect. The graph arm won every question. The claim that "the graph arm
+is confidently wrong on pool counting" was an analyst's reading laid over the data using
+the source count of 175, and it was not a result the harness produced. The judge scored
+all six of those graph answers `correct` and `grounded`.
+
+**Defect A, the vector arm received an anti-fabrication instruction that the graph arm
+did not.** The notebook's prompt is "You are a travel agent. Use vector search to find
+relevant FAQ information." The harness used that plus one added sentence, "Base your
+answer on what the search returns." The graph arm received the notebook's prompt nearly
+verbatim. The added sentence is the exact intervention that converts fabrication into
+hedging, so the headline finding was measured under a treatment the module does not
+apply and the other arm did not get. This confound alone can explain the entire result.
+
+**Defect B, the graph's own output was used as ground truth for both arms.** The judge
+received `source` facts and `graph` facts together and settled on the graph value in
+every case. Its rationales grading the *vector* arm read "the true count is 168 hotels
+with pools," where 168 is what extraction produced and 175 is what the corpus says. The
+graph was therefore graded against itself, and the vector arm was penalised for failing
+to reach a number the corpus does not contain. This is a pro-graph bias in the rubric,
+and it means the harness never tested the 175 against 168 question that run 1 reported on.
+
+**Defect C, truncation was removed from one arm and left in the other.** The vector tool
+returned complete document text, which is the M2-1 repair. The graph tool still capped
+its returned text at 15 rows and its recorded evidence at 50. Fifteen graph calls
+exceeded the display cap, including seven Chicago calls returning 23 to 50 or more rows.
+The judge saw complete evidence for the vector arm and truncated evidence for the graph
+arm.
+
+**Defect D, no question in the set is one a graph is expected to win.** The four
+questions cover aggregation, counting, conjunction, and no-match. None requires
+traversal, a path, or a relationship-mediated join. The module is sold on multi-hop
+reasoning and run 1 never tested multi-hop.
+
+Two further limits are weaker but real. Six trials per cell puts a 95 percent interval of
+roughly 15 to 85 percent around the 3-of-6 Orlando result. The judge was a single sample
+from the same model family as the agents, with no self-consistency check and no human
+adjudication.
+
+**What survives from run 1.** These measurements involve no model and no judge, so the
+defects above do not reach them.
+
+- Orlando's five qualifying documents cannot fit inside a `k=3` window. Computed from the
+  committed index.
+- The graph agent wrote off-schema tokens against a docstring stating the correct schema:
+  `LOCATED_IN` 24 times, `City` 20, `HAS_AMENITY` 13, `rating` 13, and `guestRating` 6,
+  across 121 tool calls of which 26 percent returned zero rows. M2-17 is confirmed. The
+  M2-8 architecture diagram draws the same `City` node and the same `h.rating`, so the
+  diagram matches the model's wrong prior rather than the graph.
+- The source count of 175 pool hotels reconciles exactly to the graph's 168. Four
+  pool-listing documents produced no `Hotel` node, four pool hotels are each shared across
+  two documents by entity resolution, and `hotel-austin-001.txt` had its "Pool facilities
+  are not available" negation minted into a `Pool` amenity. That last one is M2-7's hazard
+  observed live. Per document the extraction is right 295 times out of 296. This is a
+  Module 1 extraction finding and it stands on its own, but it is not a Module 2
+  comparison finding and run 1 wrongly presented it as one.
+- The vector arm was cheaper than the graph arm on three of four questions, with a largest
+  mean of 43,345 total tokens. Complete documents caused no context problem. The module
+  must not claim the graph arm is cheaper.
+
+Run 1 settles no question about hallucination, and it settles no question about which arm
+is better. Both remain open until run 2.
+
+#### Run 2: what changes
+
+1. **Both arms use the notebook's exact system prompts.** A second condition adds the
+   grounding instruction to *both* arms, so the prompt effect is measured as a variable
+   instead of confounded into one arm.
+2. **The judge grades against source facts only.** The graph's extraction gap is reported
+   as a separate deterministic finding and is never used as the reference answer.
+3. **The graph tool's 15-row and 50-row caps are removed**, so neither arm's evidence is
+   truncated relative to the other.
+4. **Two traversal questions are added**, so the graph arm is given a question of the kind
+   it is supposed to win.
+5. **Ten trials per cell, and three judge samples per answer scored by majority vote.**
+
+#### Run 2, 2026-08-21: results
+
+Evidence is at `setup/phase15/evidence/run2/phase15-run2-merged.json` and the tables are
+at `setup/phase15/PHASE-1.5-REPORT-RUN2.md`.
+
+**Factuality under the notebook prompt, as `correct / partial / incorrect` out of 10.**
+
+| Question | Vector | Graph |
+| --- | --- | --- |
+| Orlando aggregation | 0 / 10 / 0 | 10 / 0 / 0 |
+| Pool counting | 0 / 10 / 0 | 0 / 8 / 2 |
+| Chicago multiple criteria | 10 / 0 / 0 | 10 / 0 / 0 |
+| Antarctica no match | 10 / 0 / 0 | 10 / 0 / 0 |
+| Chicago shared amenities, bounded traversal | 9 / 0 / 1 | 4 / 6 / 0 |
+| Suite under $600 with a spa, traversal at scale | 0 / 3 / 7 | 0 / 10 / 0 |
+| **Total across 60 trials per arm** | **29 / 23 / 8** | **34 / 24 / 2** |
+
+Adding the grounding sentence to both arms moves almost nothing. The vector arm goes to
+31 / 20 / 7 with 2 unscored, and the graph arm goes to 33 / 26 / 1.
+
+**Defect E, the judge's evidence budget silently truncated the grounding axis.** Fix 3
+removed the row caps from the graph tool, and `JUDGE_EVIDENCE_BUDGET` then reintroduced
+truncation one layer later at 40,000 characters. All 18 `fabricated` labels in the run
+fall on trials whose evidence exceeded that budget. Not one of the 153 trials the judge
+saw in full drew a `fabricated` label, in either arm. The rationales show the mechanism
+directly rather than merely correlating with it. On `suite_and_spa` graph trial 3 the
+judge wrote that "the actual tool query returned an empty result set", when the agent's
+seventh Cypher call returned 77 rows and the evidence was cut 15,500 characters short of
+reaching it. The grounding axis therefore measures what the grader was shown rather than
+what the agent did. Fabrication is unmeasured in run 2. It is not disproven.
+
+**The factuality axis survives Defect E.** Reference facts come from the source corpus,
+they are small, and they sit at the top of the grader prompt ahead of any truncation. Fix
+2 keeps the graph's extraction output out of the reference. The factuality table above
+stands.
+
+**What run 2 establishes.**
+
+- **The vector arm's dominant failure is missing evidence, not invention.** Under the
+  notebook prompt it returned `insufficient` on 24 of 60 trials against the graph arm's 4.
+  On Orlando and on pool counting it was `partial` on all 20 trials, because `k=3` cannot
+  supply the qualifying set.
+- **The vector arm does state confidently wrong counts on traversal at scale.** On the
+  suite-and-spa question it was `incorrect` on 7 of 10 notebook trials, answering "3
+  hotels" or "4 hotels" against a source truth of 78. This is graded against source facts
+  and no truncation reaches it. It is the strongest un-confounded result in the run.
+- **Defect A was not the explanation for run 1's zero fabrications.** Removing the
+  asymmetric instruction changed the vector arm's labels very little. Run 1's result came
+  from its question set rather than from its prompt.
+- **Two of the module's four original questions no longer separate the arms.** Chicago
+  multiple criteria is 10 correct out of 10 for both arms under both conditions. Antarctica
+  is 10 correct out of 10 for both arms under both conditions. Neither can carry a
+  learner-facing contrast.
+- **The graph arm loses the bounded traversal question.** On Chicago shared amenities it
+  was `correct` on 4 of 10 against the vector arm's 9 of 10. Entity resolution split `WiFi`
+  from `Complimentary High-Speed WiFi` into two `Amenity` nodes and hid a shared amenity
+  that the raw document text states plainly. This is a Module 1 extraction defect
+  surfacing as a Module 2 comparison result.
+- **The graph arm costs more.** It averaged 41,956 total tokens and 5.5 tool calls against
+  the vector arm's 16,311 and 1.7 under the notebook prompt. The module must not claim the
+  graph arm is cheaper.
+- **The graph arm answers Antarctica from model memory.** It drew `unsupported_correct` on
+  6 of 10 notebook trials and 8 of 10 grounded trials, and the vector arm never did. Both
+  arms reach the right answer, and the graph arm reaches it without evidence.
+
+**Four smaller harness defects, all found while reading run 2's output.**
+
+1. The grader's JSON parse requires the entire response to be JSON, so a preamble sentence
+   produces an `unscored` trial. This cost 2 trials in the suite-and-spa vector grounded
+   cell.
+2. The recorded `rationale` always comes from judge sample 0, which disagreed with the
+   majority grounding label on 22 of 240 trials. The report prints rationales that
+   contradict the label sitting beside them.
+3. Three `fabricated` labels won on a plurality of one. All three judge samples disagreed
+   and `most_common` broke the tie arbitrarily.
+4. `report.py` divides the trial count by questions and arms only, so it reports "20 per
+   question per arm" when the real cell size is 10 per question per arm per condition.
+
+**Gate result: the module title is not supported, and the rename is not yet safe to
+finalize.** The factuality evidence refutes "Vector RAG Hallucinates" as a description of
+what the repaired baseline does. The vector arm's failures are missing evidence and
+undercounting, and both are retrieval-limit failures rather than invention. That supports
+renaming the module around incomplete top-k evidence and retrieval limits. The decision is
+held one step short of final because Defect E leaves hallucination unmeasured, so the
+rename must not be justified by a claim that the vector arm never fabricates. Rescoring
+run 2's saved evidence with the judge budget removed will settle it, and that needs no new
+agent trials. Phase 3 and Phase 4 stay blocked on the rescore.
+
+**Outcome:** An evidence report that determines whether the repaired Module 2 comparison actually demonstrates hallucination, merely demonstrates incomplete top-k evidence, or produces different outcomes across runs. Phase 2 must use this result rather than preserving the module title and claims by assumption.
+
+**Definitions:**
+
+- **Grounded and correct:** Every material claim follows from the tool evidence and agrees with the applicable source or graph result.
+- **Correct but unsupported:** A claim happens to be factually correct but is not supported by the retrieved documents or graph result.
+- **Insufficient-evidence response:** The model declines, qualifies its answer, or states that the retrieved evidence cannot establish the requested corpus-wide result.
+- **Incorrect or fabricated:** The answer conflicts with the evidence or introduces unsupported specific hotels, values, amenities, or counts.
+
+The report must score factual correctness and grounding separately. A correct statement about Antarctica from model memory is unsupported by the hotel corpus, but it is not the same failure as inventing a hotel or a numeric result.
+
+**Checklist:**
+
+- [x] Build a standalone comparison harness that uses the committed manifest-validated FAISS artifact, normalized query vectors, the pinned workshop model, shared AWS and Neo4j configuration, and read-only database sessions.
+- [x] Keep the harness independent of the current Module 2 notebook so the notebook's known loading, truncation, model, history, and exception-handling defects cannot contaminate the result.
+- [x] Run the intended four questions: Orlando aggregation, pool counting, Chicago multiple criteria, and Antarctica no-match handling.
+- [x] Record the raw FAISS filenames, cosine-equivalent scores, and complete document text before every vector-agent answer.
+- [x] Record the generated Cypher, raw Neo4j result, and final graph-agent answer for the same question.
+- [x] Establish deterministic reference facts from the source documents and from Neo4j separately. Do not call a graph aggregate the corpus ground truth when extraction omitted or misclassified a source fact.
+- [x] For Orlando, verify that the source and graph each contain five rated hotels, that the reference mean is 4.62, and that `k=3` cannot supply the complete qualifying set.
+- [x] For pool counting, report the source-derived count of 175 and the Neo4j count separately, then explain any extraction gap before comparing either agent answer.
+- [x] For Chicago, verify the source documents and live graph candidate set, matching set, and exclusions before judging either answer.
+- [x] For Antarctica, verify that FAISS still returns three nearest documents and Neo4j returns no matching hotel, then distinguish refusal, unsupported outside knowledge, and fabrication in the final answers.
+- [x] Use fresh agents for every invocation and run at least three independent trials per question and retrieval arm so one stochastic response does not decide the module's claim.
+- [x] Capture per-trial token usage, tool calls, retrieved evidence, final answer, factual-correctness label, grounding label, and concise rationale.
+- [x] Summarize results by question and retrieval arm, including how often the vector agent was grounded, insufficient, unsupported-but-correct, or incorrect/fabricated.
+- [x] Give both arms the notebook's own system prompt, and measure any added grounding instruction as a condition applied to both arms rather than to one.
+- [x] Grade every answer against source-derived facts, and report the graph extraction gap separately instead of using a graph aggregate as the reference answer.
+- [x] Remove the graph tool's row caps so neither arm's evidence is truncated relative to the other.
+- [x] Add traversal questions that a knowledge graph is expected to answer better than top-k retrieval.
+- [x] Run at least ten trials per cell and take three judge samples per answer, scoring by majority vote.
+- [ ] Remove or raise `JUDGE_EVIDENCE_BUDGET` above the largest trial's evidence, then rescore run 2's saved evidence so the grounding axis measures the agent rather than the grader's window. No new agent trials are needed.
+- [ ] Parse the grader's JSON out of a response that carries surrounding prose, so a preamble sentence does not produce an `unscored` trial.
+- [ ] Record a rationale from a judge sample that agrees with the majority label, and record the vote margin beside every label.
+- [ ] Replace or drop the Chicago multiple-criteria and Antarctica questions, because neither separates the arms at 10 trials per cell under either prompt condition.
+- [ ] Correct `report.py`'s per-cell divisor, which ignores the prompt-condition axis and overstates cell size by a factor of two.
+- [ ] Decide the learner-facing claim from the results: retain and qualify "Vector RAG Hallucinates" only if the repaired baseline reproducibly produces unsupported or incorrect answers; otherwise rename the module around incomplete top-k evidence and retrieval limits.
+
+**Validation, partially met.** Run 1 met the mechanical requirements. All 48 fresh-agent trials completed without a swallowed tool error, raw FAISS and Neo4j evidence is saved for every trial, deterministic source and graph reference facts are recorded, and every answer carries separate factuality and grounding labels. Run 1 did not meet the requirement that the comparison be fair between arms, so its labels cannot decide the module's claim. Run 2 met that requirement at the prompt layer and at the tool layer, and it failed it at the grading layer. Its factuality labels are usable and decide the module title. Its grounding labels are not usable and leave hallucination unmeasured. What remains is a rescore of run 2's saved evidence with the judge budget removed, which costs judge calls only.
+
+**Notes:** This phase makes cost-bearing Bedrock model and query-embedding calls and requires live Aura read access. Execute it deliberately and record the model ID, region, artifact checksum, graph counts, and run timestamp so the result can be reproduced. The phase is a gate: do not rewrite the notebook narrative, title, or diagrams until this evidence report is complete. Run 1 is retained as evidence of what a confounded comparison looks like, and its conclusions must not be cited. Run 2's grounding labels must not be cited either, for the reason given under Defect E.
 
 ### Phase 2: Repair notebook setup and retrieval execution
 
@@ -417,6 +651,8 @@ Use at most three worker agents at a time alongside the coordinating agent. Work
 - [ ] Restrict the Cypher tool to read operations and apply a query timeout.
 
 **Validation:** Setup fails on a mismatched artifact or database; a direct vector smoke query returns three complete documents; tool errors remain visible; repeated tests do not share history or token counters.
+
+**Notes:** Start this phase only after Phase 1.5 settles what the repaired comparison actually demonstrates. Implementation defects can be fixed independently, but learner-facing outcome claims must follow the evidence report.
 
 ### Phase 3: Make all four tests factually observable
 
@@ -489,6 +725,7 @@ Use at most three worker agents at a time alongside the coordinating agent. Work
 - Notebook, README, workshop page, diagrams, and executed results agree.
 - Both diagrams have committed `.drawio` sources and identical exports in both image trees.
 - The deterministic retrieval assertion, not a reading of the model's answer, is what proves the `k=3` limitation.
+- Phase 1.5 records raw evidence, gives both arms the same system prompt and the same evidence treatment, grades against source-derived facts, scores factuality separately from grounding, and determines whether the module title is supported.
 
 ---
 
@@ -500,7 +737,7 @@ no worker needs to repeat them:
 - All 300 `faqs_docs.json` entries are byte-identical to their `data/*.txt` file. The longest document is 7,442 characters, so nothing reaches the 8,000-character truncation in `_embed` and nothing splits at `CHUNK_SIZE` 12,000. Each document is therefore exactly one `Chunk` whose text is the whole document.
 - The originally committed `faqs_vector.index` was an `IndexFlatL2` with `d` 384 and `ntotal` 300, its 450 KB matching 384 x 4 x 300 exactly. That is the defect M2-1 describes.
 - The rebuilt `faqs_vector.index` in the working tree is an `IndexFlatIP` with `d` 1024 and `ntotal` 300. Its first vectors have norm exactly 1.0, so the export normalizes and the baseline now ranks by cosine, matching Neo4j's chunk index. `faqs_vector.manifest.json` records `faiss_metric` `inner_product` and `vector_normalization` `l2`, and its `corpus_sha256` matches the committed corpus bytes.
-- The 13 tests in `setup/test_faiss_artifacts.py` and `setup/test_rebuild_faiss_index.py` pass. The manifest carries seven fields; `vectors_sha256` and `vector_source` are not among them yet.
+- The 16 tests in `setup/test_faiss_artifacts.py` and `setup/test_rebuild_faiss_index.py` pass. The manifest carries all nine fields, including `vectors_sha256` and `vector_source`. One of the 16 loads the committed artifact itself rather than a synthetic fixture, so a stale or corrupted shipped index fails the suite instead of only failing at notebook runtime.
 - `BedrockEmbeddings` sends `EMBEDDING_MODEL_ID`, `EMBEDDING_PURPOSE`, and 1024 dimensions, the same three values the notebook's `_embed` sends.
 - Orlando has five documents, rated 4.7, 4.5, 4.6, 4.7, and 4.6. The mean is 4.62.
 - Chicago has two documents. Windward Mile Tower, rated 4.5, lists no pool and no spa, and its Pool section is a negation. Lakeview Horizon Suites, rated 4.4, has both.
@@ -515,7 +752,7 @@ no worker needs to repeat them:
 - **The pre-build state of the graph.** Module 1 and Module 6 have both already run on the Aura instance. The dump's own contents were inferred from the 287 hotels carrying `hotel_id` versus the 5 that do not, and from the 295-document claim on Module 1's page. A clean restore is needed to check the participant path from the start.
 - **Whether cell 19's empty-index message and cell 22's no-hotel message ever print.** Both indexes are already online and all five held-out documents are already loaded. Both code paths were shown to be reachable: four documents in the corpus produce no hotel at all, and the query correctly returns zero rows for them.
 - **The four-minute build time.** Checking it means running the extraction and spending Bedrock tokens.
-- **Whether the extraction turned any of the 125 pool negations into a `Pool` amenity.** This decides whether Test 2's graph count can match the source count of 175, and whether Windward Mile Tower is genuinely excluded on a lite build. It needs one Cypher query against a built graph.
-- **Whether the vector agent hallucinates once M2-1 is fixed.** The behaviour claims come from the committed executed notebooks, where the tool was already broken. This needs a live run to settle, and test 4's premise should be treated as unproven until then.
+- ~~**Whether the extraction turned any of the 125 pool negations into a `Pool` amenity.**~~ Settled in Phase 1.5 run 1, by deterministic measurement that the run's retraction does not affect. Exactly one did. `hotel-austin-001.txt` carries the negation and the graph gave it a `Pool` amenity anyway. Windward Mile Tower is genuinely excluded on the current build. The graph counts 168 hotels with a pool against the source's 175, and the gap is 4 pool-listing documents that produced no `Hotel` node, plus 4 pool hotels each shared across two documents, minus the one false positive.
+- **Whether the vector agent hallucinates once M2-1 is fixed.** Still open. Phase 1.5 run 1 reported zero fabrications across 24 trials, but its vector arm carried an added "base your answer on what the search returns" instruction that the graph arm did not, which is the exact intervention that turns fabrication into hedging. Run 2 measures this without the confound. Test 4's premise and the module title both stay undecided.
 - **Whether `global.anthropic.claude-sonnet-4-6` is granted in the workshop account.** M2-3 is a real divergence from the pinned model either way, but no Bedrock call was made to check the grant.
 - **The three arXiv links in the notebook's opening cell.** Outbound network was blocked, and a known-good control returned empty too, so nothing was proven. `2601.05214` is worth a manual check.

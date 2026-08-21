@@ -103,12 +103,11 @@ NOTEBOOKS_REGISTRY: tuple[Notebook, ...] = (
     Notebook("1", NOTEBOOKS / "01-build-graph" / "1.1_build_graph.ipynb"),
     Notebook(
         "2",
-        NOTEBOOKS / "02-vector-rag-hallucinates" / "2.1_vector_rag_hallucinates.ipynb",
+        NOTEBOOKS / "02-connected-context" / "2.1_connected_context.ipynb",
     ),
-    Notebook("3", NOTEBOOKS / "03-retrieval-patterns" / "3.1_retrieval_patterns.ipynb"),
     Notebook(
         "3",
-        NOTEBOOKS / "03-retrieval-patterns" / "3.2_grounded_booking_agent.ipynb",
+        NOTEBOOKS / "03-grounded-booking-agent" / "3.1_grounded_booking_agent.ipynb",
     ),
     Notebook(
         "4",

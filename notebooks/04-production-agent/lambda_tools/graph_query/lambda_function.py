@@ -3,7 +3,7 @@
 """Lambda entry point for the structured Gateway target.
 
 The retrieval itself is ``workshop.hybrid_retrieval.graph_query``, the same
-``Text2CypherRetriever`` pattern Module 3.1 compares in-process. Everything
+``Text2CypherRetriever`` pattern Module 2.1 compares in-process. Everything
 below is the Lambda boundary. The deployment package installs the shared
 ``workshop`` package rather than flat-copying its files, so this import
 resolves here exactly as it does in the notebook.

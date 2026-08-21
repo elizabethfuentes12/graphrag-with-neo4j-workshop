@@ -6,9 +6,9 @@
 [![Strands Agents](https://img.shields.io/badge/Strands_Agents-1.27+-00B4D8.svg?style=flat)](https://strandsagents.com)
 [![Workshop Studio](https://img.shields.io/badge/AWS-Workshop_Studio-FF9900.svg?style=flat&logo=amazon-aws)](https://workshops.aws)
 
-> AI agents that answer from memory hallucinate. Agents grounded in a knowledge graph answer only from what is actually there — and say nothing when it is not.
+> Semantic search finds relevant source text. Graph traversal turns that entry point into compact, connected evidence with explicit provenance.
 
-An AWS Workshop Studio workshop in six modules, teaching five skills: why vector RAG hallucinates on aggregation, counting, multi-hop, and out-of-domain queries; how to choose between the Vector, Hybrid, VectorCypher, and Text2Cypher retrievers; how to build a grounded agent that abstains honestly and enforces its rules atomically; how to deploy tools to Amazon Bedrock AgentCore Gateway and run the agent on AgentCore Runtime over IAM-authenticated MCP; and why explicit graph memory gives you auditability that managed memory cannot.
+An AWS Workshop Studio workshop in six modules. You build a hotel knowledge graph, compare semantic, exact-term, graph-enriched, and structured retrieval, apply a fixed retriever in a grounded booking agent, deploy its tools through Amazon Bedrock AgentCore, and add graph memory whose provenance you can inspect and correct.
 
 ---
 
@@ -16,12 +16,12 @@ An AWS Workshop Studio workshop in six modules, teaching five skills: why vector
 
 | Module | Notebooks | What You Build |
 |--------|-----------|----------------|
-| [01 — Build the Graph](./workshop-content/content/01-build-graph/) | `1.1_build_graph.ipynb` | Live extraction of five held-out hotel documents, pinned schema, both retrieval indexes |
-| [02 — Vector RAG Hallucinates](./workshop-content/content/02-vector-rag-hallucinates/) | `2.1_vector_rag_hallucinates.ipynb` | Two agents, four hallucination tests, token comparison |
-| [03 — Retrieval Patterns and the Grounded Booking Agent](./workshop-content/content/03-retrieval-patterns/) | `3.1_retrieval_patterns.ipynb` + `3.2_grounded_booking_agent.ipynb` | Four retrievers, decision table, grounded booking agent |
-| [04 — Production Agent with AgentCore](./workshop-content/content/04-production-agent/) | `4.1_agentcore_gateway.ipynb` + `4.2_agentcore_memory.ipynb` | Gateway Lambda tools, IAM-authenticated MCP, cross-session memory |
-| [05 — Deploy to AgentCore Runtime](./workshop-content/content/05-agentcore-deploy/) | `5.1_deploy.ipynb` | Containerized agent on AgentCore Runtime, one request correlated end to end |
-| [06 — Inspectable Neo4j Memory](./workshop-content/content/06-neo4j-memory/) | `6.1_neo4j_memory.ipynb` | Graph-backed preference storage with full provenance tracing |
+| [01: Build the Graph](./workshop-content/content/01-build-graph/) | `1.1_build_graph.ipynb` | Live extraction of five held-out hotel documents, pinned schema, both retrieval indexes |
+| [02: From Similarity Search to Connected Context](./workshop-content/content/02-connected-context/) | `2.1_connected_context.ipynb` | Semantic, exact-term, graph-enriched, and structured retrieval evidence |
+| [03: Build the Grounded Booking Agent](./workshop-content/content/03-grounded-booking-agent/) | `3.1_grounded_booking_agent.ipynb` | Grounded answers, abstention, and a protected reservation command |
+| [04: Production Agent with AgentCore](./workshop-content/content/04-production-agent/) | `4.1_agentcore_gateway.ipynb` + `4.2_agentcore_memory.ipynb` | Gateway Lambda tools, IAM-authenticated MCP, cross-session memory |
+| [05: Deploy to AgentCore Runtime](./workshop-content/content/05-agentcore-deploy/) | `5.1_deploy.ipynb` | Containerized agent on AgentCore Runtime, one request correlated end to end |
+| [06: Inspectable Neo4j Memory](./workshop-content/content/06-neo4j-memory/) | `6.1_neo4j_memory.ipynb` | Graph-backed preference storage with full provenance tracing |
 
 Each module folder under `notebooks/` carries its own `README.md`: an At a Glance summary, what the module proves, and what every file in the folder is for.
 
@@ -84,7 +84,7 @@ cd notebooks
 uv venv && uv pip install -r requirements.txt
 
 # 3. Build the graph the hosted environment restores from a dump
-uv run python 02-vector-rag-hallucinates/prepare_graph.py
+uv run python 02-connected-context/prepare_graph.py
 
 # 4. Run the modules in order
 uv run jupyter lab

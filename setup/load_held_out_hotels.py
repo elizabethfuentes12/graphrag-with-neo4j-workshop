@@ -40,7 +40,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 NOTEBOOKS = REPO_ROOT / "notebooks"
 MODULE_1 = NOTEBOOKS / "01-build-graph"
-MODULE_2 = NOTEBOOKS / "02-vector-rag-hallucinates"
+MODULE_2 = NOTEBOOKS / "02-connected-context"
 
 # Mirrors notebook cell 2's sys.path setup: the shared `workshop` package lives
 # at the `notebooks/` root, and `graph_builder.py`/`graph_config.py` live in

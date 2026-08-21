@@ -164,3 +164,22 @@ def test_wrong_faiss_metric_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(FaissArtifactError, match="must use inner product"):
         load_faiss_artifacts(index_path, corpus_path, manifest_path)
+
+
+MODULE_DIR = Path(__file__).resolve().parent.parent / "notebooks" / "02-connected-context"
+
+
+def test_committed_artifacts_satisfy_their_own_contract() -> None:
+    """The synthetic fixtures above prove the validator works. This proves the
+    artifact the workshop actually ships passes it, which is the thing a
+    participant loads."""
+    index, documents = load_faiss_artifacts(
+        MODULE_DIR / "faqs_vector.index",
+        MODULE_DIR / "faqs_docs.json",
+        MODULE_DIR / "faqs_vector.manifest.json",
+    )
+
+    assert index.d == EMBEDDING_DIMENSIONS
+    assert index.metric_type == faiss.METRIC_INNER_PRODUCT
+    assert index.ntotal == len(documents) == 300
+    assert len({document["filename"] for document in documents}) == 300

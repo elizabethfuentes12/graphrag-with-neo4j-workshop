@@ -31,7 +31,7 @@ HELD_OUT_DOCUMENTS: tuple[str, ...] = (
 # The corpus lives beside `prepare_graph.py`, the from-scratch rebuild path,
 # which needs all of it. Module 1 needs five documents and reads them from the
 # same archive rather than committing a second copy of the same bytes.
-CORPUS_ARCHIVE = Path("..") / "02-vector-rag-hallucinates" / "hotel-faqs.zip"
+CORPUS_ARCHIVE = Path("..") / "02-connected-context" / "hotel-faqs.zip"
 
 DATA_DIR = Path("data")
 

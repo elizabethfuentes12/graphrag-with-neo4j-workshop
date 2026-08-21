@@ -2,7 +2,7 @@
 
 # Module 5: Deploy to AgentCore Runtime
 
-The grounded booking agent from Module 3.2 runs in a notebook kernel on your laptop. Your local environment holds the Neo4j password, and your AWS credentials authorize the Bedrock calls. This module packages a deployment-oriented version of that agent in a container managed by Amazon Bedrock AgentCore Runtime. It reuses the retrieval code, grounding instructions, and reservation command. It also exposes the command as an agent tool and adds Runtime request handling.
+The grounded booking agent from Module 3.1 runs in a notebook kernel on your laptop. Your local environment holds the Neo4j password, and your AWS credentials authorize the Bedrock calls. This module packages a deployment-oriented version of that agent in a container managed by Amazon Bedrock AgentCore Runtime. It reuses the retrieval code, grounding instructions, and reservation command. It also exposes the command as an agent tool and adds Runtime request handling.
 
 **At a Glance**
 
@@ -25,7 +25,7 @@ The cells that create or invoke AWS resources check `DEPLOY_READY` first. They s
 
 ## Prerequisites
 
-- Module 3.2's grounded booking agent working end to end.
+- Module 3.1's grounded booking agent working end to end.
 - AWS credentials with permission to create an IAM role, an ECR repository, a CodeBuild project, and an AgentCore Runtime.
 - The same four `NEO4J_*` values every other module reads from `.env`.
 

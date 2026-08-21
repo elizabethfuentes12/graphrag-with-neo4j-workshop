@@ -15,7 +15,7 @@ from workshop.retrieval_contract import EMBEDDING_DIMENSIONS
 REBUILD_PATH = (
     Path(__file__).resolve().parent.parent
     / "notebooks"
-    / "02-vector-rag-hallucinates"
+    / "02-connected-context"
     / "rebuild_faiss_index.py"
 )
 SPEC = importlib.util.spec_from_file_location("rebuild_faiss_index", REBUILD_PATH)

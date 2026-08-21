@@ -101,8 +101,19 @@ def test_a_count_in_a_shared_module_comment_is_allowed(fake_repo: Path) -> None:
     assert check_repo.banned_patterns_absent() == []
 
 
-def test_a_retired_folder_name_is_caught(fake_repo: Path) -> None:
-    page(fake_repo, CLEAN_PAGE + "See [it](../02-graphrag-fixes-it/).")
+@pytest.mark.parametrize(
+    "retired_name",
+    [
+        "02-graphrag-fixes-it",
+        "02-vector-rag-hallucinates",
+        "03-retrieval-patterns",
+        "2.1_vector_rag_hallucinates.ipynb",
+        "3.1_retrieval_patterns.ipynb",
+        "3.2_grounded_booking_agent.ipynb",
+    ],
+)
+def test_a_retired_name_is_caught(fake_repo: Path, retired_name: str) -> None:
+    page(fake_repo, CLEAN_PAGE + f"See `{retired_name}`.")
     assert any("retired name" in problem for problem in check_repo.banned_patterns_absent())
 
 
@@ -151,7 +162,7 @@ def test_a_module_with_both_trees_is_accepted(fake_repo: Path) -> None:
 
 def test_two_pages_claiming_one_weight_are_caught(fake_repo: Path) -> None:
     page(fake_repo, CLEAN_PAGE)
-    page(fake_repo, CLEAN_PAGE, folder="02-vector-rag-hallucinates")
+    page(fake_repo, CLEAN_PAGE, folder="02-connected-context")
     assert check_repo.content_weights_unique() != []
 
 

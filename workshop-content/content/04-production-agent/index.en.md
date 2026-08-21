@@ -42,7 +42,7 @@ Module 4 packages two retrieval patterns behind a managed endpoint:
 | `search_hotel_knowledge` | `HybridCypherRetriever` | Semantic: rooms, amenities, policies, services |
 | `graph_query` | `Text2CypherRetriever` | Structured: counts, averages, filters, multi-hop |
 
-Both tools import from `notebooks/workshop/hybrid_retrieval.py`. `search_hotel_knowledge` reuses the function called by Module 3.2. `graph_query` packages the Text2Cypher pattern demonstrated in Module 3.1 as a reusable function. Each Lambda handler unwraps the event and calls one of these functions.
+Both tools import from `notebooks/workshop/hybrid_retrieval.py`. `search_hotel_knowledge` reuses the function called by Module 3.1. `graph_query` packages the Text2Cypher pattern demonstrated in Module 2.1 as a reusable function. Each Lambda handler unwraps the event and calls one of these functions.
 
 Both interfaces are intended for retrieval. `search_hotel_knowledge` runs reviewed static Cypher. `graph_query` plans model-generated Cypher with `EXPLAIN` and executes it only when the planner reports a read-only query. The reservation command remains outside the Gateway.
 

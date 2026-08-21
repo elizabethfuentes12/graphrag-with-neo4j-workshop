@@ -4,7 +4,7 @@
 
 Without a pinned schema `SimpleKGPipeline` lets the LLM invent a fresh set of
 labels for every chunk, so one document yields `Address` nodes and another
-yields `RoomType`/`BedConfiguration`. Module 3.2's retrieval tool promises the
+yields `RoomType`/`BedConfiguration`. Module 3.1's retrieval tool promises the
 agent a fixed contract, and the graph has to actually honour it.
 
 This module reads no environment and opens no client, so it is safe to import
@@ -135,4 +135,3 @@ OFF_SCHEMA_LABELS = (
     "Country",
     "Attraction",
 )
-

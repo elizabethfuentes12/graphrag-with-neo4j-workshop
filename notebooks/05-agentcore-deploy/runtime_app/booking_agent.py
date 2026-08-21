@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MIT-0
 """Module 5 AgentCore Runtime entry point.
 
-The same grounded booking agent Module 3.2 runs in a notebook kernel, with the
+The same grounded booking agent Module 3.1 runs in a notebook kernel, with the
 same two tools and the same rules, moved into a container that AgentCore
 Runtime starts. Nothing about how the agent reasons changes here. What changes
 is who holds the Neo4j credentials, where the model call originates, and
