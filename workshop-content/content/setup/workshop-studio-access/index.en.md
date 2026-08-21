@@ -62,39 +62,32 @@ uv venv && uv pip install -r requirements.txt
 
 ## Step 5: Verify Everything Works
 
+One command checks the interpreter, the installed packages, the Neo4j settings, the AWS credentials, the restored graph, and all three Bedrock models\:
+
 :::code{language=bash showCopyAction=true}
-uv run python - << 'EOF'
-import os, json, boto3
-from dotenv import load_dotenv
-load_dotenv()
-from neo4j import GraphDatabase
-
-# Neo4j
-driver = GraphDatabase.driver(os.getenv("NEO4J_URI"), auth=(os.getenv("NEO4J_USERNAME"), os.getenv("NEO4J_PASSWORD")))
-with driver.session() as s:
-    n = s.run("MATCH (h:Hotel) RETURN count(h) as n").single()["n"]
-print(f"✅ Neo4j: {n} hotels")
-driver.close()
-
-# Bedrock Nova 2 embeddings
-bedrock = boto3.client("bedrock-runtime", region_name="us-east-1")
-resp = bedrock.invoke_model(
-    modelId="amazon.nova-2-multimodal-embeddings-v1:0",
-    body=json.dumps({"taskType":"SINGLE_EMBEDDING","singleEmbeddingParams":{"embeddingPurpose":"GENERIC_INDEX","embeddingDimension":1024,"text":{"truncationMode":"END","value":"test"}}}),
-    contentType="application/json", accept="application/json")
-dims = len(json.loads(resp["body"].read())["embeddings"][0]["embedding"])
-print(f"✅ Bedrock Nova 2: {dims}-dim embeddings")
-EOF
+cd /Workshop/notebooks
+uv run python ../setup/verify_setup.py
 :::
 
 **Expected output\:**
-:::code{language=bash}
-✅ Neo4j: 296 hotels
-✅ Bedrock Nova 2: 1024-dim embeddings
+:::code{language=text}
+      loaded notebooks/.env
+ok    python interpreter is supported
+ok    workshop dependencies import
+ok    neo4j settings are present
+ok    aws credentials resolve
+ok    neo4j returns the hero hotel
+ok    bedrock chat model answers
+ok    bedrock chunk embeddings are 1024-wide
+ok    bedrock memory embeddings are 1024-wide
+
+Your environment is ready. Open the Module 1 notebook.
 :::
 
+Any line that is not `ok` names what failed and what to do about it. The [Setup](../) page lists the failures worth expanding on.
+
 :::alert{type="success" header="Ready"}
-Proceed to [Module 1](../../01-vectorial-rag-hallucinates/).
+Proceed to [Module 1](../../01-build-graph/).
 :::
 
 ---
@@ -102,7 +95,7 @@ Proceed to [Module 1](../../01-vectorial-rag-hallucinates/).
 ## Troubleshooting
 
 :::expand{header="Neo4j connection refused" defaultExpanded=false}
-The ECS Fargate task may still be starting (takes 2–3 minutes after stack creation). Wait 2 minutes and retry. You can check the task status in the ECS console under the workshop cluster.
+The ECS Fargate task may still be starting after stack creation. Wait for it to come up, then retry. You can check the task status in the ECS console under the workshop cluster.
 :::
 
 :::expand{header="Bedrock access denied" defaultExpanded=false}

@@ -7,7 +7,7 @@ weight: 2
 
 - AWS account with admin or PowerUser access in **us-east-1**
 - Bedrock model access enabled (step 1 below)
-- ~$2 budget for a 2-hour session
+- Roughly $2 of AWS spend for the resources this workshop creates
 
 ---
 
@@ -18,7 +18,7 @@ weight: 2
 3. Enable\:
    - **Amazon Nova 2 Multimodal Embeddings** (`amazon.nova-2-multimodal-embeddings-v1:0`)
    - **Claude Sonnet 4** (`us.anthropic.claude-sonnet-4-6`)
-4. Click **Save changes** (takes 1–2 minutes)
+4. Click **Save changes**
 
 ---
 
@@ -46,7 +46,7 @@ aws cloudformation create-stack \
   --region us-east-1
 :::
 
-Wait for completion (~8 minutes)\:
+Wait for completion\:
 
 :::code{language=bash showCopyAction=true}
 aws cloudformation wait stack-create-complete \
@@ -73,7 +73,9 @@ Note the values for\: `CodeEditorURL`, `Neo4jURI`, `Neo4jUser`, `Neo4jPassword`.
 
 1. Open **CodeEditorURL** in a browser
 2. Open a terminal (**Terminal → New Terminal**)
-3. Set environment variables and verify (same as [Workshop Studio path](../workshop-studio-access/), Step 3 onward)
+3. Set environment variables, install the dependencies, and run `setup/verify_setup.py` (same as [Workshop Studio path](../workshop-studio-access/), Step 3 onward)
+
+With every line of that script reporting `ok`, proceed to [Module 1](../../01-build-graph/).
 
 ---
 

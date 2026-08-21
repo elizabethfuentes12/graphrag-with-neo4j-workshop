@@ -23,6 +23,7 @@ from neo4j_graphrag.embeddings.base import Embedder
 from neo4j_graphrag.message_history import MessageHistory
 from neo4j_graphrag.types import LLMMessage
 
+from workshop.aws_region import aws_region
 from workshop.retrieval_contract import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL_ID,
@@ -35,7 +36,7 @@ from workshop.retrieval_contract import (
 # bound cannot govern a larger inner one: the timeout fires while the worker
 # thread keeps running underneath, because a thread cannot be cancelled.
 #
-# Adaptive mode is what makes a room of thirty simultaneous Lab 1 builds
+# Adaptive mode is what makes a room of thirty simultaneous Module 1 builds
 # survivable. It adds a client-side rate limiter that slows requests down when
 # Bedrock starts returning throttling errors, instead of every participant
 # retrying into the same per-region on-demand quota at full speed.
@@ -50,14 +51,18 @@ from workshop.retrieval_contract import (
 # trade being made here, throughput under throttling against a thread that can
 # outlive its document. Raise DOC_TIMEOUT_SECONDS or lower read_timeout if you
 # want the inner chain back inside the outer bound.
+#
+# The longer-term fix is swapping `asyncio.to_thread` for a `ProcessPoolExecutor`
+# future: a process can be terminated on timeout where a thread cannot, so
+# "timed out" would finally mean "stopped" instead of "abandoned but running."
 BEDROCK_CONFIG = Config(
     read_timeout=45, retries={"max_attempts": 5, "mode": "adaptive"}
 )
 
-# The one chat model the workshop runs on. Every lab that builds an agent or an
-# extraction LLM reads it from here rather than restating the literal, so a
+# The one chat model the workshop runs on. Every module that builds an agent or
+# an extraction LLM reads it from here rather than restating the literal, so a
 # participant who has enabled a different model in their region changes one
-# line. `MODEL_ID` overrides it for a lab that needs to.
+# line. `MODEL_ID` overrides it for a module that needs to.
 DEFAULT_MODEL_ID = "us.anthropic.claude-sonnet-5"
 
 
@@ -111,11 +116,11 @@ def _converse_messages(message_history) -> list[dict]:
 class BedrockEmbeddings(Embedder):
     """Amazon Bedrock embeddings using Nova 2 Multimodal Embeddings.
 
-    This is the only embedder in the workshop. Lab 1 writes chunk vectors with
-    it and Labs 2 onward embed their queries with it, which is what keeps the
-    write and read paths on one model, one purpose, and one width. A second
-    embedder class defined anywhere else would agree with this one only by
-    coincidence, and a disagreement returns wrong results with no error.
+    This is the only embedder in the workshop. Module 1 writes chunk vectors
+    with it and Modules 2 onward embed their queries with it, which is what
+    keeps the write and read paths on one model, one purpose, and one width. A
+    second embedder class defined anywhere else would agree with this one only
+    by coincidence, and a disagreement returns wrong results with no error.
     """
 
     def __init__(
@@ -128,14 +133,14 @@ class BedrockEmbeddings(Embedder):
     ):
         # The embedding model and its width are frozen contract constants, not
         # a preference, so unlike the chat model they take no environment
-        # override. Lab 1 writes the chunk vectors with these values and Labs 2
-        # onward query against them; an override would let the read path move
-        # while the stored vectors stayed put, which returns wrong results with
-        # no error.
+        # override. Module 1 writes the chunk vectors with these values and
+        # Modules 2 onward query against them; an override would let the read
+        # path move while the stored vectors stayed put, which returns wrong
+        # results with no error.
         # Resolve the region inside the body: an os.environ default argument is
         # evaluated once at import, before the caller can set AWS_REGION.
         if region_name is None:
-            region_name = os.environ.get("AWS_REGION", "us-east-1")
+            region_name = aws_region()
         self.model_id = model_id
         self.dimensions = dimensions
         # `bedrock_client` exists so a test can assert the request payload
@@ -175,11 +180,11 @@ class BedrockLLM(LLMInterface):
         # Resolve the region inside the body: an os.environ default argument is
         # evaluated once at import, before the caller can set AWS_REGION.
         if region_name is None:
-            region_name = os.environ.get("AWS_REGION", "us-east-1")
+            region_name = aws_region()
         # Same reason, and it is the whole point of the MODEL_ID override:
         # defaulting to the DEFAULT_MODEL_ID literal here would bind the model
-        # at import and leave Lab 1's extraction calls on the built-in one while
-        # every Strands agent in the tree honored the environment.
+        # at import and leave Module 1's extraction calls on the built-in one
+        # while every Strands agent in the tree honored the environment.
         self.model_id = model_id or default_model_id()
         self.client = boto3.client(
             "bedrock-runtime", region_name=region_name, config=BEDROCK_CONFIG

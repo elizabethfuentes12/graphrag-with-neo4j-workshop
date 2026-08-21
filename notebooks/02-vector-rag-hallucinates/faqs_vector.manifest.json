@@ -1,0 +1,11 @@
+{
+  "embedding_model_id": "amazon.nova-2-multimodal-embeddings-v1:0",
+  "embedding_dimensions": 1024,
+  "embedding_purpose": "GENERIC_INDEX",
+  "document_count": 300,
+  "corpus_sha256": "c16b35bf926933fcd365e7bf00015adcb0bf65ab0aef830ce0f9e268b59d5e6b",
+  "vectors_sha256": "df858e7313505b71a80142691c76d97e3029207179cbd9415116c18fbca1067f",
+  "vector_source": "neo4j-aura:Document<-[:FROM_DOCUMENT]-Chunk.embedding",
+  "faiss_metric": "inner_product",
+  "vector_normalization": "l2"
+}
