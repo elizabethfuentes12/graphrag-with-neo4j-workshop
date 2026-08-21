@@ -2,44 +2,58 @@
 
 # Module 4: Production Agent with AgentCore
 
-The booking agent from Module 3 runs entirely in-process: its tools are Python functions in the same kernel, and it forgets everything the moment the notebook restarts. This module moves the tools behind a managed MCP endpoint and gives the agent memory that outlives a session, without changing how the agent itself is written.
-
-**The mechanism, in one sentence: the agent code does not change when a tool stops being a function call and starts being a signed request.**
+The Module 3 booking agent calls Python tools in the same notebook kernel and
+keeps conversation state only for that session. This module deploys the
+retrieval tools behind a managed MCP endpoint and adds memory that persists
+across sessions. Strands passes both local functions and resolved MCP tools to
+the agent through its `tools` interface.
 
 **At a Glance**
-- **Failure it stops:** retrieval that only works on the machine that authored it, an API key pasted into a notebook, and an agent that has to be told the same thing in every session.
-- **Neo4j:** read-only, from inside Lambda. The Gateway is a read path and exposes no write.
+
+- **Problems addressed:** remote access to retrieval tools, IAM authentication, and cross-session memory.
+- **Neo4j:** The Lambda tools are intended for retrieval. The fixed search uses reviewed Cypher, while the Text2Cypher tool uses a planning guard to reject writes.
 - **AWS:** AgentCore Gateway, AWS Lambda, IAM SigV4, Secrets Manager for the Neo4j credential, and AgentCore Memory.
 - **You'll build:** Lambda functions under the `hotel-booking-*` prefix, one Gateway, the IAM roles under `workshop-*`, and one AgentCore Memory resource.
 
 ---
 
-## The two notebooks
+## The Two Notebooks
 
-| Notebook | What it proves |
+| Notebook | What it demonstrates |
 |---|---|
-| [`4.1_agentcore_gateway.ipynb`](4.1_agentcore_gateway.ipynb) | The same retrieval, reached over IAM-authenticated MCP, with no API key anywhere |
-| [`4.2_agentcore_memory.ipynb`](4.2_agentcore_memory.ipynb) | A preference stated in session one, recalled in session two by an agent with no history |
+| [`4.1_agentcore_gateway.ipynb`](4.1_agentcore_gateway.ipynb) | Deploy the shared search function and a reusable Text2Cypher function, then call both over IAM-authenticated MCP |
+| [`4.2_agentcore_memory.ipynb`](4.2_agentcore_memory.ipynb) | Store a preference in one session and recall it in another session with no conversation history |
 
 Run `4.1` first. `4.2` connects to the Gateway `4.1` created.
 
-## Part 1: the Gateway is a read path
+## Part 1: Deploy Retrieval Tools
 
-The Lambda functions expose retrieval patterns, not writes. That is a deliberate boundary: the reservation command from Module 3 stays where the transaction is, and nothing a model can reach through MCP can change hotel data.
+The Lambda functions expose retrieval interfaces. `search_hotel_knowledge` uses reviewed static Cypher. `graph_query` relies on the Text2Cypher planning guard to reject writes. The reservation command from Module 3 remains outside the Gateway. In production, connect both functions with a read-only Neo4j user for a database-enforced boundary.
 
-Authentication is IAM SigV4 through `mcp-proxy-for-aws`, which signs every request with the caller's own AWS credentials. There is no key to rotate, and no key to leak into a notebook output.
+`mcp-proxy-for-aws` authenticates with IAM SigV4 and signs each request with the
+caller's AWS credentials. This connection does not require an API key.
 
-:warning: Naming is dictated by the participant IAM policy, which scopes by ARN prefix. Lambda functions are `hotel-booking-*`, IAM roles are `workshop-*` or `AmazonBedrockAgentCoreSDK*`, and secrets are `workshop-*`, `neo4j-ws-*`, or `bedrock-agentcore-*`. A name outside its prefix works for whoever authored it under broader credentials and fails as `AccessDenied` for every participant.
+:warning: The participant IAM policy grants access by ARN prefix. Name Lambda
+functions `hotel-booking-*`, IAM roles `workshop-*` or
+`AmazonBedrockAgentCoreSDK*`, and secrets `workshop-*`, `neo4j-ws-*`, or
+`bedrock-agentcore-*`. Resources outside these prefixes return `AccessDenied`
+for participants whose permissions use the workshop policy.
 
-## Part 2: managed memory, and its cost
+## Part 2: Add Managed Memory
 
-AgentCore Memory runs two extraction strategies over the raw transcript: `SEMANTIC` for facts, `USER_PREFERENCE` for preferences. Both run asynchronously, so `4.2` waits for the extraction and then reads the records straight from the Memory service before opening a second session. Seeing what was extracted, and how long it took to appear, is the part that does not come across in a diagram.
+AgentCore Memory runs two extraction strategies over the raw transcript:
+`SEMANTIC` for facts and `USER_PREFERENCE` for preferences. Both run
+asynchronously. Notebook `4.2` waits for extraction and reads the records from
+the Memory service before opening another session. This shows both the
+extracted content and its processing delay.
 
-The second session shares the actor and carries no conversation history. There is no preferences tool on the Gateway, so a correct answer there can only have come from long-term memory.
+The second session uses the same actor ID but has no conversation history. The
+Gateway has no preferences tool, so the agent retrieves the room preference
+from long-term memory.
 
-What that costs is inspectability. The recalled preference arrives through a service API with no link back to the message that produced it or to the `Hotel` node it is about, and correcting a wrong one means deleting and re-extracting. Module 6 is the direct comparison.
+The recalled preference arrives through a service API without a link to its source message or the related `Hotel` node. This workshop does not provide an in-place editing workflow for managed memories. Module 6 demonstrates direct inspection and correction with Cypher.
 
-## Files in this folder
+## Files in This Folder
 
 | File | Purpose |
 |---|---|

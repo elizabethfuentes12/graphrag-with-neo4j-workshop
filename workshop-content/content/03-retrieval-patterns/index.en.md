@@ -3,50 +3,50 @@ title: "Module 3: Retrieval Patterns and the Grounded Booking Agent"
 weight: 40
 ---
 
-## Four Retrieval Patterns
+## Compare Four Retrieval Patterns
 
-This module covers four :link[Neo4j]{href="https://neo4j.com/" external=true} retrieval patterns that replace generic vector search with structured graph retrieval. Open `notebooks/03-retrieval-patterns/3.1_retrieval_patterns.ipynb` to explore each one.
+This module compares four :link[Neo4j]{href="https://neo4j.com/" external=true} retrieval patterns over the same hotel graph. Open `notebooks/03-retrieval-patterns/3.1_retrieval_patterns.ipynb` and run each pattern to see how it handles a different query shape.
 
 :image[Decision tree: which Neo4j retriever to choose based on query type]{src="../../images/02-retrieval-decision-tree.png" width=800}
 
 | Retriever | Best for |
 |-----------|----------|
-| `VectorRetriever` | Paraphrased / semantic questions |
+| `VectorRetriever` | Paraphrased or semantic questions |
 | `HybridRetriever` | Exact names and identifiers |
-| `VectorCypherRetriever` | Semantic entry + connected graph context |
+| `VectorCypherRetriever` | Semantic lookup with connected graph context |
 | `Text2CypherRetriever` | Counts and aggregations |
 
 ### Pattern 2: HybridRetriever
 
-With `alpha=0.2`, the retriever weights fulltext search at 80% and vector similarity at 20%. This configuration surfaces an exact identifier — a postal code — that ranks 12th under pure vector search. Try adjusting `alpha` to see how the balance changes the results.
+With `alpha=0.2`, the retriever weights full-text search at 80% and vector similarity at 20%. In historical validation of the deterministic lite sample, this configuration placed the postal code `60611` in the top five after pure vector search ranked its chunk 12th. Adjust `alpha` to see how the balance changes the results.
 
 :::alert{type="warning" header="Text2CypherRetriever in production"}
-It runs LLM-generated Cypher directly. Always route through a read-only gateway. Part 2 uses a fixed `HybridCypherRetriever` instead, so no model-generated Cypher reaches the write path.
+`Text2CypherRetriever` executes model-generated Cypher. In production, connect it with a read-only Neo4j user and expose it only through a retrieval interface. Part 2 keeps generated Cypher separate from the write path by using a fixed `HybridCypherRetriever` for retrieval.
 :::
 
 ---
 
-## Part 2 — Grounded Booking Agent
+## Part 2: Grounded Booking Agent
 
 Open `notebooks/03-retrieval-patterns/3.2_grounded_booking_agent.ipynb`.
 
 :image[Grounded agent architecture: Neo4j enforces retrieval, rules, and writes; Amazon Bedrock handles reasoning only]{src="../../images/03-grounded-agent-architecture.png" width=800}
 
-### Query 1: Hero question
+### Query 1: Retrieve Amenities and a Guest Rating
 
 > **"What amenities and guest rating does AnyCompany Cairo Nile View have?"**
 
-Run this query. The `HybridCypherRetriever` finds the hotel by name using full-text search, then traverses its graph relationships to return structured facts — the amenity list and exact guest rating from the graph, not a summarized description.
+Run this query. The `HybridCypherRetriever` uses full-text search to match the hotel name and vector search to match the requested meaning. It then traverses the graph relationships and returns structured facts, including the amenity list and exact guest rating.
 
 ### Query 2: Does the hotel guarantee availability next weekend?
 
 > **"Does AnyCompany Cairo Nile View guarantee room availability next weekend?"**
 
-Run this query. There is no `guaranteedAvailability` property in the graph — Neo4j holds hotel knowledge, not live inventory. The agent abstains instead of inferring an answer from document text.
+Run this query. The graph has no `guaranteedAvailability` property because Neo4j holds hotel knowledge while live inventory is outside its scope. The retrieved evidence cannot confirm availability, so the agent abstains.
 
-### 15-guest reservation → rejected
+### Reject a 15-guest reservation
 
-Submit a reservation for 15 guests (limit is 10)\:
+Submit a reservation for 15 guests. The maximum is 10\:
 
 :::code{language=json}
 {
@@ -56,11 +56,11 @@ Submit a reservation for 15 guests (limit is 10)\:
 }
 :::
 
-The rule check happens inside the same transaction as the potential write. Nothing is written to the graph.
+The rule check runs inside the write transaction and blocks the `CREATE` operation.
 
-### Same `request_id` replayed → `duplicate: true`
+### Safely Retry a Valid Request
 
-Re-submit the same reservation. Because the graph checks the `request_id` before writing, submitting the same request a second time creates no new node. The response returns `duplicate: true` and the original reservation remains unchanged.
+Submit a valid reservation with a new `request_id`, then submit the same valid payload again. The first call creates one node. The second call returns `duplicate: true` with the original `created_at`. The uniqueness constraint prevents another node.
 
 ## Next
 

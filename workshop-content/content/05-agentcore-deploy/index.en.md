@@ -3,31 +3,31 @@ title: "Module 5: Deploy to AgentCore Runtime"
 weight: 60
 ---
 
-## The Agent Leaves Your Laptop
+## Deploy the Agent to AgentCore Runtime
 
-The grounded booking agent from Module 3 works. It also runs in your Jupyter kernel, holds your Neo4j password in your shell environment, and answers questions only for as long as that kernel is alive. None of that survives contact with production.
+The grounded booking agent from Module 3 runs in a Jupyter kernel on your laptop. Your local environment holds the Neo4j password, and your AWS credentials authorize the Bedrock calls.
 
-:link[Amazon Bedrock AgentCore Runtime]{href="https://aws.amazon.com/bedrock/agentcore/" external=true} takes the same agent and holds it for you.
+In this module, you package a deployment-oriented version of the agent in a container managed by :link[Amazon Bedrock AgentCore Runtime]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}. It reuses the retrieval code, grounding instructions, and reservation command from Module 3.2. It also exposes the command as an agent tool and adds Runtime request handling.
 
 | Module 3.2 | Module 5.1 |
 |---|---|
 | Runs in your kernel | Runs in a container AgentCore starts |
 | Your laptop holds the Neo4j password | The Runtime holds it, injected at launch |
-| Reachable only from Jupyter | Reachable by `InvokeAgentRuntime` from anywhere |
-| Session is your kernel's memory | Each invocation isolated by session ID |
+| Reachable only from Jupyter | Invoked through `InvokeAgentRuntime` by authorized AWS clients |
+| Session is your kernel's memory | Each invocation uses a caller-provided session ID |
 
-What does **not** change is how the agent reasons. Same two tools, same grounding instructions, same refusal to answer what the graph cannot support.
+The deployment changes where the agent runs and how callers invoke it. Module 3.2 used one retrieval tool and called the reservation command directly in its write examples. Module 5 gives the deployed agent both operations as tools and preserves the grounding instructions that tell it to decline questions the graph cannot answer.
 
 ---
 
-## What Gets Deployed
+## Deploy the Agent
 
 Open `notebooks/05-agentcore-deploy/5.1_deploy.ipynb`.
 
 :::alert{type="warning" header="AWS resources created"}
-One IAM execution role, one ECR repository, one CodeBuild project, and one AgentCore Runtime. The container build takes three to five minutes.
+The notebook creates one IAM execution role, one ECR repository, one CodeBuild project, and one AgentCore Runtime. The container build takes three to five minutes.
 
-The Runtime, the ECR image, and the CodeBuild project keep accruing charges for as long as they exist, and nothing in this workshop deletes them. At an AWS Workshop Studio event the account is reclaimed for you when the event ends. If you are running this in your own account, remove those three, plus the IAM execution role, yourself when you are finished.
+Runtime use, ECR image storage, and CodeBuild builds can incur AWS charges. The workshop does not delete these resources automatically. At an AWS Workshop Studio event, the account is reclaimed when the event ends. If you use your own account, remove the Runtime, ECR repository, CodeBuild project, and IAM execution role when you finish.
 :::
 
 ```
@@ -45,54 +45,54 @@ InvokeAgentRuntime
 +------------------------------+
 ```
 
-Both tools run in-process against Neo4j. The maximum-guests rule stays where it has been since Module 3: in the graph, enforced inside the same transaction as the write. Moving the agent into a container does not move the rule, which is the whole reason this deployment is worth trusting.
+Both tools connect directly to Neo4j from the deployed process. Neo4j enforces the maximum-guests rule in the same transaction that writes a reservation request. The rule therefore applies to every write from the deployed agent.
 
 ---
 
-## The Build Context Problem
+## Prepare the Docker Build Context
 
-Docker copies only its build context. The agent needs two things that live elsewhere in the repository:
+Docker can copy files only from its build context. The agent depends on two files outside that context:
 
 - `notebooks/workshop/`, the package every module shares
 - `notebooks/03-retrieval-patterns/reservation_command.py`, the graph-enforced write path
 
-Step 2 of the notebook stages both into `runtime_app/` immediately before the build. The staged copies are gitignored and rewritten on every run, so one versioned copy of each stays the source of truth and an edit reaches the next build.
+Step 2 stages both dependencies in `runtime_app/` immediately before the build. Git ignores the staged copies, and the notebook replaces them on every run. The original files remain the source of truth for each build.
 
-Staging `workshop/` builds it as a wheel (`uv build --wheel`) rather than copying the source tree, and the same step writes a `BUILD_INFO.txt` recording the git commit and whether the tree was dirty at build time, so the image carries its own provenance instead of relying on a build log that does not survive into it.
+The staging step builds `workshop/` as a wheel with `uv build --wheel`. It also writes `BUILD_INFO.txt` with the current git commit and the working tree status. These details remain in the image and identify the source used for the build.
 
 ---
 
-## Five Smoke Tests
+## Run Five Smoke Tests
 
-The notebook invokes the deployed Runtime and asserts on structured tool verdicts rather than on the model's prose. A test that reads the response text passes when the model sounds right. A test that reads the verdict passes only when the graph agreed.
+The notebook invokes the deployed Runtime and checks the tools' structured results. These results show what retrieval and Neo4j decided. The tests also check selected response text to confirm that the model used the retrieved facts.
 
-| Test | What it proves |
+| Test | What it verifies |
 |---|---|
-| Hero question | The answer carries the exact recorded address, `789 Corniche el-Nil, Cairo 11519, Egypt` |
-| Hotel that does not exist | An ungrounded `hotel_id` never reaches the write, and nothing is recorded |
-| Availability question | `answerable` is false, `missing_fact` is `live_room_availability` |
-| 15-guest request | `status` is `rejected`, and the graph confirms no node was written |
-| 10-guest request, delivered twice | One node created, replay returns `duplicate=true`, still one node |
+| Hotel details | Retrieval returns the recorded address, `789 Corniche el-Nil, Cairo 11519, Egypt` |
+| Hotel that does not exist | The request is not accepted, and Neo4j records no request |
+| Availability question | The tool returns `answerable: false` and `missing_fact: live_room_availability` |
+| 15-guest request | Neo4j returns `status: rejected` and writes no node |
+| 10-guest request, delivered twice | The first call creates one node, and the retry returns `duplicate=true` without creating another |
 
-:::alert{type="info" header="Why the first test carries the others"}
-A refusal and a broken retriever produce the same silence. Point the vector index at nothing and every abstention test still passes, because abstaining is exactly what a dead index looks like from outside. The hero test is the control that separates them: it demands a specific value that only a working graph can supply, so the refusals below it mean the agent declined rather than that nothing was there. Every abstention in this notebook asserts a real retrieved fact alongside its refusal for the same reason.
+:::alert{type="info" header="Confirm retrieval before testing refusals"}
+A failed retriever can cause the agent to decline every question. The hotel-details test first requires a specific value from the graph, which confirms that retrieval works. The availability test then checks both the refusal and the retrieved fixture-hotel address. Together, these assertions show that the agent declined because live availability is missing, not because retrieval failed.
 :::
 
-:::alert{type="info" header="Why the last two matter most"}
-The rejection and the replay are the properties that make an agent safe to expose over an API. A caller can retry a request without creating a second reservation, and a model cannot talk its way past a limit that lives in the database.
+:::alert{type="info" header="Verify policy enforcement and safe retries"}
+Neo4j rejects requests above the guest limit inside the write transaction. The idempotency key lets callers retry the same request without creating a second reservation node. These controls apply independently of the model's response text.
 :::
 
 ---
 
-## Reading the Logs
+## Read the Runtime Logs
 
-Each invocation logs a start line, a completion line carrying the tools used and the command status, and nothing else. The `request_id` you pass in is the correlation key across all of them.
+Each successful invocation logs a start line and a completion line with the tools used and the command status. Use the caller-provided `request_id` to correlate log entries for reservation requests.
 
 :::code{language=bash showCopyAction=true}
 aws logs tail /aws/bedrock-agentcore/runtimes/<RUNTIME_ID>-DEFAULT --follow
 :::
 
-Failures log the exception type and never the message. A Neo4j driver error carries the connection URI, and sometimes the credential that failed, into a log group with broader read access than the `.env` it came from.
+The application's failure log records only the exception type, which keeps the exception message out of that log entry. The handler then raises the exception so AgentCore can report the invocation failure.
 
 ## Next
 

@@ -3,15 +3,15 @@ title: "Module 6: Inspectable Neo4j Memory"
 weight: 70
 ---
 
-## Why You Cannot Debug AgentCore Memory
+## Add Inspectable Memory with Neo4j
 
-:link[AgentCore Memory]{href="https://aws.amazon.com/bedrock/agentcore/" external=true} works. But when the extracted preference is wrong — "near the elevator" instead of "away from it" — you cannot find the source message, correct the record, or link it to the hotel the guest actually booked.
+:link[AgentCore Memory]{href="https://aws.amazon.com/bedrock/agentcore/" external=true} provides managed extraction and recall. Neo4j graph memory gives the application direct access to each stored preference, its source message, and the hotel it describes. You can inspect and correct a preference such as "near the elevator" when the guest asked to stay away from it.
 
-:image[AgentCore Memory vs Neo4j Memory: managed black-box extraction vs explicit graph provenance]{src="../../images/04-memory-comparison.png" width=800}
+:image[AgentCore Memory vs Neo4j Memory: managed extraction compared with explicit graph provenance]{src="../../images/04-memory-comparison.png" width=800}
 
 ---
 
-## Graph Memory Structure
+## Connect Each Preference to Its Source
 
 Open `notebooks/06-neo4j-memory/6.1_neo4j_memory.ipynb`.
 
@@ -20,17 +20,18 @@ Open `notebooks/06-neo4j-memory/6.1_neo4j_memory.ipynb`.
                                       ↘[:ABOUT_HOTEL]->(Hotel)
 ```
 
-Every preference is linked to the exact source message and the real `Hotel` node — not a name string.
+Every preference links to its exact source message and the existing `Hotel` node. The `ABOUT_HOTEL` relationship connects to domain data instead of storing only the hotel name.
 
 ---
 
-## What the Notebook Proves
+## Verify Recall and Provenance
 
-**Actor A — `SESSION_A2` (no history):** preference recalled ✅
+The notebook checks recall for two actors\:
 
-**Actor B — same query:** returns nothing ✅
+- Actor A starts `SESSION_A2` and asks a new question. The actor-scoped query recalls the preference stored during the earlier session.
+- Actor B asks the same question in a separate session. The actor-scoped query returns no preference.
 
-**Full audit trail in one Cypher query\:**
+The following Cypher query returns the complete provenance path\:
 
 :::code{language=cypher showCopyAction=true}
 CYPHER 25
@@ -43,7 +44,7 @@ RETURN u.identifier AS actor, p.preference AS preference, m.content AS source_me
        c.session_id AS source_session, h.name AS hotel
 :::
 
-To correct a wrong preference\: `SET p.preference = "high floor, away from elevator"`. No delete, no re-extract.
+Correct the preference directly with `SET p.preference = "high floor, away from elevator"`.
 
 ---
 
@@ -51,11 +52,11 @@ To correct a wrong preference\: `SET p.preference = "high floor, away from eleva
 
 | | :link[Neo4j]{href="https://neo4j.com/" external=true} | AgentCore |
 |---|---|---|
-| Write timing | Synchronous | Async — seconds to minutes |
+| Write timing | Synchronous | Asynchronous, from seconds to minutes |
 | Extraction | Explicit writes | LLM-driven |
-| Auditability | Full graph provenance | :link[Amazon CloudWatch]{href="https://aws.amazon.com/cloudwatch/" external=true} logs only |
-| Correction | `SET` | Delete + re-extract |
-| Domain link | `[:ABOUT_HOTEL]→Hotel` | Not possible |
+| Auditability | Full graph provenance | Memory API and :link[Amazon CloudWatch]{href="https://aws.amazon.com/cloudwatch/" external=true} operational logs, without a source-message link |
+| Correction | `SET` | No in-place workflow in this workshop |
+| Domain link | `[:ABOUT_HOTEL]→Hotel` | Separate from domain data |
 | Operations | You own it | AWS manages it |
 
 ## Next

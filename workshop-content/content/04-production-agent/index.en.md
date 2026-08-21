@@ -3,48 +3,59 @@ title: "Module 4: Production Agent with AgentCore"
 weight: 50
 ---
 
-## From Local to Production
+## Deploy the Agent Tools and Memory
 
-The booking agent from Module 3 runs entirely in-process. Three things break at production scale:
+The Module 3 booking agent calls tools in the notebook process and keeps state
+only for the current session. Module 4 adds three production capabilities:
 
 | Gap | Fix |
 |---|---|
-| Tools as in-process functions | :link[Bedrock AgentCore]{href="https://aws.amazon.com/bedrock/agentcore/" external=true} Gateway + :link[AWS Lambda]{href="https://aws.amazon.com/lambda/" external=true} — managed MCP endpoints |
-| No authentication | **IAM SigV4** — no API keys to manage |
-| Stateless between sessions | **AgentCore Memory** — cross-session fact and preference recall |
+| Tools as in-process functions | :link[Bedrock AgentCore]{href="https://aws.amazon.com/bedrock/agentcore/" external=true} Gateway and :link[AWS Lambda]{href="https://aws.amazon.com/lambda/" external=true}: managed MCP endpoints |
+| Tool authentication | **IAM SigV4**: requests signed with AWS credentials |
+| State limited to one session | **AgentCore Memory**: extracted records available across sessions |
 
-:image[AgentCore Gateway sits between the agent and the reservation tools; AgentCore Memory persists facts across sessions]{src="../../images/03-agentcore-architecture.png" width=800}
+:image[Module 4 architecture: a notebook agent uses AgentCore Memory and calls two Neo4j retrieval Lambdas through an IAM-authenticated Gateway]{src="../../images/03-agentcore-architecture.png" width=800}
 
 ---
 
-## Part 1 — Gateway and Retrieval Lambdas
+## Part 1: Deploy the Gateway and Retrieval Lambdas
 
 Open `notebooks/04-production-agent/4.1_agentcore_gateway.ipynb`.
 
 :::alert{type="warning" header="These resources stay until you delete them"}
-This part creates two Lambda functions (`hotel-booking-search-hotel-knowledge`, `hotel-booking-graph-query`), an AgentCore Gateway (`hotel-booking-gateway`) with one target per tool, a Secrets Manager secret (`neo4j-ws-retrieval`), and two IAM roles (`workshop-hotel-lambda-role`, `workshop-hotel-gateway-role`).
+This part creates two Lambda functions:
+`hotel-booking-search-hotel-knowledge` and `hotel-booking-graph-query`. It also
+creates the AgentCore Gateway `hotel-booking-gateway` with one target per tool,
+the Secrets Manager secret `neo4j-ws-retrieval`, and two IAM roles:
+`workshop-hotel-lambda-role` and `workshop-hotel-gateway-role`.
 
-The Gateway and the secret bill while they exist, and the Lambdas bill per invocation. Nothing here removes them for you. In a Workshop Studio account they disappear when the event ends; in your own account, delete them from the console or the CLI when you are finished.
+The Gateway and secret incur charges while they exist. The Lambdas incur
+charges per invocation. The notebook leaves these resources in place. Workshop
+Studio removes them when the event ends. In your own account, delete them from
+the console or CLI when you finish.
 :::
 
-The retrieval you ran in Module 3 does not change here. It moves behind a managed endpoint, and the same two functions run inside Lambda:
+Module 4 packages two retrieval patterns behind a managed endpoint:
 
 | Gateway tool | Retriever | Question shape |
 |---|---|---|
 | `search_hotel_knowledge` | `HybridCypherRetriever` | Semantic: rooms, amenities, policies, services |
 | `graph_query` | `Text2CypherRetriever` | Structured: counts, averages, filters, multi-hop |
 
-Both tools import from `notebooks/workshop/hybrid_retrieval.py`, the file Module 3 already ran. Each Lambda entry point is a wrapper that unwraps the event and calls one of them, so there is no second copy of retrieval to keep in step with the first.
+Both tools import from `notebooks/workshop/hybrid_retrieval.py`. `search_hotel_knowledge` reuses the function called by Module 3.2. `graph_query` packages the Text2Cypher pattern demonstrated in Module 3.1 as a reusable function. Each Lambda handler unwraps the event and calls one of these functions.
 
-**Neither tool writes.** The reservation write stays in the Module 3 notebook and is never exposed through the Gateway, so "the agent cannot change the graph" is a property of what is deployed rather than a promise in a prompt.
+Both interfaces are intended for retrieval. `search_hotel_knowledge` runs reviewed static Cypher. `graph_query` plans model-generated Cypher with `EXPLAIN` and executes it only when the planner reports a read-only query. The reservation command remains outside the Gateway.
 
-The Neo4j connection reaches the Lambdas through AWS Secrets Manager as `neo4j-ws-retrieval`, and the execution role `workshop-hotel-lambda-role` is allowed to read that one secret and invoke Bedrock models. Nothing else.
+AWS Secrets Manager provides the Neo4j connection to the Lambdas through
+`neo4j-ws-retrieval`. The `workshop-hotel-lambda-role` execution role can read
+that secret and invoke the required Bedrock models.
 
-:::alert{type="info" header="What a production deployment would change here"}
-These Lambdas connect with ordinary workshop credentials. In production this tool path would use a **read-only Neo4j role behind a read-only IAM policy**, because `graph_query` runs Cypher that a model generated rather than Cypher a human reviewed. `Text2CypherRetriever` plans every generated statement with `EXPLAIN` and refuses to execute anything the planner does not report as read-only, and the notebook proves that with a stub model that tries to write. A database-level read-only role is the control that still holds when the library is wrong.
+:::alert{type="info" header="Add production security controls"}
+These Lambdas connect with ordinary workshop credentials. In production, connect with a **read-only Neo4j user** so the database rejects writes independently. Restrict the Lambda IAM role to the required secret and Bedrock models. `Text2CypherRetriever` first plans each statement with `EXPLAIN` and executes it only when the planner reports a read-only query. The notebook tests this application guard with a stub model that generates a write.
 :::
 
-After deployment, the agent connects with one `uvx` command\:
+After deployment, configure an MCP client to connect through
+`mcp-proxy-for-aws`\:
 
 :::code{language=python showCopyAction=true}
 gateway_mcp = MCPClient(
@@ -58,25 +69,32 @@ with gateway_mcp:
     agent = Agent(tools=gateway_mcp.list_tools_sync(), ...)
 :::
 
-The proxy signs every request with your AWS credentials — nothing changes in the agent code.
+The proxy signs every request with your AWS credentials. Strands passes the
+resolved MCP tools to the agent through the same `tools` interface used for
+local functions.
 
-### Verifying a tool that is allowed to say "I don't know"
+### Verify Successful and Empty Results
 
-A grounded tool that returns nothing and a broken tool that returns nothing look identical. A dead index, a wrong index name, a bad credential, or a retriever pointed at the wrong database all produce an empty result, and an empty result reads as a correct refusal.
+A grounded tool returns no evidence when the graph cannot answer a question.
+A dead index, wrong index name, bad credential, or wrong database can produce
+the same empty result.
 
-So the notebook checks both tools in pairs: a **negative control**, where a hotel that does not exist produces no match, and a **positive control**, where a hotel that does exist returns one exact value — an address, and a guest rating. The positive control is the one that cannot pass against a dead index or an empty graph, which is why it is there.
+The notebook therefore runs two checks for each tool. A **negative control**
+confirms that a nonexistent hotel produces no match. A **positive control**
+confirms that an existing hotel returns an exact address or guest rating. The
+positive control verifies that retrieval can reach populated graph data.
 
 ---
 
-## Part 2 — AgentCore Memory
+## Part 2: Add AgentCore Memory
 
 Open `notebooks/04-production-agent/4.2_agentcore_memory.ipynb`.
 
 :::alert{type="warning" header="AWS resources created"}
-AgentCore Memory resource. Incurs charges until deleted.
+This notebook creates one AgentCore Memory resource. The resource can incur charges until you delete it.
 :::
 
-**Session 1** — a guest mentions name, loyalty number, and room preference.
+**Session 1:** A guest provides a name, loyalty number, and room preference.
 
 AgentCore extracts asynchronously. The notebook polls and shows what was extracted:
 
@@ -89,12 +107,16 @@ AgentCore extracts asynchronously. The notebook polls and shows what was extract
   • Loyalty number LY-88421
 :::
 
-Extraction is LLM-driven, so the exact record count and wording can vary between runs — the shape above is typical, not guaranteed.
+Extraction is LLM-driven, so the exact record count and wording can vary
+between runs. The output above shows a typical result.
 
-**Session 2** — brand-new `session_id`, same `actor_id`. The agent recalls the preferences without being told again.
+**Session 2:** The agent uses a new `session_id` and the same `actor_id`. It
+recalls the room preference without receiving it again.
 
-:::alert{type="info" header="The trade-off"}
-Fast to wire up, but the extraction is asynchronous and opaque. Module 6 shows what you give up.
+:::alert{type="info" header="Memory limitations"}
+Extraction runs asynchronously. Recalled records do not link to their source
+messages or related graph entities. Module 6 shows how graph-based memory
+preserves those connections.
 :::
 
 ## Next

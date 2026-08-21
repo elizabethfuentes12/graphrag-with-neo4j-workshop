@@ -2,31 +2,30 @@
 
 # Module 5: Deploy to AgentCore Runtime
 
-The grounded booking agent from Module 3.2 has only ever run in a notebook kernel on your laptop: your credentials make the Bedrock call, your shell environment holds the Neo4j password, and the agent stops answering the moment the kernel does. This module moves that same agent, unchanged in how it reasons, into a container that Amazon Bedrock AgentCore Runtime builds, starts, and holds.
-
-**The mechanism, in one sentence: the agent's tools and grounding instructions do not change when its address becomes an ARN instead of a kernel.**
+The grounded booking agent from Module 3.2 runs in a notebook kernel on your laptop. Your local environment holds the Neo4j password, and your AWS credentials authorize the Bedrock calls. This module packages a deployment-oriented version of that agent in a container managed by Amazon Bedrock AgentCore Runtime. It reuses the retrieval code, grounding instructions, and reservation command. It also exposes the command as an agent tool and adds Runtime request handling.
 
 **At a Glance**
-- **Failure it stops:** an agent that only answers questions from Jupyter, a laptop holding a Neo4j password in plaintext, and a deployment story that has never actually been run.
-- **Neo4j:** read and write, from inside the deployed container, exactly as Module 3.2 does it. The maximum-guests rule and the idempotent reservation write stay enforced inside the same Neo4j transaction; moving the agent does not move the rule.
-- **AWS:** one IAM execution role, one ECR repository, one CodeBuild project, and one AgentCore Runtime. Claude on Amazon Bedrock still does the reasoning, reached through a cross-region inference profile.
-- **You'll build:** a running AgentCore Runtime named `GraphRagBookingAgent`, reachable by `InvokeAgentRuntime` from anywhere, tagged so the cleanup step below can find it.
+
+- **Goal:** run the booking agent outside Jupyter and invoke it through an AWS API.
+- **Neo4j:** The deployed container reads hotel data and writes reservation requests. Neo4j checks the maximum-guests rule in the write transaction. A uniqueness constraint on `request_id` prevents duplicate reservation nodes.
+- **AWS:** the deployment uses one IAM execution role, one ECR repository, one CodeBuild project, and one AgentCore Runtime. The agent invokes Claude on Amazon Bedrock through a cross-region inference profile.
+- **Result:** a running AgentCore Runtime named `GraphRagBookingAgent`, available through `InvokeAgentRuntime` and tagged for cleanup.
 
 ---
 
 ## The notebook
 
-| Notebook | What it proves |
+| Notebook | What it verifies |
 |---|---|
-| [`5.1_deploy.ipynb`](5.1_deploy.ipynb) | The same agent, reachable by `InvokeAgentRuntime` instead of a Jupyter kernel, passes five smoke tests that assert on the tools' structured verdicts rather than on the model's prose |
+| [`5.1_deploy.ipynb`](5.1_deploy.ipynb) | Deploys the agent and runs five smoke tests against the tools' structured results |
 
-The notebook stages the shared `workshop` package and `reservation_command.py` into `runtime_app/` immediately before the build, since Docker only sees its own build context and both files live elsewhere in the repository. It then creates the execution role, launches the Runtime through the AgentCore starter toolkit, tags everything the toolkit created, and runs the five smoke tests against the live endpoint.
+Docker can copy files only from its build context, so the notebook stages the shared `workshop` package and `reservation_command.py` in `runtime_app/` before the build. It then creates the execution role and ECR repository, launches the Runtime with the AgentCore starter toolkit, tags the deployment resources, and runs five smoke tests against the live endpoint.
 
-Every live cell checks `DEPLOY_READY` first and skips cleanly if AWS credentials or the four Neo4j environment variables are missing, so reading through the notebook without deploying anything is safe.
+The cells that create or invoke AWS resources check `DEPLOY_READY` first. They skip when AWS credentials or any of the four Neo4j environment variables are missing. The local staging step still runs so you can inspect the build context without deploying.
 
 ## Prerequisites
 
-- Module 3.2's grounded booking agent working end to end, since this module deploys it unchanged.
+- Module 3.2's grounded booking agent working end to end.
 - AWS credentials with permission to create an IAM role, an ECR repository, a CodeBuild project, and an AgentCore Runtime.
 - The same four `NEO4J_*` values every other module reads from `.env`.
 
@@ -35,11 +34,11 @@ Every live cell checks `DEPLOY_READY` first and skips cleanly if AWS credentials
 | File | Purpose |
 |---|---|
 | `5.1_deploy.ipynb` | The module notebook |
-| `runtime_app/` | The container build context: `booking_agent.py`, `agent_requirements.txt`, and the `Dockerfile`. The `workshop` wheel, `reservation_command.py`, and `BUILD_INFO.txt` are staged here by the notebook and are not checked in |
+| `runtime_app/` | The container build context with `booking_agent.py`, `agent_requirements.txt`, and the `Dockerfile`. Git ignores the staged `workshop` wheel, `reservation_command.py`, and `workshop/` tree. The notebook rewrites the tracked `BUILD_INFO.txt` file for each build. |
 
 ## Cleanup
 
-The IAM execution role, the ECR repository, the CodeBuild project, and the AgentCore Runtime itself all keep accruing charges for as long as they exist, and nothing in this module deletes them automatically. Each one carries the `WorkshopResource` tag the notebook applies, so they can be found and removed by that tag when you are finished. At an AWS Workshop Studio event the account is reclaimed for you when the event ends.
+Runtime use, ECR image storage, and CodeBuild builds can incur AWS charges. This module does not delete its resources automatically. The notebook applies the `WorkshopResource` tag to each resource so you can find and remove them when you finish. At an AWS Workshop Studio event, the account is reclaimed when the event ends.
 
 ## The workshop page
 
