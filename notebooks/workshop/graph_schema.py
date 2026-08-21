@@ -118,7 +118,33 @@ GRAPH_SCHEMA: dict[str, object] = {
     "additional_patterns": False,
 }
 
+# The graph exposed to retrieval includes deterministic Amenities, but the LLM
+# must never recreate values that already exist as an authored source list.
+# Keep this as a derived schema so the two contracts cannot drift on the node
+# and relationship types that extraction still owns.
+LLM_EXTRACTION_SCHEMA: dict[str, object] = {
+    "node_types": [
+        node
+        for node in GRAPH_SCHEMA["node_types"]
+        if node["label"] != "Amenity"
+    ],
+    "relationship_types": [
+        relationship
+        for relationship in GRAPH_SCHEMA["relationship_types"]
+        if relationship["label"] != "OFFERS_AMENITY"
+    ],
+    "patterns": [
+        pattern
+        for pattern in GRAPH_SCHEMA["patterns"]
+        if pattern[1] != "OFFERS_AMENITY"
+    ],
+    "additional_node_types": False,
+    "additional_relationship_types": False,
+    "additional_patterns": False,
+}
+
 SCHEMA_NODE_LABELS = ("Hotel", "Room", "Amenity", "Policy", "Service")
+LLM_SCHEMA_NODE_LABELS = ("Hotel", "Room", "Policy", "Service")
 
 # Labels produced by earlier unpinned runs. Their presence after a build means
 # the schema did not hold.

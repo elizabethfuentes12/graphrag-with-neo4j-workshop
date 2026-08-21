@@ -1,7 +1,6 @@
 # Workshop plan for deterministic amenities
 
-**Status: Pending. This is an implementation plan. No graph changes have been
-made.**
+**Status: Phase 1 complete. Build integration and graph rebuild are pending.**
 
 Investigated 2026-08-21 against the current repository, the upstream
 `sample-stop-ai-agent-hallucinations-workshop` repository, its historical full
@@ -241,30 +240,151 @@ The additive path must invoke the same amenity parser and materializer.
 The rebuild is facilitator and release work. Participants should not spend
 workshop time rebuilding hundreds of documents or learning migration mechanics.
 
+## Test strategy during implementation
+
+Testing should progress from fast source-contract checks to one release rebuild.
+Each implementation slice starts with a failing regression test, adds the
+smallest change that makes it pass, and runs the broader phase gate before work
+moves forward.
+
+### Gate 1: Parser unit tests
+
+These tests use committed text fixtures and require no Neo4j, AWS credentials,
+or Bedrock calls.
+
+- Confirm all 300 documents contain exactly one authoritative amenity section.
+- Confirm the complete corpus yields 1,632 bullet assertions and 65 distinct
+  names.
+- Confirm both Chicago documents return the exact authored WiFi label.
+- Confirm parsing stops before later subsections, so explicit pool-negation
+  prose cannot become an amenity.
+- Confirm missing, repeated, empty, and malformed sections fail with the source
+  filename in the error.
+- Confirm parsing the same document twice returns identical ordered results.
+
+**Pass condition:** The parser reproduces the measured corpus inventory exactly
+and all malformed fixtures fail before any graph interaction.
+
+### Gate 2: Materializer unit and integration tests
+
+Most materializer tests should use a fake transaction or recorded write plan.
+One focused integration test should run against a disposable local Neo4j
+database.
+
+- Confirm writes are parameterized and match Amenities by canonical source name.
+- Confirm a second materialization creates no duplicate Amenity nodes or
+  `OFFERS_AMENITY` relationships.
+- Confirm the uniqueness constraint rejects duplicate canonical names.
+- Confirm zero or multiple Hotels for one source document stops the write.
+- Confirm source filename or Chunk provenance is retained for every assertion.
+- Confirm shared Amenity nodes contain no hotel-specific fee, hours,
+  description, or availability values.
+- Confirm the two Chicago Hotels point to one WiFi node by node identity.
+
+**Pass condition:** The small integration graph is source-reconciled,
+idempotent, and unchanged by a second run.
+
+### Gate 3: Builder regression tests
+
+These tests use mocked LLM responses and repository configuration. They should
+not call Bedrock during the normal test suite.
+
+- Confirm the schema passed to `SimpleKGPipeline` excludes Amenity and
+  `OFFERS_AMENITY` while the overall graph contract still includes them.
+- Confirm global entity resolution is disabled.
+- Confirm malformed LLM output makes the document fail visibly rather than
+  print success.
+- Confirm final readiness requires exactly one Hotel for every source
+  Document.
+- Confirm all four duplicate cross-city Hotel pairs remain separate.
+- Confirm both full and additive builders invoke the same amenity parser and
+  materializer.
+
+**Pass condition:** Mocked extraction cannot write an Amenity, silently lose a
+Hotel, or merge Hotels by display name.
+
+### Gate 4: Lite build acceptance
+
+Run the existing deterministic lite selection before spending time on a full
+release build.
+
+- Derive expected Hotel and amenity assertions directly from the selected
+  source filenames.
+- Reconcile graph rows to the exact source pairs of filename and amenity name.
+- Confirm there are no missing or extra Hotel-to-amenity assertions.
+- Confirm repeating the amenity step changes no counts.
+- Run the existing setup test suite and notebook smoke checks affected by the
+  graph contract.
+
+**Pass condition:** The lite graph exactly matches its selected source files and
+all repository regression tests pass.
+
+### Gate 5: Release rebuild acceptance
+
+The expensive full build is a release gate, not a per-change developer test.
+
+- Confirm 300 source Documents resolve to 300 distinct Hotels.
+- Confirm the final graph contains 65 Amenity nodes and 1,632
+  `OFFERS_AMENITY` assertions.
+- Compare the complete set of source pairs, filename plus amenity label, with
+  graph pairs reached through provenance. Require exact equality rather than
+  checking counts alone.
+- Confirm the 295-document prebuilt graph plus the five additive documents has
+  the same final amenity projection as the complete 300-document build.
+- Confirm Chicago shared WiFi, the 175 pool-listing sources, the pool-negation
+  case, and all four duplicate Hotel-name pairs.
+- Re-run affected Phase 1.5 reference facts, evaluation trials, and notebook
+  smoke tests before publishing the graph artifact.
+
+**Pass condition:** Source reconciliation is exact, the prebuilt-plus-live path
+equals the complete path, and all workshop acceptance evidence passes.
+
+### Test ownership and cadence
+
+- Put fast amenity tests in `setup/test_amenities.py` so they run with the
+  existing pytest-based setup suite.
+- Reuse the upstream Bedrock-provider mocking style for extraction-error tests.
+- Run focused tests after each small code change and the full offline setup
+  suite at the end of every phase.
+- Run the lite build when integration behavior changes.
+- Run the complete rebuild only after all earlier gates pass and before a new
+  workshop artifact is published.
+- Record source-versus-graph reconciliation totals in the build report so a
+  facilitator can diagnose a failed release without inspecting the graph by
+  hand.
+
 ## Implementation plan
 
 ### Phase 1: Add deterministic amenity handling
 
-**Status: Pending**
+**Status: Complete**
 
 **Outcome:** The same source list always produces the same shared Amenity nodes.
 
 **Checklist:**
 
-- [ ] Add the shared amenity-section parser under `notebooks/workshop`.
-- [ ] Add the idempotent Amenity and `OFFERS_AMENITY` materializer.
-- [ ] Add the uniqueness constraint for `Amenity.name`.
-- [ ] Resolve each Hotel through Document and Chunk provenance rather than its
+- [x] Add the shared amenity-section parser under `notebooks/workshop`.
+- [x] Add the idempotent Amenity and `OFFERS_AMENITY` materializer.
+- [x] Add the uniqueness constraint for `Amenity.name`.
+- [x] Resolve each Hotel through Document and Chunk provenance rather than its
   generated display name.
-- [ ] Reject missing, repeated, or malformed amenity sections.
-- [ ] Reject a source document that does not resolve to exactly one Hotel.
-- [ ] Keep hotel-specific amenity qualifiers off the shared Amenity node.
+- [x] Reject missing, repeated, or malformed amenity sections.
+- [x] Reject a source document that does not resolve to exactly one Hotel.
+- [x] Keep hotel-specific amenity qualifiers off the shared Amenity node.
 
 **Validation:** All 300 documents parse to 1,632 amenity assertions and 65
 distinct names. A repeated run produces no duplicate nodes or relationships.
 
 **Completion criteria:** Amenity identity is completely independent of LLM
 wording and every edge can be traced to a source document.
+
+**Validation result:** The focused 16-test amenity suite reproduces all 300
+documents, 1,632 assertions, and 65 names. It also verifies malformed-input
+failures, parameterized provenance lookup, idempotent `MERGE` writes, source
+provenance on `OFFERS_AMENITY`, and ambiguous-Hotel rejection. The complete
+offline setup suite passes with 96 tests and 1 existing skip. A disposable
+Neo4j acceptance run is deferred to the Phase 2 lite-build gate because no
+local Docker daemon was available; no shared Aura graph was modified.
 
 ### Phase 2: Integrate the corrected build and rebuild the graph
 
@@ -302,7 +422,7 @@ merge a Hotel identity through LLM output.
 
 **Checklist:**
 
-- [ ] Test parser boundaries, corpus totals, idempotence, and source provenance.
+- [x] Test parser boundaries, corpus totals, idempotence, and source provenance.
 - [ ] Add regressions for Chicago shared WiFi, 175 pool-listing documents, the
   explicit pool negation, the four missing Hotels, and the four cross-city
   duplicate names.

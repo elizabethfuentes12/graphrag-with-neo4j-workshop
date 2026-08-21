@@ -15,8 +15,9 @@ the participant already has is never at risk.
 `run_build` is the facilitator's rebuild-from-scratch tool, reached through
 `prepare_graph.py`. It wipes first, and its order is deliberate:
 
-    wipe -> canary (3 docs) -> verify typing -> wipe canary -> ingest all
-    -> retry the failures -> report
+    parse amenities -> wipe -> canary (3 docs) -> verify typing and identity
+    -> wipe canary -> ingest all -> retry failures -> verify one Hotel per source
+    -> materialize amenities -> report
 
 The wipe precedes the canary because a from-scratch rebuild has nothing worth
 preserving across a failed build, and because the canary then runs against an
@@ -43,12 +44,20 @@ from graph_config import (
     CHUNK_SIZE,
     EXTRACTION_MAX_TOKENS,
 )
+from workshop.amenities import (
+    AmenityMaterializationError,
+    AmenitySectionError,
+    ParsedAmenities,
+    ensure_amenity_constraint,
+    materialize_amenities,
+    parse_amenity_section,
+)
 from workshop.bedrock_providers import BedrockEmbeddings, BedrockLLM
 from workshop.graph_connection import graph_database, neo4j_auth, neo4j_uri
 from workshop.aws_region import aws_region
 from workshop.graph_schema import (
-    GRAPH_SCHEMA,
-    OFF_SCHEMA_LABELS,
+    LLM_EXTRACTION_SCHEMA,
+    LLM_SCHEMA_NODE_LABELS,
     SCHEMA_NODE_LABELS,
 )
 from workshop.retrieval_setup import (
@@ -123,25 +132,22 @@ def build_pipeline(driver: Driver) -> SimpleKGPipeline:
         llm=llm,
         driver=driver,
         embedder=embedder,
-        schema=GRAPH_SCHEMA,
+        schema=LLM_EXTRACTION_SCHEMA,
         text_splitter=FixedSizeSplitter(
             chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
         ),
         from_pdf=False,
-        perform_entity_resolution=True,
+        on_error="RAISE",
+        perform_entity_resolution=False,
+        neo4j_database=graph_database(),
     )
 
 
 def snapshot_chunk_ids(driver: Driver) -> set[str]:
     """Return the element IDs of every :Chunk currently in the graph.
 
-    The canary is scoped by chunk rather than by a diff over all nodes because
-    `perform_entity_resolution=True` merges a newly extracted entity into an
-    existing node when one already matches. Re-ingesting a document the graph
-    already holds therefore creates a `Chunk` but no new `Hotel`, and a
-    node-level diff reads that as "extraction produced no Hotel" when in fact
-    it produced one and deduplicated it. Chunks are never merged, so they are a
-    stable handle on "what this run just extracted".
+    Chunks are never merged, so they are a stable handle on what this run just
+    extracted without relying on generated entity properties.
     """
     with session(driver) as neo4j_session:
         return {
@@ -164,9 +170,9 @@ def clear_extracted_graph(driver: Driver) -> None:
 
 
 # Entities are deleted only when every chunk they came from belongs to the
-# document being cleared. `perform_entity_resolution=True` merges a hotel two
-# documents both mention into one node, and deleting that node would take a
-# healthy document's extraction with it.
+# document being cleared. This also handles shared deterministic Amenity nodes:
+# an Amenity used by another document remains, while its relationship to the
+# deleted Hotel and Chunk is removed by the detach operations.
 # Keyed on `source_filename`, not `path`. `path` is the pipeline's own idea of
 # where the text came from, and because `ingest` passes `text=` rather than a
 # file handle, every document in the graph gets the synthetic path
@@ -239,6 +245,76 @@ def check_documents_addressable(driver: Driver, paths: list[Path]) -> list[str]:
         elif found > 1:
             problems.append(f"{path.name} has {found} :Document nodes, expected 1")
     return problems
+
+
+def check_source_hotels(driver: Driver, paths: list[Path]) -> list[str]:
+    """Require one distinct Hotel through provenance for every source file."""
+    filenames = [path.name for path in paths]
+    with session(driver) as neo4j_session:
+        records = list(
+            neo4j_session.run(
+                """
+                UNWIND $filenames AS filename
+                OPTIONAL MATCH (d:Document {source_filename: filename})
+                OPTIONAL MATCH (c:Chunk)-[:FROM_DOCUMENT]->(d)
+                OPTIONAL MATCH (h:Hotel)-[:FROM_CHUNK]->(c)
+                RETURN filename,
+                       count(DISTINCT d) AS document_count,
+                       count(DISTINCT h) AS hotel_count,
+                       collect(DISTINCT elementId(h)) AS hotel_element_ids
+                ORDER BY filename
+                """,
+                filenames=filenames,
+            )
+        )
+
+    problems: list[str] = []
+    hotel_sources: dict[str, list[str]] = {}
+    for record in records:
+        filename = record["filename"]
+        document_count = record["document_count"]
+        hotel_count = record["hotel_count"]
+        if document_count != 1:
+            problems.append(
+                f"{filename} has {document_count} Document nodes, expected 1"
+            )
+        if hotel_count != 1:
+            problems.append(
+                f"{filename} has {hotel_count} Hotels through provenance, expected 1"
+            )
+            continue
+        hotel_id = record["hotel_element_ids"][0]
+        hotel_sources.setdefault(hotel_id, []).append(filename)
+
+    for source_names in hotel_sources.values():
+        if len(source_names) > 1:
+            joined = ", ".join(sorted(source_names))
+            problems.append(f"one Hotel node is shared by source documents: {joined}")
+    return problems
+
+
+def parse_amenity_lists(paths: list[Path]) -> list[ParsedAmenities]:
+    """Parse every authoritative list before any graph mutation begins."""
+    return [
+        parse_amenity_section(
+            path.read_text(encoding="utf-8"),
+            path.name,
+        )
+        for path in paths
+    ]
+
+
+def materialize_amenity_lists(
+    driver: Driver,
+    parsed_amenities: list[ParsedAmenities],
+) -> int:
+    """Attach all parsed amenities after extraction and retry have succeeded."""
+    database = graph_database()
+    ensure_amenity_constraint(driver, database)
+    return sum(
+        materialize_amenities(driver, database, parsed)
+        for parsed in parsed_amenities
+    )
 
 
 async def ingest(pipeline: SimpleKGPipeline, paths: list[Path]) -> list[Path]:
@@ -375,9 +451,9 @@ def check_schema_held(driver: Driver, chunk_ids: set[str]) -> list[str]:
         }
         print(f"  labels produced: {labels}")
 
-        stray = sorted(set(labels) & set(OFF_SCHEMA_LABELS))
+        stray = sorted(set(labels) - set(LLM_SCHEMA_NODE_LABELS))
         if stray:
-            problems.append(f"off-schema labels present: {stray}")
+            problems.append(f"labels outside the LLM extraction schema: {stray}")
 
         if not labels.get("Hotel"):
             problems.append("no :Hotel node was extracted from these chunks")
@@ -539,6 +615,12 @@ async def run_build(paths: list[Path], title: str) -> int:
             print(f"  - {filename}")
         return 1
 
+    try:
+        parsed_amenities = parse_amenity_lists(paths)
+    except AmenitySectionError as exc:
+        print(f"❌ Amenity source validation failed: {exc}")
+        return 1
+
     print(f"{title}: {len(paths)} documents")
     print(f"Database: {graph_database()}\n")
     driver = connect()
@@ -560,6 +642,7 @@ async def run_build(paths: list[Path], title: str) -> int:
             clear_extracted_graph(driver)  # leave a clean, empty graph on failure
             return 1
         problems = check_schema_held(driver, new_chunks)
+        problems.extend(check_source_hotels(driver, canary))
         if problems:
             print("\n❌ Canary failed. The graph was cleared; fix and re-run:")
             for problem in problems:
@@ -616,12 +699,26 @@ async def run_build(paths: list[Path], title: str) -> int:
             for problem in addressing:
                 print(f"  - {problem}")
             return 1
+        hotel_problems = check_source_hotels(driver, paths)
+        if hotel_problems:
+            print("\n❌ Every source must resolve to one distinct Hotel:")
+            for problem in hotel_problems:
+                print(f"  - {problem}")
+            return 1
         if failures:
             print(
                 "⚠️ One or more client acknowledgements were lost, but every "
                 "source has a committed Document and Chunk. Continuing with "
                 "graph fixture validation."
             )
+
+        print("\nMaterializing authored amenity lists...")
+        try:
+            assertion_count = materialize_amenity_lists(driver, parsed_amenities)
+        except AmenityMaterializationError as exc:
+            print(f"❌ Amenity materialization failed: {exc}")
+            return 1
+        print(f"✅ Materialized {assertion_count} amenity assertions")
 
         print("\nCreating and verifying the retrieval indexes...")
         ensure_retrieval_indexes(driver)
@@ -658,6 +755,12 @@ async def run_additive_build(paths: list[Path], title: str) -> int:
     """
     if not paths:
         print("No documents selected.")
+        return 1
+
+    try:
+        parsed_amenities = parse_amenity_lists(paths)
+    except AmenitySectionError as exc:
+        print(f"❌ Amenity source validation failed: {exc}")
         return 1
 
     driver = connect()
@@ -708,12 +811,21 @@ async def run_additive_build(paths: list[Path], title: str) -> int:
             return 1
 
         problems = check_schema_held(driver, new_chunks)
+        problems.extend(check_source_hotels(driver, paths))
         if problems:
             print("\n❌ Extraction did not match the documented schema:")
             for problem in problems:
                 print(f"  - {problem}")
             return 1
         print("✅ Extraction matches the documented schema\n")
+
+        print("Materializing authored amenity lists...")
+        try:
+            assertion_count = materialize_amenity_lists(driver, parsed_amenities)
+        except AmenityMaterializationError as exc:
+            print(f"❌ Amenity materialization failed: {exc}")
+            return 1
+        print(f"✅ Materialized {assertion_count} amenity assertions\n")
 
         # The dump ships without either index, so this is where they first come
         # online. Idempotent regardless, so a re-run is harmless. Module 1
