@@ -16,7 +16,7 @@ An AWS Workshop Studio workshop in six modules. You build a hotel knowledge grap
 
 | Module | Notebooks | What You Build |
 |--------|-----------|----------------|
-| [01: Build the Graph](./workshop-content/content/01-build-graph/) | `1.1_build_graph.ipynb` | Live extraction of five held-out hotel documents, pinned schema, both retrieval indexes |
+| [01: Build the Graph](./workshop-content/content/01-build-graph/) | `1.1_build_graph.ipynb` | Live extraction of five held-out hotels, deterministic amenities, both retrieval indexes |
 | [02: From Similarity Search to Connected Context](./workshop-content/content/02-connected-context/) | `2.1_connected_context.ipynb` | Semantic, exact-term, graph-enriched, and structured retrieval evidence |
 | [03: Build the Grounded Booking Agent](./workshop-content/content/03-grounded-booking-agent/) | `3.1_grounded_booking_agent.ipynb` | Grounded answers, abstention, and a protected reservation command |
 | [04: Production Agent with AgentCore](./workshop-content/content/04-production-agent/) | `4.1_agentcore_gateway.ipynb` + `4.2_agentcore_memory.ipynb` | Gateway Lambda tools, IAM-authenticated MCP, cross-session memory |
@@ -50,6 +50,11 @@ Each module folder under `notebooks/` carries its own `README.md`: an At a Glanc
 
 Neo4j owns: connected hotel knowledge, retrieval indexes, business rules, and reservation writes.
 Amazon Bedrock owns: reasoning over retrieved evidence and query embedding.
+
+Module 1 uses a simple boundary that participants can inspect: Claude extracts
+facts from prose, while the existing `## Hotel Amenities` bullet list is parsed
+directly. The exact bullet text becomes the shared amenity name. The same rule
+created the prebuilt graph and applies to the five hotels added during the lab.
 
 ---
 

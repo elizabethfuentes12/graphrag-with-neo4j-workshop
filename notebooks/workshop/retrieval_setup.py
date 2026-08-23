@@ -8,9 +8,10 @@ the deterministic fixtures every Module 1 build path needs.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence, cast
+from typing import Any, cast
 
 from neo4j import Driver
 from neo4j_graphrag.indexes import create_fulltext_index, create_vector_index
@@ -41,9 +42,7 @@ REQUIRED_SOURCE_FILES = (
 # would report a number the build can never produce.
 SCHEMA_RELATIONSHIP_TYPES = tuple(
     entry["label"]
-    for entry in cast(
-        Sequence[Mapping[str, str]], GRAPH_SCHEMA["relationship_types"]
-    )
+    for entry in cast(Sequence[Mapping[str, str]], GRAPH_SCHEMA["relationship_types"])
 )
 
 
@@ -165,7 +164,9 @@ def ensure_retrieval_indexes(driver: Driver) -> None:
         neo4j_database=database,
     )
     with _session(driver) as session:
-        session.run("CALL db.awaitIndexes($timeout_seconds)", timeout_seconds=300).consume()
+        session.run(
+            "CALL db.awaitIndexes($timeout_seconds)", timeout_seconds=300
+        ).consume()
     verify_retrieval_indexes(driver)
 
 
@@ -201,9 +202,9 @@ def graph_counts(driver: Driver) -> tuple[int, int, dict[str, int], dict[str, in
         document_count = session.run(
             "MATCH (d:Document) RETURN count(d) AS count"
         ).single()["count"]
-        chunk_count = session.run(
-            "MATCH (c:Chunk) RETURN count(c) AS count"
-        ).single()["count"]
+        chunk_count = session.run("MATCH (c:Chunk) RETURN count(c) AS count").single()[
+            "count"
+        ]
         label_counts = {
             record["label"]: record["count"]
             for record in session.run(
@@ -245,6 +246,57 @@ def fixture_problems(driver: Driver) -> list[str]:
     return problems
 
 
+def hotel_provenance_problems(driver: Driver) -> list[str]:
+    """Return Documents without one distinct Hotel and cross-source Hotel merges."""
+    with _session(driver) as session:
+        invalid_documents = list(
+            session.run(
+                """
+                CYPHER 25
+                MATCH (document:Document)
+                OPTIONAL MATCH (chunk:Chunk)-[:FROM_DOCUMENT]->(document)
+                OPTIONAL MATCH (hotel:Hotel)-[:FROM_CHUNK]->(chunk)
+                WITH document, count(DISTINCT hotel) AS hotel_count
+                WHERE hotel_count <> 1
+                RETURN coalesce(
+                    document.source_filename,
+                    '<Document ' + elementId(document) + '>'
+                ) AS filename,
+                hotel_count
+                ORDER BY filename
+                """
+            )
+        )
+        shared_hotels = list(
+            session.run(
+                """
+                CYPHER 25
+                MATCH (document:Document)<-[:FROM_DOCUMENT]-(chunk:Chunk)<-[:FROM_CHUNK]-(hotel:Hotel)
+                WITH hotel,
+                     collect(DISTINCT coalesce(
+                         document.source_filename,
+                         '<Document ' + elementId(document) + '>'
+                     )) AS source_filenames,
+                     count(DISTINCT document) AS document_count
+                WHERE document_count > 1
+                RETURN source_filenames
+                ORDER BY source_filenames[0]
+                """
+            )
+        )
+
+    problems = [
+        f"{record['filename']} resolves to {record['hotel_count']} Hotels, expected 1"
+        for record in invalid_documents
+    ]
+    problems.extend(
+        "one Hotel node is shared by source documents: "
+        + ", ".join(sorted(record["source_filenames"]))
+        for record in shared_hotels
+    )
+    return problems
+
+
 def report_readiness(driver: Driver, expected_documents: int) -> list[str]:
     """Print readiness counts and return all graph fixture problems."""
     documents, chunks, labels, relationships = graph_counts(driver)
@@ -254,7 +306,8 @@ def report_readiness(driver: Driver, expected_documents: int) -> list[str]:
     print(f"  extracted labels: {labels}")
     print(f"  relationships: {relationships}")
 
-    problems = fixture_problems(driver)
+    problems = hotel_provenance_problems(driver)
+    problems.extend(fixture_problems(driver))
     if documents != expected_documents:
         problems.insert(
             0,
@@ -262,4 +315,10 @@ def report_readiness(driver: Driver, expected_documents: int) -> list[str]:
         )
     if chunks != documents:
         problems.insert(1, f"chunk count is {chunks}, expected {documents}")
+    hotels = labels.get("Hotel", 0)
+    if hotels != expected_documents:
+        problems.insert(
+            2,
+            f"Hotel count is {hotels}, expected {expected_documents}",
+        )
     return problems

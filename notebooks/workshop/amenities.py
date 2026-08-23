@@ -13,6 +13,7 @@ import re
 from dataclasses import dataclass
 
 from neo4j import Driver, ManagedTransaction
+from neo4j.exceptions import Neo4jError
 
 AMENITY_HEADING = "## Hotel Amenities"
 
@@ -126,8 +127,13 @@ def parse_amenity_section(text: str, source_filename: str) -> ParsedAmenities:
 
 def ensure_amenity_constraint(driver: Driver, database: str) -> None:
     """Create the canonical Amenity-name constraint if it does not exist."""
-    with driver.session(database=database) as neo4j_session:
-        neo4j_session.run(AMENITY_NAME_CONSTRAINT).consume()
+    try:
+        with driver.session(database=database) as neo4j_session:
+            neo4j_session.run(AMENITY_NAME_CONSTRAINT).consume()
+    except Neo4jError as exc:
+        raise AmenityMaterializationError(
+            "could not enforce unique Amenity names in Neo4j"
+        ) from exc
 
 
 def _materialize_transaction(
@@ -179,7 +185,12 @@ def materialize_amenities(
     parsed: ParsedAmenities,
 ) -> int:
     """Idempotently attach one source document's canonical amenities."""
-    with driver.session(database=database) as neo4j_session:
-        return neo4j_session.execute_write(
-            lambda transaction: _materialize_transaction(transaction, parsed)
-        )
+    try:
+        with driver.session(database=database) as neo4j_session:
+            return neo4j_session.execute_write(
+                lambda transaction: _materialize_transaction(transaction, parsed)
+            )
+    except Neo4jError as exc:
+        raise AmenityMaterializationError(
+            f"{parsed.source_filename}: Neo4j amenity write failed"
+        ) from exc

@@ -21,29 +21,26 @@ the participant already has is never at risk.
 
 The wipe precedes the canary because a from-scratch rebuild has nothing worth
 preserving across a failed build, and because the canary then runs against an
-empty graph, so entity resolution has nothing to merge into and the check
-reflects exactly what that run extracted. Neither reason holds for
-`run_additive_build`, which is why it is a separate function rather than
-`run_build` behind a flag.
+empty graph, so the check reflects exactly what that run extracted. Neither
+reason holds for `run_additive_build`, which is why it is a separate function
+rather than `run_build` behind a flag.
 """
 
 import asyncio
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
-
-from neo4j import Driver, GraphDatabase
-from neo4j_graphrag.experimental.components.text_splitters.fixed_size_splitter import (
-    FixedSizeSplitter,
-)
-from neo4j_graphrag.experimental.pipeline.kg_builder import SimpleKGPipeline
 
 from graph_config import (
     CHUNK_OVERLAP,
     CHUNK_SIZE,
     EXTRACTION_MAX_TOKENS,
 )
+from neo4j import Driver, GraphDatabase
+from neo4j_graphrag.experimental.components.text_splitters.fixed_size_splitter import (
+    FixedSizeSplitter,
+)
+from neo4j_graphrag.experimental.pipeline.kg_builder import SimpleKGPipeline
 from workshop.amenities import (
     AmenityMaterializationError,
     AmenitySectionError,
@@ -52,9 +49,9 @@ from workshop.amenities import (
     materialize_amenities,
     parse_amenity_section,
 )
+from workshop.aws_region import aws_region
 from workshop.bedrock_providers import BedrockEmbeddings, BedrockLLM
 from workshop.graph_connection import graph_database, neo4j_auth, neo4j_uri
-from workshop.aws_region import aws_region
 from workshop.graph_schema import (
     LLM_EXTRACTION_SCHEMA,
     LLM_SCHEMA_NODE_LABELS,
@@ -152,9 +149,7 @@ def snapshot_chunk_ids(driver: Driver) -> set[str]:
     with session(driver) as neo4j_session:
         return {
             record["id"]
-            for record in neo4j_session.run(
-                "MATCH (c:Chunk) RETURN elementId(c) AS id"
-            )
+            for record in neo4j_session.run("MATCH (c:Chunk) RETURN elementId(c) AS id")
         }
 
 
@@ -241,7 +236,9 @@ def check_documents_addressable(driver: Driver, paths: list[Path]) -> list[str]:
     for path in paths:
         found = counts.get(path.name, 0)
         if found == 0:
-            problems.append(f"{path.name} has no :Document carrying its source_filename")
+            problems.append(
+                f"{path.name} has no :Document carrying its source_filename"
+            )
         elif found > 1:
             problems.append(f"{path.name} has {found} :Document nodes, expected 1")
     return problems
@@ -254,6 +251,7 @@ def check_source_hotels(driver: Driver, paths: list[Path]) -> list[str]:
         records = list(
             neo4j_session.run(
                 """
+                CYPHER 25
                 UNWIND $filenames AS filename
                 OPTIONAL MATCH (d:Document {source_filename: filename})
                 OPTIONAL MATCH (c:Chunk)-[:FROM_DOCUMENT]->(d)
@@ -312,9 +310,66 @@ def materialize_amenity_lists(
     database = graph_database()
     ensure_amenity_constraint(driver, database)
     return sum(
-        materialize_amenities(driver, database, parsed)
-        for parsed in parsed_amenities
+        materialize_amenities(driver, database, parsed) for parsed in parsed_amenities
     )
+
+
+def check_amenity_assertions(
+    driver: Driver,
+    parsed_amenities: list[ParsedAmenities],
+) -> list[str]:
+    """Compare exact source amenity pairs with graph traversal results."""
+    expected = {
+        (parsed.source_filename, name)
+        for parsed in parsed_amenities
+        for name in parsed.names
+    }
+    filenames = [parsed.source_filename for parsed in parsed_amenities]
+    with session(driver) as neo4j_session:
+        records = list(
+            neo4j_session.run(
+                """
+                CYPHER 25
+                UNWIND $filenames AS source_filename
+                MATCH (document:Document {source_filename: source_filename})
+                MATCH (chunk:Chunk)-[:FROM_DOCUMENT]->(document)
+                MATCH (hotel:Hotel)-[:FROM_CHUNK]->(chunk)
+                MATCH (hotel)-[:OFFERS_AMENITY]->(amenity:Amenity)
+                RETURN DISTINCT source_filename, amenity.name AS amenity_name
+                """,
+                filenames=filenames,
+            )
+        )
+    actual = {(record["source_filename"], record["amenity_name"]) for record in records}
+    missing = expected - actual
+    unexpected = actual - expected
+    print(
+        f"  amenity assertions reconciled: {len(actual)} graph pairs, "
+        f"{len(expected)} source pairs"
+    )
+
+    problems: list[str] = []
+    if missing:
+        examples = ", ".join(
+            f"{filename}: {name}" for filename, name in sorted(missing)[:5]
+        )
+        problems.append(
+            f"{len(missing)} source amenity assertions are missing; examples: "
+            f"{examples}"
+        )
+    if unexpected:
+        examples = ", ".join(
+            f"{filename}: {name}"
+            for filename, name in sorted(
+                unexpected,
+                key=lambda pair: (str(pair[0]), str(pair[1])),
+            )[:5]
+        )
+        problems.append(
+            f"{len(unexpected)} unexpected amenity assertions exist; examples: "
+            f"{examples}"
+        )
+    return problems
 
 
 async def ingest(pipeline: SimpleKGPipeline, paths: list[Path]) -> list[Path]:
@@ -426,8 +481,8 @@ def check_schema_held(driver: Driver, chunk_ids: set[str]) -> list[str]:
     """Return a list of problems with what `chunk_ids` extracted.
 
     Entities are reached by traversing `(:Chunk)<-[:FROM_CHUNK]-(entity)` from
-    the chunks this run created, so the check is correct whether the entity was
-    newly inserted or merged into an existing node by entity resolution.
+    the chunks this run created, so the check does not depend on generated
+    entity properties.
 
     An empty list means extraction honoured the pinned schema in
     `workshop.graph_schema`, which is the contract every later module queries.
@@ -524,9 +579,9 @@ def count_documents(driver: Driver) -> int:
 def count_chunks(driver: Driver) -> int:
     """Return the number of :Chunk nodes in the graph."""
     with session(driver) as neo4j_session:
-        return neo4j_session.run(
-            "MATCH (c:Chunk) RETURN count(c) AS count"
-        ).single()["count"]
+        return neo4j_session.run("MATCH (c:Chunk) RETURN count(c) AS count").single()[
+            "count"
+        ]
 
 
 def report(driver: Driver) -> None:
@@ -608,8 +663,7 @@ async def run_build(paths: list[Path], title: str) -> int:
     missing_sources = missing_source_fixtures(paths)
     if missing_sources:
         print(
-            "Source documents that later modules depend on are missing "
-            "from this build:"
+            "Source documents that later modules depend on are missing from this build:"
         )
         for filename in missing_sources:
             print(f"  - {filename}")
@@ -667,17 +721,13 @@ async def run_build(paths: list[Path], title: str) -> int:
         # end up with exactly one Document and one Chunk.
         failures = await retry_failures(driver, pipeline, failures)
         if failures:
-            print(
-                f"\n{len(failures)} document(s) still failed after the retry pass:"
-            )
+            print(f"\n{len(failures)} document(s) still failed after the retry pass:")
             for path in failures:
                 print(f"  - {path.name}")
 
         acknowledged = len(paths) - len(failures)
         print(f"\n{'=' * 60}")
-        print(
-            f"BUILD COMPLETE ({acknowledged}/{len(paths)} ingests acknowledged)"
-        )
+        print(f"BUILD COMPLETE ({acknowledged}/{len(paths)} ingests acknowledged)")
         print(f"{'=' * 60}")
 
         documents = count_documents(driver)
@@ -719,6 +769,12 @@ async def run_build(paths: list[Path], title: str) -> int:
             print(f"❌ Amenity materialization failed: {exc}")
             return 1
         print(f"✅ Materialized {assertion_count} amenity assertions")
+        amenity_problems = check_amenity_assertions(driver, parsed_amenities)
+        if amenity_problems:
+            print("❌ Amenity assertions do not match their source lists:")
+            for problem in amenity_problems:
+                print(f"  - {problem}")
+            return 1
 
         print("\nCreating and verifying the retrieval indexes...")
         ensure_retrieval_indexes(driver)
@@ -826,6 +882,12 @@ async def run_additive_build(paths: list[Path], title: str) -> int:
             print(f"❌ Amenity materialization failed: {exc}")
             return 1
         print(f"✅ Materialized {assertion_count} amenity assertions\n")
+        amenity_problems = check_amenity_assertions(driver, parsed_amenities)
+        if amenity_problems:
+            print("❌ Amenity assertions do not match their source lists:")
+            for problem in amenity_problems:
+                print(f"  - {problem}")
+            return 1
 
         # The dump ships without either index, so this is where they first come
         # online. Idempotent regardless, so a re-run is harmless. Module 1

@@ -1,6 +1,7 @@
 # Workshop plan for deterministic amenities
 
-**Status: Phase 1 complete. Build integration and graph rebuild are pending.**
+**Status: Phase 1 and the Phase 2 code integration are complete. The release
+rebuild and prebuilt artifact are pending.**
 
 Investigated 2026-08-21 against the current repository, the upstream
 `sample-stop-ai-agent-hallucinations-workshop` repository, its historical full
@@ -382,26 +383,27 @@ wording and every edge can be traced to a source document.
 documents, 1,632 assertions, and 65 names. It also verifies malformed-input
 failures, parameterized provenance lookup, idempotent `MERGE` writes, source
 provenance on `OFFERS_AMENITY`, and ambiguous-Hotel rejection. The complete
-offline setup suite passes with 96 tests and 1 existing skip. A disposable
-Neo4j acceptance run is deferred to the Phase 2 lite-build gate because no
-local Docker daemon was available; no shared Aura graph was modified.
+offline setup suite passed again during the Phase 2 audit. A disposable Neo4j
+acceptance run is still deferred because no local Docker daemon is available;
+no shared Aura graph was modified.
 
 ### Phase 2: Integrate the corrected build and rebuild the graph
 
-**Status: Pending**
+**Status: In progress. Code integration is complete; release rebuild is
+pending.**
 
 **Outcome:** Full, prebuilt, and learner-additive paths use the same extraction
 boundary.
 
 **Checklist:**
 
-- [ ] Separate the overall graph contract from the schema passed to the LLM.
-- [ ] Exclude Amenity and `OFFERS_AMENITY` from LLM extraction.
-- [ ] Disable global exact-name entity resolution.
-- [ ] Make component failures fail the affected document visibly.
-- [ ] Require one Hotel per source document in canary and final readiness
+- [x] Separate the overall graph contract from the schema passed to the LLM.
+- [x] Exclude Amenity and `OFFERS_AMENITY` from LLM extraction.
+- [x] Disable global exact-name entity resolution.
+- [x] Make component failures fail the affected document visibly.
+- [x] Require one Hotel per source document in canary and final readiness
   checks.
-- [ ] Invoke deterministic amenity materialization from both full and additive
+- [x] Invoke deterministic amenity materialization from both full and additive
   build flows.
 - [ ] Rebuild the graph from the committed source corpus.
 - [ ] Generate the new prebuilt graph artifact with the five held-out documents
@@ -413,6 +415,28 @@ documents produces the same final amenity projection as the complete build.
 
 **Completion criteria:** No supported build path can create an Amenity name or
 merge a Hotel identity through LLM output.
+
+**Validation result:** The LLM-only schema excludes Amenity and
+`OFFERS_AMENITY`; the pipeline raises component errors, disables global entity
+resolution, and uses the configured Neo4j database. Both build flows parse
+amenities before graph mutation, require one distinct Hotel per source, and
+materialize the authored lists only after extraction retries finish. The
+builder then reconciles the exact filename-and-amenity pairs rather than
+trusting counts alone. Shared readiness rejects Documents without exactly one
+Hotel, Hotel nodes shared across source Documents, orphan Hotels, and any
+Hotel-count mismatch. The overall graph contract now exposes only `name` on a
+shared Amenity, matching the deterministic write model. The focused Phase 1
+and Phase 2 suite passes 28 tests, and the complete offline setup suite passes
+108 tests with 1 existing skip. Ruff lint, formatting, and release-script
+syntax checks pass. The `prebuilt` build mode validates the complete
+300-document corpus before selecting 295 documents, and
+`setup/build_prebuilt_graph.sh` can build a fresh candidate dump without
+modifying Aura or replacing the checked-in artifact. The disposable Neo4j
+acceptance run remains unavailable because the local Docker daemon is stopped.
+
+The remaining two checklist items are release operations. They require a full
+Bedrock extraction against Neo4j and publication of a replacement graph
+artifact, so they are not marked complete from mocked or offline evidence.
 
 ### Phase 3: Add focused tests and update the workshop story
 
@@ -426,8 +450,10 @@ merge a Hotel identity through LLM output.
 - [ ] Add regressions for Chicago shared WiFi, 175 pool-listing documents, the
   explicit pool negation, the four missing Hotels, and the four cross-city
   duplicate names.
-- [ ] Update readiness checks so Document and Chunk counts cannot substitute
-  for Hotel and relationship completeness.
+- [x] Update readiness checks so Document and Chunk counts cannot substitute
+  for one distinct Hotel per source.
+- [ ] Add artifact-wide amenity relationship reconciliation for a restored
+  prebuilt graph, where the source files are not passed to the build function.
 - [ ] Re-run affected Phase 1.5 reference facts and evaluation evidence.
 - [ ] Update the Module 1 notebook, README, and workshop content with the
   deterministic extraction boundary.

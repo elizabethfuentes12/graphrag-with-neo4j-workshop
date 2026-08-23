@@ -9,6 +9,7 @@ from unittest.mock import Mock
 from zipfile import ZipFile
 
 import pytest
+from neo4j.exceptions import Neo4jError
 from workshop.amenities import (
     AMENITY_NAME_CONSTRAINT,
     AmenityMaterializationError,
@@ -25,6 +26,32 @@ CORPUS_ARCHIVE = (
     / "02-connected-context"
     / "hotel-faqs.zip"
 )
+
+HISTORICAL_MISSING_HOTEL_SOURCES = {
+    "hotel-austin-002.txt",
+    "hotel-mumbai-001.txt",
+    "hotel-sanfrancisco-004.txt",
+    "hotel-tucson-001.txt",
+}
+
+CROSS_CITY_DUPLICATE_HOTEL_NAMES = {
+    "Riverside Crossing Suites": {
+        "hotel-dallas-002.txt",
+        "hotel-windsor-002.txt",
+    },
+    "Riverside Lodge": {
+        "hotel-boise-002.txt",
+        "hotel-calgary-002.txt",
+    },
+    "Riverway Lodge": {
+        "hotel-minneapolis-002.txt",
+        "hotel-saskatoon-002.txt",
+    },
+    "Waterway Inn": {
+        "hotel-houston-002.txt",
+        "hotel-kitchener-002.txt",
+    },
+}
 
 
 def _read_corpus() -> dict[str, str]:
@@ -77,6 +104,45 @@ def test_chicago_wifi_is_exact_and_pool_negation_is_not_parsed() -> None:
     assert all(
         "Pool facilities are not available" not in item.names for item in chicago
     )
+
+
+def test_pool_regression_sources_match_the_authoritative_lists() -> None:
+    documents = _read_corpus()
+    parsed = {
+        filename: parse_amenity_section(text, filename)
+        for filename, text in documents.items()
+    }
+    pool_sources = {
+        filename
+        for filename, amenities in parsed.items()
+        if any("pool" in name.lower() for name in amenities.names)
+    }
+
+    assert len(pool_sources) == 175
+    assert HISTORICAL_MISSING_HOTEL_SOURCES < pool_sources
+    assert "hotel-austin-001.txt" not in pool_sources
+    assert "Pool facilities are not available at this property" in documents[
+        "hotel-austin-001.txt"
+    ]
+
+
+def test_cross_city_duplicate_hotel_names_remain_distinct_source_identities() -> None:
+    documents = _read_corpus()
+
+    for hotel_name, filenames in CROSS_CITY_DUPLICATE_HOTEL_NAMES.items():
+        assert len(filenames) == 2
+        for filename in filenames:
+            assert documents[filename].startswith(f"# {hotel_name}\n")
+
+        addresses = {
+            next(
+                line.removeprefix("**Address:** ")
+                for line in documents[filename].splitlines()
+                if line.startswith("**Address:** ")
+            )
+            for filename in filenames
+        }
+        assert len(addresses) == 2
 
 
 def test_parser_is_deterministic_and_preserves_authored_order() -> None:
@@ -134,6 +200,21 @@ def test_constraint_is_idempotent_and_uses_configured_database() -> None:
     neo4j_session.run.assert_called_once_with(AMENITY_NAME_CONSTRAINT)
     assert "IF NOT EXISTS" in AMENITY_NAME_CONSTRAINT
     consume.assert_called_once_with()
+
+
+def test_constraint_failure_is_reported_as_amenity_materialization_error() -> None:
+    neo4j_session = Mock()
+    neo4j_session.__enter__ = Mock(return_value=neo4j_session)
+    neo4j_session.__exit__ = Mock(return_value=False)
+    neo4j_session.run.side_effect = Neo4jError("constraint failed")
+    driver = Mock()
+    driver.session.return_value = neo4j_session
+
+    with pytest.raises(
+        AmenityMaterializationError,
+        match="could not enforce unique Amenity names",
+    ):
+        ensure_amenity_constraint(driver, "workshop")
 
 
 def test_materializer_uses_provenance_and_parameterized_merges() -> None:

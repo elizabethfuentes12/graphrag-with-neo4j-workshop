@@ -20,13 +20,7 @@ the one fact Module 1 cannot be written without was not in the tree at all.
 from pathlib import Path
 from zipfile import ZipFile
 
-HELD_OUT_DOCUMENTS: tuple[str, ...] = (
-    "hotel-tokyo-002.txt",
-    "hotel-sydney-002.txt",
-    "hotel-riodejaneiro-002.txt",
-    "hotel-capetown-002.txt",
-    "hotel-prague-002.txt",
-)
+from graph_config import HELD_OUT_DOCUMENTS
 
 # The corpus lives beside `prepare_graph.py`, the from-scratch rebuild path,
 # which needs all of it. Module 1 needs five documents and reads them from the

@@ -27,16 +27,15 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-from neo4j import Driver  # noqa: E402
-
-from graph_builder import connect, graph_database, report, run_build  # noqa: E402
-from graph_config import select_lite_files  # noqa: E402
-from workshop.fixtures import (  # noqa: E402
+from graph_builder import connect, graph_database, report, run_build
+from graph_config import HELD_OUT_DOCUMENTS, select_lite_files
+from neo4j import Driver
+from workshop.fixtures import (
     apply_reservation_fixtures,
     load_manifest,
     readiness_problems,
 )
-from workshop.retrieval_setup import (  # noqa: E402
+from workshop.retrieval_setup import (
     ReadinessError,
     ensure_retrieval_indexes,
     report_readiness,
@@ -46,6 +45,11 @@ from workshop.retrieval_setup import (  # noqa: E402
 DATA_DIR = Path("data")
 CORPUS_ZIP = Path("hotel-faqs.zip")
 LITE_DOCUMENTS = 30
+EXPECTED_CORPUS_DOCUMENTS = 300
+
+
+class SourceSelectionError(ValueError):
+    """Raised when a release build does not see the complete committed corpus."""
 
 
 def ensure_corpus_extracted(data_dir: Path = DATA_DIR) -> int:
@@ -72,7 +76,26 @@ def selected_paths(mode: str) -> list[Path]:
     if mode == "lite":
         names = select_lite_files(DATA_DIR, LITE_DOCUMENTS)
         return [DATA_DIR / name for name in names]
-    return sorted(DATA_DIR.glob("*.txt"))
+    if mode not in {"full", "prebuilt"}:
+        raise SourceSelectionError(f"unknown graph build mode: {mode}")
+
+    paths = sorted(DATA_DIR.glob("*.txt"))
+    if len(paths) != EXPECTED_CORPUS_DOCUMENTS:
+        raise SourceSelectionError(
+            f"found {len(paths)} source documents in {DATA_DIR.resolve()}, "
+            f"expected {EXPECTED_CORPUS_DOCUMENTS} from the committed corpus"
+        )
+
+    if mode == "prebuilt":
+        held_out = set(HELD_OUT_DOCUMENTS)
+        missing_held_out = sorted(held_out - {path.name for path in paths})
+        if missing_held_out:
+            raise SourceSelectionError(
+                "committed corpus is missing held-out documents: "
+                + ", ".join(missing_held_out)
+            )
+        return [path for path in paths if path.name not in held_out]
+    return paths
 
 
 def booking_agent_problems(driver: Driver, *, apply_fixtures: bool) -> list[str]:
@@ -123,11 +146,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--mode",
-        choices=("lite", "full"),
+        choices=("lite", "full", "prebuilt"),
         default="lite",
         help=(
             "lite builds the 30-document sample; "
-            "full builds all 300. Default: lite."
+            "full builds all 300; prebuilt omits the five documents that "
+            "participants extract live. Default: lite."
         ),
     )
     parser.add_argument(
@@ -155,7 +179,11 @@ def parse_args() -> argparse.Namespace:
 def main() -> int:
     args = parse_args()
     ensure_corpus_extracted()
-    paths = selected_paths(args.mode)
+    try:
+        paths = selected_paths(args.mode)
+    except SourceSelectionError as exc:
+        print(f"❌ Source selection failed: {exc}")
+        return 1
     if not paths:
         print(f"No source documents found in {DATA_DIR.resolve()}.")
         return 1
@@ -204,7 +232,12 @@ def main() -> int:
         if args.check_only:
             return 1
 
-    title = "🚀 LITE BUILD" if args.mode == "lite" else "FULL BUILD"
+    titles = {
+        "lite": "🚀 LITE BUILD",
+        "full": "FULL BUILD",
+        "prebuilt": "PREBUILT GRAPH BUILD",
+    }
+    title = titles[args.mode]
     exit_code = asyncio.run(run_build(paths, title))
     if exit_code != 0:
         return exit_code

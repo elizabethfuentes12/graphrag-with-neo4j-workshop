@@ -19,7 +19,7 @@ from pathlib import Path
 
 # Source documents top out at ~7.4 KB. A chunk this size keeps each hotel in a
 # single chunk, so the hotel's name, address and rating are extracted together
-# with its rooms and amenities instead of being split across two prompts.
+# with its rooms, policies, and services instead of being split across prompts.
 CHUNK_SIZE = 12000
 CHUNK_OVERLAP = 0
 
@@ -35,6 +35,17 @@ EXTRACTION_MAX_TOKENS = 16000
 # Module 2 asks about Paris and Cairo by name, so the lite sample has to contain
 # them. `sorted(...)[:30]` is alphabetical and stops at Boston.
 REQUIRED_CITIES = ("paris", "cairo")
+
+# These documents are extracted live by Module 1 and therefore must not be in
+# the prebuilt graph artifact. This build-time module is the source of truth
+# for both facilitator selection and the learner-facing extraction helper.
+HELD_OUT_DOCUMENTS: tuple[str, ...] = (
+    "hotel-tokyo-002.txt",
+    "hotel-sydney-002.txt",
+    "hotel-riodejaneiro-002.txt",
+    "hotel-capetown-002.txt",
+    "hotel-prague-002.txt",
+)
 
 
 def _city_of(filename: str) -> str:

@@ -1,0 +1,90 @@
+Starting disposable Neo4j with neo4j:latest...
+Unable to find image 'neo4j:latest' locally
+latest: Pulling from library/neo4j
+1b7200988f19: Already exists
+68b251585bd0: Pulling fs layer
+9de8354a8d8f: Pulling fs layer
+f81865e0bb42: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Waiting
+9de8354a8d8f: Verifying Checksum
+9de8354a8d8f: Download complete
+4f4fb700ef54: Verifying Checksum
+4f4fb700ef54: Download complete
+68b251585bd0: Verifying Checksum
+68b251585bd0: Download complete
+68b251585bd0: Pull complete
+9de8354a8d8f: Pull complete
+f81865e0bb42: Verifying Checksum
+f81865e0bb42: Download complete
+f81865e0bb42: Pull complete
+4f4fb700ef54: Pull complete
+Digest: sha256:0ddfa71c8f0bfe0d780d74fb66b985de4767bbd274bab70c0806cb3a6deec101
+Status: Downloaded newer image for neo4j:latest
+Building the 295-document prebuilt graph...
+PREBUILT GRAPH BUILD: 295 documents
+Database: neo4j
+
+Clearing the previous graph this module built...
+✅ Cleared
+
+Canary: extracting hotel-acapulco-001.txt, hotel-acapulco-002.txt, hotel-albuquerque-001.txt before ingesting the rest...
+  [1/3] hotel-acapulco-001.txt... {neo4j_code: Neo.ClientError.Procedure.ProcedureNotFound} {message: There is no procedure with the name `apoc.merge.relationship` registered for this database instance. Please ensure you've spelled the procedure name correctly and that the procedure is properly deployed.} {gql_status: 42001} {gql_status_description: error: syntax error or access rule violation - invalid syntax}
+neo4j.exceptions.GqlError: {gql_status: 42N08} {gql_status_description: error: syntax error or access rule violation - no such procedure. The procedure apoc.merge.relationship() was not found. Verify that the spelling is correct.} {message: 42N08: The procedure apoc.merge.relationship() was not found. Verify that the spelling is correct.} {diagnostic_record: {'_classification': 'CLIENT_ERROR', 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}} {raw_classification: CLIENT_ERROR}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j_graphrag/experimental/components/kg_writer.py", line 305, in run
+    self._upsert_relationships(batch)
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j_graphrag/experimental/components/kg_writer.py", line 272, in _upsert_relationships
+    self.driver.execute_query(
+    ~~~~~~~~~~~~~~~~~~~~~~~~~^
+        query,
+        ^^^^^^
+        parameters_=parameters,
+        ^^^^^^^^^^^^^^^^^^^^^^^
+        database_=self.neo4j_database,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/driver.py", line 950, in execute_query
+    return session._run_transaction(
+           ~~~~~~~~~~~~~~~~~~~~~~~~^
+        access_mode,
+        ^^^^^^^^^^^^
+    ...<3 lines>...
+        {},
+        ^^^
+    )
+    ^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/work/session.py", line 577, in _run_transaction
+    result = transaction_function(tx, *args, **kwargs)
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/driver.py", line 1302, in _work
+    res = tx.run(query, parameters)
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/work/transaction.py", line 201, in run
+    result._tx_ready_run(query, parameters)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/work/result.py", line 180, in _tx_ready_run
+    self._run(query, parameters, None, None, None, None, None, None)
+    ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/work/result.py", line 240, in _run
+    self._attach()
+    ~~~~~~~~~~~~^^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/work/result.py", line 441, in _attach
+    self._connection.fetch_message()
+    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_common.py", line 193, in inner
+    func(*args, **kwargs)
+    ~~~~^^^^^^^^^^^^^^^^^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_bolt.py", line 868, in fetch_message
+    res = self._process_message(tag, fields)
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_bolt6.py", line 548, in _process_message
+    response.on_failure(summary_metadata or {})
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/lib/python3.13/site-packages/neo4j/_sync/io/_common.py", line 263, in on_failure
+    raise self._hydrate_error(metadata)
+neo4j.exceptions.ClientError: {neo4j_code: Neo.ClientError.Procedure.ProcedureNotFound} {message: There is no procedure with the name `apoc.merge.relationship` registered for this database instance. Please ensure you've spelled the procedure name correctly and that the procedure is properly deployed.} {gql_status: 42001} {gql_status_description: error: syntax error or access rule violation - invalid syntax}
+✅
+  [2/3] hotel-acapulco-002.txt... 
