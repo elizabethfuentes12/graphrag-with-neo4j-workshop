@@ -5,9 +5,9 @@ weight: 20
 
 ## Build a Typed Graph from Documents
 
-Claude on :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} converts five hotel FAQ documents into a queryable knowledge graph. `SimpleKGPipeline` from the :link[neo4j-graphrag]{href="https://neo4j.com/docs/neo4j-graphrag-python/current/" external=true} package splits each document into chunks, embeds the chunks, and extracts typed nodes and relationships.
+Claude on :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} converts five hotel FAQ documents into a queryable knowledge graph. `SimpleKGPipeline` from the :link[neo4j-graphrag]{href="https://neo4j.com/docs/neo4j-graphrag-python/current/" external=true} package splits each document into chunks, embeds the chunks, and extracts typed facts from prose. A small deterministic step reads the existing hotel amenity bullets directly.
 
-An embedding groups text by meaning. Extraction records specific facts as nodes and relationships, such as whether a hotel offers a spa, whether the spa costs extra, and where the hotel is located. This structure allows a query to match those facts directly. This module writes the embeddings and extracted facts, and every later module reads them.
+An embedding groups text by meaning. Extraction records specific facts as nodes and relationships, such as a hotel's address, rooms, policies, and services. The amenity list is already structured, so code uses each exact bullet label as the shared amenity name. This structure allows a query to match those facts directly. This module writes the embeddings and graph facts, and every later module reads them.
 
 You add five hotels that were held out of the prepared graph. The remaining modules query them as part of the full dataset.
 
@@ -19,11 +19,11 @@ The five hotels remain in the graph after this module because later modules use 
 
 ## What the Graph Looks Like
 
-Extraction writes two connected layers.
+The build writes two connected layers.
 
 **The lexical layer holds the text.** Each source file becomes one `Document` node. The text is split into chunks, and each chunk becomes a `Chunk` node carrying that text and a 1024-dimension embedding of it. Vector search and keyword search read this layer.
 
-**The domain layer holds the facts stated in that text.** A `Hotel` node carries the name, address, and guest rating as properties. Typed relationships connect it to `Room`, `Amenity`, `Policy`, and `Service` nodes. Cypher queries read this layer.
+**The domain layer holds the facts stated in that text.** A `Hotel` node carries the name, address, and guest rating as properties. Typed relationships connect it to `Room`, `Amenity`, `Policy`, and `Service` nodes. The LLM extracts the prose facts. The parser reads amenities from the `## Hotel Amenities` list. Cypher queries read this layer.
 
 `FROM_CHUNK` and `FROM_DOCUMENT` connect the two layers. A search finds a chunk, then a graph traversal reaches its typed facts and source document.
 
@@ -73,21 +73,22 @@ Later modules run retrieval against the combined graph, including your five hote
 
 ## How the Extraction Pipeline Works
 
-`SimpleKGPipeline` runs five stages for each document. The workshop sets the behavior for every stage.
+The build runs six stages for each document. `SimpleKGPipeline` owns the first five, then the deterministic amenity parser runs. The workshop sets the behavior for every stage.
 
 | Stage | What it does here |
 |-------|-------------------|
 | Split | `FixedSizeSplitter` cuts the document into chunks of at most 12000 characters |
 | Embed | Amazon Nova turns each chunk into a 1024-dimension vector and stores it on the `Chunk` node |
 | Extract | Claude reads the chunk and returns JSON holding the nodes and relationships it found, restricted to the pinned schema |
-| Resolve | Entity resolution merges an extracted entity into an existing node when one already matches |
+| Resolve | Global name-based entity resolution stays off so same-name hotels in different cities remain distinct |
 | Write | The pipeline creates the `Document`, `Chunk`, and entity nodes, then connects them |
+| Amenities | The parser reads the amenity bullets and merges shared `Amenity` nodes by exact name |
 
-Chunk size controls how much text the model sees in one call. The largest corpus document is 7,442 bytes, and the chunk size is 12000 characters, so each document becomes one chunk. The hotel's name, address, rating, rooms, and amenities reach the model together. This context associates every extracted amenity with the correct hotel. The overlap is 0 because each document has only one chunk.
+Chunk size controls how much text the model sees in one call. The largest corpus document is 7,442 bytes, and the chunk size is 12000 characters, so each document becomes one chunk. The hotel's name, address, rating, rooms, policies, and services reach the model together. The overlap is 0 because each document has only one chunk.
 
-Extracting one complete hotel produces a large JSON response that can exceed the 4096-token default that the workshop's Bedrock client sets. The model then truncates the response in the middle of an object, which makes the JSON invalid and causes the pipeline to drop the chunk. The build raises the extraction limit to 16000 tokens so the complete response fits.
+Extracting one complete hotel produces a large JSON response that can exceed the 4096-token default that the workshop's Bedrock client sets. The model can truncate the response in the middle of an object, which makes the JSON invalid and fails that document. The build raises the extraction limit to 16000 tokens so the complete response fits, and a failed document receives one retry.
 
-Entity resolution merges matching entities while preserving each chunk. The build records the existing chunk IDs before extraction, so every new chunk belongs to the current run.
+The build records the existing chunk IDs before extraction, so every new chunk belongs to the current run. It also requires each source document to resolve to exactly one distinct `Hotel` before attaching amenities.
 
 ---
 
@@ -104,11 +105,10 @@ Entity resolution merges matching entities while preserving each chunk. The buil
 
 Each structure represents its source document, but a single Cypher pattern cannot match all of them. The extraction process needs one vocabulary that applies to every document.
 
-The pinned schema provides that shared vocabulary\:
+The LLM schema provides the vocabulary for facts extracted from prose\:
 
 :::code{language=text}
 (:Hotel)-[:HAS_ROOM]->(:Room)
-(:Hotel)-[:OFFERS_AMENITY]->(:Amenity)
 (:Hotel)-[:HAS_POLICY]->(:Policy)
 (:Hotel)-[:PROVIDES_SERVICE]->(:Service)
 :::
@@ -119,9 +119,20 @@ The model also follows the property descriptions in the schema\:
 
 - `address` stores the address as a `Hotel` property and keeps `Address` out of the graph.
 - `guest_rating` converts a value such as `4.6/5.0` into the float `4.6`. Later modules can average the numeric property.
-- `Amenity` creates a node only when the document says the hotel has that amenity. This rule prevents sentences such as "Pool facilities are not available at this property" from creating a pool.
-
 Later modules require this structure. Module 3's retrieval tool expects each `Hotel` node to have `name`, `address`, and `guest_rating` properties. The pinned schema writes those properties consistently.
+
+### The deterministic amenity boundary
+
+Each source document already contains one `## Hotel Amenities` bullet list. Asking an LLM to recreate those labels can turn the same authored value into several plausible names. The workshop takes the simpler path\:
+
+1. The LLM schema excludes `Amenity` and `OFFERS_AMENITY`.
+2. Code reads only the bullets under `## Hotel Amenities` and stops at the next heading.
+3. The exact trimmed bullet text becomes `Amenity.name`.
+4. Neo4j merges that name into one shared node and connects it to the source hotel.
+
+This boundary also handles negative prose safely. A later sentence such as "Pool facilities are not available at this property" sits outside the authoritative list and cannot create a positive Pool amenity.
+
+The full explanation is one sentence: use the LLM for prose, and parse a structured list directly when the source already provides one. The prebuilt graph and the five documents you add use this same rule.
 
 The notebook includes an optional comparison. It extracts one document without a schema and prints the labels created by the LLM. That comparison leaves its document and its invented labels in the graph, and nothing later in the workshop reads them.
 
@@ -140,19 +151,20 @@ Each index handles a different search pattern. An embedding of `60611` is simila
 
 The document and query embeddings must use the same model, dimensions, and purpose. A query embedding with different settings can return incorrect rows without producing an error. The workshop embedder prevents this mismatch by using fixed settings.
 
-The dump already contains three uniqueness constraints. This notebook leaves them unchanged. Module 3 verifies the constraint used by its duplicate-request check.
+The build enforces one uniqueness constraint for deterministic identity: `Amenity.name` must be unique. The dump also contains the constraints used by later modules, including the one Module 3 verifies for its duplicate-request check.
 
 ---
 
 ## What the Build Verifies
 
-The build ends with three checks. It stops when any check fails\:
+The build ends with four checks. It stops when any check fails\:
 
 1. **The schema held.** The build lists every label this run's own chunks produced and fails if an off-schema label appears.
-2. **The indexes match the retrieval contract.** The build reads both indexes back and compares type, state, label, property, dimensions, and similarity function.
-3. **The graph answers the later modules' questions.** The build runs those queries now, such as Paris hotels with ratings and Cairo hotels that have a spa, a pool, and a rating.
+2. **Every source produced one hotel.** A document with zero or multiple Hotels fails, as does one Hotel shared by multiple source documents.
+3. **Amenities match the source.** The build compares exact pairs of source filename and amenity label after writing the graph.
+4. **The graph is ready for retrieval.** The build verifies both indexes and runs the fixture queries used by later modules.
 
-The document and chunk counts are strict. All five documents must load, and the total chunk count must equal the total document count. The fixture checks allow variation in individual properties because extraction is stochastic. They require at least one Cairo hotel with a spa, a pool, and a rating, and at least two Paris hotels with a rating. The schema check is strict because an unexpected label means the shared vocabulary failed.
+The document, chunk, Hotel, and amenity-source checks are strict. All five documents must load, each must produce one Hotel, and every authored amenity must be connected to that Hotel. The fixture checks allow variation in LLM-extracted properties. They require at least one Cairo hotel with a spa, a pool, and a rating, and at least two Paris hotels with a rating.
 
 ---
 

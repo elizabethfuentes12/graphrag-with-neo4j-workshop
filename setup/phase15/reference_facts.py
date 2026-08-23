@@ -13,7 +13,9 @@ from __future__ import annotations
 import re
 from typing import Any
 
-AMENITY_BLOCK = re.compile(r"^## Hotel Amenities\s*\n(.*?)(?=^###|\Z)", re.DOTALL | re.MULTILINE)
+AMENITY_BLOCK = re.compile(
+    r"^## Hotel Amenities\s*\n(.*?)(?=^###|\Z)", re.DOTALL | re.MULTILINE
+)
 ROOM_TYPES = re.compile(
     r"^### Room Types Available\s*\n(.*?)(?=^###|^##|\Z)", re.DOTALL | re.MULTILINE
 )
@@ -64,6 +66,7 @@ def _title(text: str) -> str:
 
 def source_facts(documents: list[dict[str, Any]]) -> dict[str, Any]:
     """Derive every Phase 1.5 reference fact from the committed corpus alone."""
+    amenity_sets = [_amenity_names(document["text"]) for document in documents]
     orlando = [
         {
             "filename": document["filename"],
@@ -134,6 +137,10 @@ def source_facts(documents: list[dict[str, Any]]) -> dict[str, Any]:
 
     return {
         "document_count": len(documents),
+        "amenity_inventory": {
+            "assertions": sum(len(names) for names in amenity_sets),
+            "distinct_names": len(set().union(*amenity_sets)),
+        },
         "orlando": {
             "hotels": orlando,
             "count": len(orlando),

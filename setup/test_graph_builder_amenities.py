@@ -12,7 +12,7 @@ from zipfile import ZipFile
 
 import pytest
 from workshop import retrieval_setup
-from workshop.amenities import ParsedAmenities
+from workshop.amenities import ParsedAmenities, parse_amenity_section
 from workshop.graph_schema import GRAPH_SCHEMA, LLM_EXTRACTION_SCHEMA
 
 CONNECTED_CONTEXT = (
@@ -109,24 +109,28 @@ def test_source_hotel_check_rejects_missing_ambiguous_and_shared_hotels() -> Non
         {
             "filename": "missing.txt",
             "document_count": 0,
+            "chunk_count": 0,
             "hotel_count": 0,
             "hotel_element_ids": [],
         },
         {
             "filename": "ambiguous.txt",
             "document_count": 1,
+            "chunk_count": 1,
             "hotel_count": 2,
             "hotel_element_ids": ["hotel-1", "hotel-2"],
         },
         {
             "filename": "shared-a.txt",
             "document_count": 1,
+            "chunk_count": 1,
             "hotel_count": 1,
             "hotel_element_ids": ["shared-hotel"],
         },
         {
             "filename": "shared-b.txt",
             "document_count": 1,
+            "chunk_count": 1,
             "hotel_count": 1,
             "hotel_element_ids": ["shared-hotel"],
         },
@@ -149,6 +153,7 @@ def test_historical_missing_hotel_sources_fail_the_current_builder_gate() -> Non
         {
             "filename": filename,
             "document_count": 1,
+            "chunk_count": 1,
             "hotel_count": 0,
             "hotel_element_ids": [],
         }
@@ -162,7 +167,7 @@ def test_historical_missing_hotel_sources_fail_the_current_builder_gate() -> Non
 
     assert len(problems) == 4
     for filename in HISTORICAL_MISSING_HOTEL_SOURCES:
-        assert f"{filename} has 0 Hotels" in problems
+        assert any(f"{filename} has 0 Hotels" in problem for problem in problems)
 
 
 def test_amenity_reconciliation_reports_missing_and_unexpected_pairs() -> None:
@@ -252,19 +257,22 @@ def test_restored_graph_reconciliation_proves_chicago_hotels_share_wifi(
         ],
         [
             {
-                "filename": "hotel-chicago-001.txt",
+                "relationship_id": "offer-1",
+                "relationship_source_filename": "hotel-chicago-001.txt",
                 "amenity_name": "Complimentary High-Speed Wifi",
-                "relationship_count": 1,
+                "provenance_filenames": ["hotel-chicago-001.txt"],
             },
             {
-                "filename": "hotel-chicago-002.txt",
+                "relationship_id": "offer-2",
+                "relationship_source_filename": "hotel-chicago-002.txt",
                 "amenity_name": "Complimentary High-Speed Wifi",
-                "relationship_count": 1,
+                "provenance_filenames": ["hotel-chicago-002.txt"],
             },
             {
-                "filename": "hotel-chicago-002.txt",
+                "relationship_id": "offer-3",
+                "relationship_source_filename": "hotel-chicago-002.txt",
                 "amenity_name": "Outdoor Swimming Pool",
-                "relationship_count": 1,
+                "provenance_filenames": ["hotel-chicago-002.txt"],
             },
         ],
         [
@@ -299,14 +307,28 @@ def test_restored_graph_reconciliation_reports_all_integrity_defects(
         [{"filename": "hotel-a.txt", "document_count": 1}],
         [
             {
-                "filename": "hotel-a.txt",
+                "relationship_id": "offer-1",
+                "relationship_source_filename": "wrong-source.txt",
                 "amenity_name": "Shared WiFi",
-                "relationship_count": 2,
+                "provenance_filenames": ["hotel-a.txt"],
             },
             {
-                "filename": "hotel-a.txt",
+                "relationship_id": "offer-2",
+                "relationship_source_filename": "hotel-a.txt",
+                "amenity_name": "Shared WiFi",
+                "provenance_filenames": ["hotel-a.txt"],
+            },
+            {
+                "relationship_id": "offer-3",
+                "relationship_source_filename": "hotel-a.txt",
                 "amenity_name": "Invented Spa",
-                "relationship_count": 1,
+                "provenance_filenames": ["hotel-a.txt"],
+            },
+            {
+                "relationship_id": "offer-4",
+                "relationship_source_filename": "orphan.txt",
+                "amenity_name": "Shared WiFi",
+                "provenance_filenames": [],
             },
         ],
         [
@@ -323,8 +345,70 @@ def test_restored_graph_reconciliation_reports_all_integrity_defects(
     assert any("1 source amenity assertions are missing" in item for item in problems)
     assert any("1 unexpected amenity assertions exist" in item for item in problems)
     assert any("2 OFFERS_AMENITY relationships" in item for item in problems)
+    assert any("wrong-source.txt" in item for item in problems)
+    assert any(
+        "resolves through its Hotel to 0 source Documents" in item for item in problems
+    )
     assert any("unexpected Amenity nodes" in item for item in problems)
     assert any("has 2 nodes, expected 1 shared node" in item for item in problems)
+
+
+def test_restored_graph_reconciliation_enforces_expected_source_set(
+    tmp_path: Path,
+) -> None:
+    archive = tmp_path / "corpus.zip"
+    with ZipFile(archive, "w") as corpus:
+        corpus.writestr(
+            "hotel-a.txt",
+            "# Hotel A\n\n## Hotel Amenities\n\n- Shared WiFi\n",
+        )
+        corpus.writestr(
+            "hotel-b.txt",
+            "# Hotel B\n\n## Hotel Amenities\n\n- Pool\n",
+        )
+
+    neo4j_session = Mock()
+    neo4j_session.__enter__ = Mock(return_value=neo4j_session)
+    neo4j_session.__exit__ = Mock(return_value=False)
+    neo4j_session.run.side_effect = [
+        [{"filename": "hotel-a.txt", "document_count": 1}],
+        [
+            {
+                "relationship_id": "offer-1",
+                "relationship_source_filename": "hotel-a.txt",
+                "amenity_name": "Shared WiFi",
+                "provenance_filenames": ["hotel-a.txt"],
+            }
+        ],
+        [{"amenity_name": "Shared WiFi", "node_count": 1}],
+    ]
+    driver = Mock()
+    driver.session.return_value = neo4j_session
+
+    problems = validate_graph_amenities.amenity_reconciliation_problems(
+        driver,
+        "neo4j",
+        archive,
+        expected_filenames={"hotel-a.txt", "hotel-b.txt"},
+    )
+
+    assert any("1 expected source Documents are missing" in item for item in problems)
+    assert any("hotel-b.txt: Pool" in item for item in problems)
+
+
+def test_release_source_contract_omits_only_held_out_documents() -> None:
+    corpus_archive = CONNECTED_CONTEXT / "hotel-faqs.zip"
+    with ZipFile(corpus_archive) as corpus:
+        archive_names = set(corpus.namelist())
+
+    full = validate_graph_amenities.expected_source_filenames(archive_names, "full")
+    prebuilt = validate_graph_amenities.expected_source_filenames(
+        archive_names, "prebuilt"
+    )
+
+    assert len(full) == 300
+    assert len(prebuilt) == 295
+    assert full - prebuilt == set(prepare_graph.HELD_OUT_DOCUMENTS)
 
 
 def _patch_shared_build_dependencies(
@@ -429,6 +513,11 @@ def test_prebuilt_selection_omits_only_the_five_live_documents(
     corpus_archive = CONNECTED_CONTEXT / "hotel-faqs.zip"
     with ZipFile(corpus_archive) as corpus:
         filenames = sorted(name for name in corpus.namelist() if name.endswith(".txt"))
+        prebuilt_amenities = [
+            parse_amenity_section(corpus.read(name).decode("utf-8"), name)
+            for name in filenames
+            if name not in prepare_graph.HELD_OUT_DOCUMENTS
+        ]
     for filename in filenames:
         (tmp_path / filename).touch()
     monkeypatch.setattr(prepare_graph, "DATA_DIR", tmp_path)
@@ -437,6 +526,15 @@ def test_prebuilt_selection_omits_only_the_five_live_documents(
 
     assert len(selected) == 295
     assert {path.name for path in selected}.isdisjoint(prepare_graph.HELD_OUT_DOCUMENTS)
+    assert sum(len(parsed.names) for parsed in prebuilt_amenities) == 1_606
+    assert len({name for parsed in prebuilt_amenities for name in parsed.names}) == 65
+    assert (
+        sum(
+            any("pool" in name.lower() for name in parsed.names)
+            for parsed in prebuilt_amenities
+        )
+        == 172
+    )
 
 
 def test_prebuilt_selection_rejects_an_incomplete_source_corpus(

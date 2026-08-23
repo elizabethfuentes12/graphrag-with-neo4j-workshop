@@ -27,6 +27,9 @@ rather than `run_build` behind a flag.
 """
 
 import asyncio
+import hashlib
+import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -50,12 +53,21 @@ from workshop.amenities import (
     parse_amenity_section,
 )
 from workshop.aws_region import aws_region
-from workshop.bedrock_providers import BedrockEmbeddings, BedrockLLM
+from workshop.bedrock_providers import (
+    BedrockEmbeddings,
+    BedrockLLM,
+    default_model_id,
+)
 from workshop.graph_connection import graph_database, neo4j_auth, neo4j_uri
 from workshop.graph_schema import (
     LLM_EXTRACTION_SCHEMA,
     LLM_SCHEMA_NODE_LABELS,
     SCHEMA_NODE_LABELS,
+)
+from workshop.retrieval_contract import (
+    EMBEDDING_DIMENSIONS,
+    EMBEDDING_MODEL_ID,
+    EMBEDDING_PURPOSE,
 )
 from workshop.retrieval_setup import (
     ensure_retrieval_indexes,
@@ -81,6 +93,13 @@ CANARY_DOCS = 3
 # retry one lost document costs a full rebuild.
 RETRY_PASSES = 1
 
+# Module 1 stays sequential by default. Facilitator release builds can opt into
+# a small amount of parallelism with GRAPH_BUILD_CONCURRENCY. The upper bound
+# protects Bedrock quotas and Neo4j's transaction pool from an accidental
+# unbounded release invocation.
+DEFAULT_BUILD_CONCURRENCY = 1
+MAX_BUILD_CONCURRENCY = 8
+
 # `ingest`'s `asyncio.wait_for` timeout cannot cancel a Bedrock call already
 # handed to a worker thread (see `bedrock_providers.BEDROCK_CONFIG`), so a
 # "timed-out" document can still be writing to Neo4j after `retry_failures`
@@ -99,6 +118,55 @@ RECENT_WRITE_SECONDS = 30
 # this graph that was itself produced by this pipeline carries the label, and
 # the wipe takes it with everything else.
 KG_LABEL = "__KGBuilder__"
+
+# Increment this when extraction semantics change in a way that is not already
+# represented by the schema, model, embedding, or chunk settings included in
+# `build_contract`. A resumed build only reuses Documents carrying this exact
+# contract, so old partial graphs fail closed instead of mixing build recipes.
+BUILD_CONTRACT_VERSION = 1
+
+
+def build_concurrency() -> int:
+    """Return the validated number of documents to extract concurrently."""
+    raw_value = os.getenv(
+        "GRAPH_BUILD_CONCURRENCY",
+        str(DEFAULT_BUILD_CONCURRENCY),
+    )
+    try:
+        concurrency = int(raw_value)
+    except ValueError as exc:
+        raise ValueError(
+            "GRAPH_BUILD_CONCURRENCY must be an integer from 1 to "
+            f"{MAX_BUILD_CONCURRENCY}, found {raw_value!r}"
+        ) from exc
+    if not 1 <= concurrency <= MAX_BUILD_CONCURRENCY:
+        raise ValueError(
+            "GRAPH_BUILD_CONCURRENCY must be from 1 to "
+            f"{MAX_BUILD_CONCURRENCY}, found {concurrency}"
+        )
+    return concurrency
+
+
+def source_sha256(path: Path) -> str:
+    """Return the digest used to prove a checkpoint matches its source."""
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def build_contract() -> str:
+    """Return a stable digest of settings that affect extraction output."""
+    payload = {
+        "version": BUILD_CONTRACT_VERSION,
+        "chunk_size": CHUNK_SIZE,
+        "chunk_overlap": CHUNK_OVERLAP,
+        "extraction_max_tokens": EXTRACTION_MAX_TOKENS,
+        "llm_model_id": default_model_id(),
+        "embedding_model_id": EMBEDDING_MODEL_ID,
+        "embedding_dimensions": EMBEDDING_DIMENSIONS,
+        "embedding_purpose": EMBEDDING_PURPOSE,
+        "schema": LLM_EXTRACTION_SCHEMA,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def connect() -> Driver:
@@ -245,7 +313,7 @@ def check_documents_addressable(driver: Driver, paths: list[Path]) -> list[str]:
 
 
 def check_source_hotels(driver: Driver, paths: list[Path]) -> list[str]:
-    """Require one distinct Hotel through provenance for every source file."""
+    """Require one Document, Chunk, and distinct Hotel per source file."""
     filenames = [path.name for path in paths]
     with session(driver) as neo4j_session:
         records = list(
@@ -258,6 +326,7 @@ def check_source_hotels(driver: Driver, paths: list[Path]) -> list[str]:
                 OPTIONAL MATCH (h:Hotel)-[:FROM_CHUNK]->(c)
                 RETURN filename,
                        count(DISTINCT d) AS document_count,
+                       count(DISTINCT c) AS chunk_count,
                        count(DISTINCT h) AS hotel_count,
                        collect(DISTINCT elementId(h)) AS hotel_element_ids
                 ORDER BY filename
@@ -271,10 +340,16 @@ def check_source_hotels(driver: Driver, paths: list[Path]) -> list[str]:
     for record in records:
         filename = record["filename"]
         document_count = record["document_count"]
+        chunk_count = record["chunk_count"]
         hotel_count = record["hotel_count"]
         if document_count != 1:
             problems.append(
                 f"{filename} has {document_count} Document nodes, expected 1"
+            )
+        if chunk_count != 1:
+            problems.append(
+                f"{filename} has {chunk_count} Chunk nodes through provenance, "
+                "expected 1"
             )
         if hotel_count != 1:
             problems.append(
@@ -289,6 +364,84 @@ def check_source_hotels(driver: Driver, paths: list[Path]) -> list[str]:
             joined = ", ".join(sorted(source_names))
             problems.append(f"one Hotel node is shared by source documents: {joined}")
     return problems
+
+
+def resumable_paths(
+    driver: Driver,
+    paths: list[Path],
+    contract: str,
+) -> tuple[list[Path], list[Path]]:
+    """Partition sources into proven-complete and must-retry paths.
+
+    Reuse is deliberately strict. The source bytes and build contract must
+    match, and the graph must contain exactly one Document, one Chunk, and one
+    Hotel through provenance. A Hotel shared by two sources proves neither
+    source complete.
+    """
+    sources = [
+        {"filename": path.name, "source_sha256": source_sha256(path)} for path in paths
+    ]
+    with session(driver) as neo4j_session:
+        records = list(
+            neo4j_session.run(
+                """
+                CYPHER 25
+                UNWIND $sources AS source
+                OPTIONAL MATCH (d:Document {source_filename: source.filename})
+                OPTIONAL MATCH (c:Chunk)-[:FROM_DOCUMENT]->(d)
+                OPTIONAL MATCH (h:Hotel)-[:FROM_CHUNK]->(c)
+                WITH source,
+                     count(DISTINCT d) AS document_count,
+                     count(DISTINCT c) AS chunk_count,
+                     count(DISTINCT h) AS hotel_count,
+                     collect(DISTINCT d.source_sha256) AS source_sha256_values,
+                     collect(DISTINCT d.build_contract) AS build_contract_values,
+                     collect(DISTINCT elementId(h)) AS hotel_element_ids
+                OPTIONAL MATCH (candidate_hotel:Hotel)
+                WHERE elementId(candidate_hotel) IN hotel_element_ids
+                OPTIONAL MATCH (candidate_hotel)-[:FROM_CHUNK]->(:Chunk)
+                               -[:FROM_DOCUMENT]->(hotel_source:Document)
+                RETURN source.filename AS filename,
+                       source.source_sha256 AS expected_source_sha256,
+                       document_count,
+                       chunk_count,
+                       hotel_count,
+                       source_sha256_values,
+                       build_contract_values,
+                       hotel_element_ids,
+                       count(DISTINCT hotel_source) AS hotel_source_document_count
+                ORDER BY filename
+                """,
+                sources=sources,
+            )
+        )
+
+    candidates: dict[str, str] = {}
+    hotel_sources: dict[str, list[str]] = {}
+    for record in records:
+        if (
+            record["document_count"] == 1
+            and record["chunk_count"] == 1
+            and record["hotel_count"] == 1
+            and record["hotel_source_document_count"] == 1
+            and record["source_sha256_values"] == [record["expected_source_sha256"]]
+            and record["build_contract_values"] == [contract]
+        ):
+            filename = record["filename"]
+            hotel_id = record["hotel_element_ids"][0]
+            candidates[filename] = hotel_id
+            hotel_sources.setdefault(hotel_id, []).append(filename)
+
+    shared_sources = {
+        filename
+        for filenames in hotel_sources.values()
+        if len(filenames) > 1
+        for filename in filenames
+    }
+    complete_names = set(candidates) - shared_sources
+    complete = [path for path in paths if path.name in complete_names]
+    pending = [path for path in paths if path.name not in complete_names]
+    return complete, pending
 
 
 def parse_amenity_lists(paths: list[Path]) -> list[ParsedAmenities]:
@@ -375,36 +528,50 @@ def check_amenity_assertions(
 async def ingest(pipeline: SimpleKGPipeline, paths: list[Path]) -> list[Path]:
     """Run every document through the pipeline. Returns the ones that failed."""
     total = len(paths)
-    failures: list[Path] = []
-    for i, path in enumerate(paths, 1):
-        text = path.read_text(encoding="utf-8")
-        print(f"  [{i}/{total}] {path.name}...", end=" ", flush=True)
-        # `run_id` and `ingest_started_at` land on this document's :Document
-        # node through `document_metadata` (the same mechanism that attaches
-        # `source_filename`). `_recent_write_exists` reads `ingest_started_at`
-        # back to tell a comfortably-finished failure from one that might
-        # still be writing. See `RECENT_WRITE_SECONDS`.
-        try:
-            await asyncio.wait_for(
-                pipeline.run_async(
-                    file_path=path.name,
-                    text=text,
-                    document_metadata={
-                        "source_filename": path.name,
-                        "run_id": uuid4().hex,
-                        "ingest_started_at": datetime.now(timezone.utc).isoformat(),
-                    },
-                ),
-                timeout=DOC_TIMEOUT_SECONDS,
-            )
-            print("✅")
-        except asyncio.TimeoutError:
-            failures.append(path)
-            print("⏰ timeout")
-        except Exception as exc:  # noqa: BLE001 - one bad doc must not stop the build
-            failures.append(path)
-            print(f"❌ {str(exc)[:80]}")
-    return failures
+    contract = build_contract()
+    concurrency = build_concurrency()
+    semaphore = asyncio.Semaphore(concurrency)
+    if total:
+        print(f"  extraction concurrency: {concurrency}")
+
+    async def ingest_one(index: int, path: Path) -> bool:
+        async with semaphore:
+            text = path.read_text(encoding="utf-8")
+            prefix = f"  [{index}/{total}] {path.name}"
+            print(f"{prefix}... started", flush=True)
+            # `run_id` and `ingest_started_at` land on this document's
+            # :Document node through `document_metadata` (the same mechanism
+            # that attaches `source_filename`). `_recent_write_exists` reads
+            # `ingest_started_at` back to distinguish a comfortably-finished
+            # failure from one that might still be writing.
+            try:
+                await asyncio.wait_for(
+                    pipeline.run_async(
+                        file_path=path.name,
+                        text=text,
+                        document_metadata={
+                            "source_filename": path.name,
+                            "source_sha256": source_sha256(path),
+                            "build_contract": contract,
+                            "run_id": uuid4().hex,
+                            "ingest_started_at": datetime.now(timezone.utc).isoformat(),
+                        },
+                    ),
+                    timeout=DOC_TIMEOUT_SECONDS,
+                )
+                print(f"{prefix}... ✅", flush=True)
+                return False
+            except asyncio.TimeoutError:
+                print(f"{prefix}... ⏰ timeout", flush=True)
+                return True
+            except Exception as exc:  # noqa: BLE001 - isolate one bad document
+                print(f"{prefix}... ❌ {str(exc)[:80]}", flush=True)
+                return True
+
+    failed = await asyncio.gather(
+        *(ingest_one(index, path) for index, path in enumerate(paths, 1))
+    )
+    return [path for path, did_fail in zip(paths, failed) if did_fail]
 
 
 def _recent_write_exists(
@@ -654,10 +821,15 @@ def report(driver: Driver) -> None:
             print("    (none)")
 
 
-async def run_build(paths: list[Path], title: str) -> int:
-    """Canary, verify, wipe, ingest, retry, report. Returns an exit code."""
+async def run_build(paths: list[Path], title: str, *, resume: bool = False) -> int:
+    """Canary, ingest, verify, and report, optionally resuming a checkpoint."""
     if not paths:
         print("No documents selected.")
+        return 1
+    try:
+        build_concurrency()
+    except ValueError as exc:
+        print(f"❌ Extraction concurrency is invalid: {exc}")
         return 1
 
     missing_sources = missing_source_fixtures(paths)
@@ -679,37 +851,65 @@ async def run_build(paths: list[Path], title: str) -> int:
     print(f"Database: {graph_database()}\n")
     driver = connect()
     try:
-        print("Clearing the previous graph this module built...")
-        clear_extracted_graph(driver)
-        print("✅ Cleared\n")
+        pipeline = None
+        pending = paths
+        complete: list[Path] = []
+        if resume:
+            print("Inspecting the retained graph checkpoint...")
+            complete, pending = resumable_paths(driver, paths, build_contract())
+            print(
+                f"✅ Retaining {len(complete)} proven-complete source(s); "
+                f"{len(pending)} source(s) require extraction"
+            )
+            for path in pending:
+                clear_document(driver, path.name)
+        else:
+            print("Clearing the previous graph this module built...")
+            clear_extracted_graph(driver)
+            print("✅ Cleared\n")
 
-        canary = paths[:CANARY_DOCS]
-        names = ", ".join(path.name for path in canary)
-        print(f"Canary: extracting {names} before ingesting the rest...")
-        baseline = snapshot_chunk_ids(driver)
-        pipeline = build_pipeline(driver)
-        await ingest(pipeline, canary)
+        # A new checkpoint still gets the same early schema gate as a clean
+        # build. A resumed checkpoint already proves that it contains output
+        # from the current build contract, so it proceeds directly to pending
+        # sources and does not spend another Bedrock call on a canary.
+        if not complete and pending:
+            canary = pending[:CANARY_DOCS]
+            names = ", ".join(path.name for path in canary)
+            print(f"Canary: extracting {names} before ingesting the rest...")
+            baseline = snapshot_chunk_ids(driver)
+            pipeline = build_pipeline(driver)
+            await ingest(pipeline, canary)
 
-        new_chunks = snapshot_chunk_ids(driver) - baseline
-        if not new_chunks:
-            print("\n❌ Canary produced no :Chunk. Extraction did not run.")
-            clear_extracted_graph(driver)  # leave a clean, empty graph on failure
-            return 1
-        problems = check_schema_held(driver, new_chunks)
-        problems.extend(check_source_hotels(driver, canary))
-        if problems:
-            print("\n❌ Canary failed. The graph was cleared; fix and re-run:")
-            for problem in problems:
-                print(f"  - {problem}")
-            clear_extracted_graph(driver)  # remove the canary's partial docs
-            return 1
-        print("✅ Canary passed: extraction matches the documented schema\n")
+            new_chunks = snapshot_chunk_ids(driver) - baseline
+            problems = [] if new_chunks else ["Canary produced no :Chunk"]
+            if new_chunks:
+                problems.extend(check_schema_held(driver, new_chunks))
+            problems.extend(check_source_hotels(driver, canary))
+            if problems:
+                if resume:
+                    for path in canary:
+                        clear_document(driver, path.name)
+                    retained_message = "checkpoint was retained"
+                else:
+                    clear_extracted_graph(driver)
+                    retained_message = "graph was cleared"
+                print(f"\n❌ Canary failed; {retained_message}. Fix and re-run:")
+                for problem in problems:
+                    print(f"  - {problem}")
+                return 1
+            print("✅ Canary passed: extraction matches the documented schema\n")
 
-        print("Clearing the canary's documents before the full ingest...")
-        clear_extracted_graph(driver)
-        print("✅ Cleared\n")
+            if resume:
+                complete.extend(canary)
+                pending = pending[len(canary) :]
+            else:
+                print("Clearing the canary's documents before the full ingest...")
+                clear_extracted_graph(driver)
+                print("✅ Cleared\n")
 
-        failures = await ingest(pipeline, paths)
+        if pending and pipeline is None:
+            pipeline = build_pipeline(driver)
+        failures = await ingest(pipeline, pending) if pending else []
         # No `await pipeline.close()` here. `SimpleKGPipeline` defines no
         # `close()`, so that call raised `AttributeError` at the end of every
         # otherwise-successful build. It owns no resource needing release; the
@@ -811,6 +1011,11 @@ async def run_additive_build(paths: list[Path], title: str) -> int:
     """
     if not paths:
         print("No documents selected.")
+        return 1
+    try:
+        build_concurrency()
+    except ValueError as exc:
+        print(f"❌ Extraction concurrency is invalid: {exc}")
         return 1
 
     try:

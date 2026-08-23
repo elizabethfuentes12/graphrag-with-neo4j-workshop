@@ -9,41 +9,134 @@
 # Requires Docker, uv, AWS credentials, and Bedrock model access. This script
 # never connects to Aura and never replaces static/neo4j-hotel-graph.dump.
 #
-# Usage: setup/build_prebuilt_graph.sh
+# Usage: setup/build_prebuilt_graph.sh [--resume]
 # Output: setup/neo4j-hotel-graph-prebuilt.dump
 
 set -euo pipefail
 
+RESUMABLE=false
+case "${1:-}" in
+  "") ;;
+  --resume) RESUMABLE=true ;;
+  -h|--help)
+    echo "Usage: setup/build_prebuilt_graph.sh [--resume]"
+    echo
+    echo "Without arguments, build from scratch in a disposable Docker volume."
+    echo "With --resume, retain a failed build and reuse only provenance-checked"
+    echo "documents on the next --resume invocation."
+    exit 0
+    ;;
+  *)
+    echo "Unknown argument: $1" >&2
+    echo "Usage: setup/build_prebuilt_graph.sh [--resume]" >&2
+    exit 2
+    ;;
+esac
+if [[ $# -gt 1 ]]; then
+  echo "Expected at most one argument." >&2
+  echo "Usage: setup/build_prebuilt_graph.sh [--resume]" >&2
+  exit 2
+fi
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE="${NEO4J_IMAGE:-neo4j:latest}"
-VOLUME="neo4j-prebuilt-$$"
+MEMORY_LIMIT="${NEO4J_MEMORY_LIMIT:-4g}"
+BUILD_CONCURRENCY="${GRAPH_BUILD_CONCURRENCY:-3}"
+if [[ "$RESUMABLE" == true ]]; then
+  VOLUME="${NEO4J_PREBUILT_VOLUME:-neo4j-prebuilt-checkpoint}"
+  PASSWORD="${NEO4J_PREBUILT_PASSWORD:-prebuilt-local-checkpoint}"
+else
+  VOLUME="neo4j-prebuilt-$$"
+  PASSWORD="prebuilt-local-$$"
+fi
+CHECKPOINT_LABEL="com.aws.graphrag-workshop.prebuilt-checkpoint"
 CONTAINER="neo4j-prebuilt-$$"
-PASSWORD="prebuilt-local-$$"
 OUTPUT="$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.dump"
+MANIFEST="$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.manifest.json"
+BUILD_SUCCEEDED=false
 
 if [[ -e "$OUTPUT" ]]; then
   echo "Refusing to overwrite existing candidate: $OUTPUT" >&2
   echo "Move or delete it after review, then run this script again." >&2
   exit 1
 fi
+if [[ -e "$MANIFEST" ]]; then
+  echo "Refusing to overwrite existing candidate manifest: $MANIFEST" >&2
+  echo "Move or delete it after review, then run this script again." >&2
+  exit 1
+fi
 
 SCRATCH="$(mktemp -d)"
+START_SNAPSHOT="$SCRATCH/prebuilt-build-start.json"
+BUILD_STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+BUILD_STARTED_EPOCH="$(date +%s)"
 
 cleanup() {
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+  if [[ "$RESUMABLE" == false || "$BUILD_SUCCEEDED" == true ]]; then
+    docker volume rm "$VOLUME" >/dev/null 2>&1 || true
+  else
+    echo "Retained Neo4j checkpoint volume: $VOLUME" >&2
+    echo "Resume with: setup/build_prebuilt_graph.sh --resume" >&2
+  fi
   rm -rf "$SCRATCH"
 }
 trap cleanup EXIT
 
 mkdir -p "$SCRATCH/dumps-out"
-docker volume create "$VOLUME" >/dev/null
+START_ARGS=(
+  start
+  --repo-root "$REPO_ROOT"
+  --output "$START_SNAPSHOT"
+  --started-at "$BUILD_STARTED_AT"
+  --started-epoch "$BUILD_STARTED_EPOCH"
+)
+if [[ "$RESUMABLE" == true ]]; then
+  START_ARGS+=(--resume)
+fi
+python3 "$REPO_ROOT/setup/write_prebuilt_manifest.py" "${START_ARGS[@]}"
+
+if [[ "$RESUMABLE" == true ]] && docker volume inspect "$VOLUME" >/dev/null 2>&1; then
+  VOLUME_KIND="$(
+    docker volume inspect --format \
+      '{{ index .Labels "com.aws.graphrag-workshop.prebuilt-checkpoint" }}' \
+      "$VOLUME"
+  )"
+  if [[ "$VOLUME_KIND" != "v1" ]]; then
+    echo "Refusing to reuse unlabeled volume: $VOLUME" >&2
+    echo "Choose an unused NEO4J_PREBUILT_VOLUME for this build." >&2
+    exit 1
+  fi
+  USING_CONTAINERS="$(docker ps -aq --filter "volume=$VOLUME")"
+  if [[ -n "$USING_CONTAINERS" ]]; then
+    echo "Checkpoint volume $VOLUME is already attached to a container." >&2
+    echo "Remove that stale build container before starting another resume." >&2
+    exit 1
+  fi
+  echo "Reusing Neo4j checkpoint volume: $VOLUME"
+else
+  if [[ "$RESUMABLE" == true ]]; then
+    docker volume create --label "$CHECKPOINT_LABEL=v1" "$VOLUME" >/dev/null
+  else
+    docker volume create "$VOLUME" >/dev/null
+  fi
+  if [[ "$RESUMABLE" == true ]]; then
+    echo "Created resumable Neo4j checkpoint volume: $VOLUME"
+  fi
+fi
 
 echo "Starting disposable Neo4j with $IMAGE..."
 docker run -d --name "$CONTAINER" \
   -v "$VOLUME:/data" \
   -p 127.0.0.1::7687 \
+  --memory "$MEMORY_LIMIT" \
+  --memory-swap "$MEMORY_LIMIT" \
   -e NEO4J_AUTH="neo4j/$PASSWORD" \
+  -e 'NEO4J_PLUGINS=["apoc"]' \
+  -e 'NEO4J_dbms_security_procedures_unrestricted=apoc.*' \
+  -e NEO4J_server_memory_heap_initial__size=512m \
+  -e NEO4J_server_memory_heap_max__size=1536m \
+  -e NEO4J_server_memory_pagecache_size=1g \
   "$IMAGE" >/dev/null
 
 BOLT_ENDPOINT="$(docker port "$CONTAINER" 7687/tcp)"
@@ -64,14 +157,37 @@ done
 docker exec "$CONTAINER" cypher-shell \
   -u neo4j -p "$PASSWORD" "RETURN 1" >/dev/null
 
+APOC_PROCEDURE_COUNT="$(
+  docker exec "$CONTAINER" cypher-shell --format plain \
+    -u neo4j -p "$PASSWORD" \
+    "SHOW PROCEDURES YIELD name
+     WHERE name = 'apoc.merge.relationship'
+     RETURN count(*) AS procedure_count" |
+    tail -n 1 |
+    tr -d '\r'
+)"
+if [[ "$APOC_PROCEDURE_COUNT" != "1" ]]; then
+  echo "APOC prerequisite failed: apoc.merge.relationship is unavailable." >&2
+  echo "Check the container startup logs and confirm that $IMAGE can install" >&2
+  echo "the APOC plugin before retrying the release build." >&2
+  exit 1
+fi
+echo "APOC prerequisite passed: apoc.merge.relationship is available."
+
 echo "Building the 295-document prebuilt graph..."
+echo "Bedrock extraction concurrency: $BUILD_CONCURRENCY"
+PREPARE_ARGS=(--mode prebuilt --rebuild)
+if [[ "$RESUMABLE" == true ]]; then
+  PREPARE_ARGS=(--mode prebuilt --resume)
+fi
 (
   cd "$REPO_ROOT/notebooks/02-connected-context"
   NEO4J_URI="bolt://localhost:$BOLT_PORT" \
   NEO4J_USERNAME=neo4j \
   NEO4J_PASSWORD="$PASSWORD" \
   NEO4J_DATABASE=neo4j \
-  uv run --project ../workshop python prepare_graph.py --mode prebuilt --rebuild
+  GRAPH_BUILD_CONCURRENCY="$BUILD_CONCURRENCY" \
+  uv run --project ../workshop python prepare_graph.py "${PREPARE_ARGS[@]}"
 )
 
 # Module 1 deliberately creates these indexes after participants add their five
@@ -90,4 +206,24 @@ docker run --rm \
   neo4j-admin database dump --to-path=/dumps-out neo4j
 
 cp "$SCRATCH/dumps-out/neo4j.dump" "$OUTPUT"
+BUILD_COMPLETED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
+BUILD_COMPLETED_EPOCH="$(date +%s)"
+IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$IMAGE")"
+IMAGE_REPO_DIGESTS_JSON="$(
+  docker image inspect --format '{{json .RepoDigests}}' "$IMAGE"
+)"
+if [[ "$IMAGE_REPO_DIGESTS_JSON" == "null" ]]; then
+  IMAGE_REPO_DIGESTS_JSON="[]"
+fi
+python3 "$REPO_ROOT/setup/write_prebuilt_manifest.py" finish \
+  --snapshot "$START_SNAPSHOT" \
+  --candidate "$OUTPUT" \
+  --manifest "$MANIFEST" \
+  --completed-at "$BUILD_COMPLETED_AT" \
+  --completed-epoch "$BUILD_COMPLETED_EPOCH" \
+  --image-tag "$IMAGE" \
+  --image-id "$IMAGE_ID" \
+  --image-repo-digests-json "$IMAGE_REPO_DIGESTS_JSON"
+BUILD_SUCCEEDED=true
 echo "Done: $OUTPUT"
+echo "Manifest: $MANIFEST"

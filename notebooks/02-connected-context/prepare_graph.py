@@ -164,15 +164,26 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Rebuild even when the selected graph is already ready.",
     )
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Resume a retained prebuilt checkpoint, reusing only sources whose "
+            "content, build contract, and graph provenance are exact."
+        ),
+    )
     args = parser.parse_args()
-    if args.check_only and args.rebuild:
+    if args.check_only and (args.rebuild or args.resume):
         # --check-only writes nothing and --rebuild discards the graph, so a
         # run carrying both used to silently honour --rebuild alone.
         parser.error(
-            "--check-only and --rebuild cannot be combined: --check-only "
-            "reports readiness without writing, --rebuild discards the graph "
-            "and builds it again"
+            "--check-only cannot be combined with --rebuild or --resume: "
+            "--check-only reports readiness without writing"
         )
+    if args.rebuild and args.resume:
+        parser.error("--rebuild and --resume cannot be combined")
+    if args.resume and args.mode != "prebuilt":
+        parser.error("--resume is supported only with --mode prebuilt")
     return args
 
 
@@ -189,7 +200,7 @@ def main() -> int:
         return 1
 
     driver = connect()
-    needs_build = args.rebuild
+    needs_build = args.rebuild or args.resume
     try:
         # The index contract is checked before the build decision, never after
         # it. An index that exists at the wrong dimension cannot serve the
@@ -209,7 +220,7 @@ def main() -> int:
                 return 1
             problems = []
 
-        if not args.rebuild:
+        if not args.rebuild and not args.resume:
             problems.extend(report_readiness(driver, expected_documents=len(paths)))
             problems.extend(
                 booking_agent_problems(driver, apply_fixtures=not args.check_only)
@@ -238,7 +249,7 @@ def main() -> int:
         "prebuilt": "PREBUILT GRAPH BUILD",
     }
     title = titles[args.mode]
-    exit_code = asyncio.run(run_build(paths, title))
+    exit_code = asyncio.run(run_build(paths, title, resume=args.resume))
     if exit_code != 0:
         return exit_code
     return seed_booking_agent_fixtures()

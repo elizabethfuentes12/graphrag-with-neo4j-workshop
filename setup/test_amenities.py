@@ -121,9 +121,10 @@ def test_pool_regression_sources_match_the_authoritative_lists() -> None:
     assert len(pool_sources) == 175
     assert HISTORICAL_MISSING_HOTEL_SOURCES < pool_sources
     assert "hotel-austin-001.txt" not in pool_sources
-    assert "Pool facilities are not available at this property" in documents[
-        "hotel-austin-001.txt"
-    ]
+    assert (
+        "Pool facilities are not available at this property"
+        in documents["hotel-austin-001.txt"]
+    )
 
 
 def test_cross_city_duplicate_hotel_names_remain_distinct_source_identities() -> None:

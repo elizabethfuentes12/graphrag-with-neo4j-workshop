@@ -4,7 +4,9 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 from zipfile import BadZipFile, ZipFile
@@ -15,7 +17,11 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 NOTEBOOKS_DIR = REPO_ROOT / "notebooks"
 if str(NOTEBOOKS_DIR) not in sys.path:
     sys.path.insert(0, str(NOTEBOOKS_DIR))
+CONNECTED_CONTEXT_DIR = NOTEBOOKS_DIR / "02-connected-context"
+if str(CONNECTED_CONTEXT_DIR) not in sys.path:
+    sys.path.insert(0, str(CONNECTED_CONTEXT_DIR))
 
+from graph_config import HELD_OUT_DOCUMENTS
 from workshop.amenities import AmenitySectionError, parse_amenity_section
 from workshop.graph_connection import (
     graph_database,
@@ -24,7 +30,7 @@ from workshop.graph_connection import (
     require_neo4j_env,
 )
 
-CORPUS_ARCHIVE = NOTEBOOKS_DIR / "02-connected-context" / "hotel-faqs.zip"
+CORPUS_ARCHIVE = CONNECTED_CONTEXT_DIR / "hotel-faqs.zip"
 
 DOCUMENT_QUERY = """
 CYPHER 25
@@ -34,14 +40,15 @@ RETURN document.source_filename AS filename,
 ORDER BY filename
 """.strip()
 
-ASSERTION_QUERY = """
+OFFER_QUERY = """
 CYPHER 25
-MATCH (document:Document)<-[:FROM_DOCUMENT]-(chunk:Chunk)<-[:FROM_CHUNK]-(hotel:Hotel)
 MATCH (hotel)-[offer:OFFERS_AMENITY]->(amenity:Amenity)
-RETURN document.source_filename AS filename,
+OPTIONAL MATCH (hotel)-[:FROM_CHUNK]->(:Chunk)-[:FROM_DOCUMENT]->(document:Document)
+RETURN elementId(offer) AS relationship_id,
+       offer.source_filename AS relationship_source_filename,
        amenity.name AS amenity_name,
-       count(DISTINCT offer) AS relationship_count
-ORDER BY filename, amenity_name
+       collect(DISTINCT document.source_filename) AS provenance_filenames
+ORDER BY relationship_source_filename, amenity_name, relationship_id
 """.strip()
 
 AMENITY_QUERY = """
@@ -59,15 +66,26 @@ def _read_graph_rows(
 ) -> tuple[list[Any], list[Any], list[Any]]:
     with driver.session(database=database) as session:
         documents = list(session.run(DOCUMENT_QUERY))
-        assertions = list(session.run(ASSERTION_QUERY))
+        offers = list(session.run(OFFER_QUERY))
         amenities = list(session.run(AMENITY_QUERY))
-    return documents, assertions, amenities
+    return documents, offers, amenities
+
+
+def expected_source_filenames(archive_names: set[str], mode: str) -> set[str]:
+    """Return the exact source contract for a release artifact mode."""
+    corpus_sources = {name for name in archive_names if name.endswith(".txt")}
+    if mode == "full":
+        return corpus_sources
+    if mode == "prebuilt":
+        return corpus_sources - set(HELD_OUT_DOCUMENTS)
+    raise ValueError(f"unsupported artifact mode: {mode}")
 
 
 def amenity_reconciliation_problems(
     driver: Driver,
     database: str,
     corpus_archive: Path = CORPUS_ARCHIVE,
+    expected_filenames: set[str] | None = None,
 ) -> list[str]:
     """Return exact source-to-graph reconciliation defects.
 
@@ -75,7 +93,7 @@ def amenity_reconciliation_problems(
     therefore check lite, prebuilt, and complete artifacts without receiving
     the original build paths.
     """
-    document_rows, assertion_rows, amenity_rows = _read_graph_rows(driver, database)
+    document_rows, offer_rows, amenity_rows = _read_graph_rows(driver, database)
 
     problems: list[str] = []
     source_filenames: set[str] = set()
@@ -104,22 +122,70 @@ def amenity_reconciliation_problems(
                     f"{len(missing_sources)} graph source files are absent from the "
                     f"committed corpus archive; examples: {examples}"
                 )
+            if expected_filenames is not None:
+                missing_documents = expected_filenames - source_filenames
+                unexpected_documents = source_filenames - expected_filenames
+                if missing_documents:
+                    examples = ", ".join(sorted(missing_documents)[:5])
+                    problems.append(
+                        f"{len(missing_documents)} expected source Documents are "
+                        f"missing; examples: {examples}"
+                    )
+                if unexpected_documents:
+                    examples = ", ".join(sorted(unexpected_documents)[:5])
+                    problems.append(
+                        f"{len(unexpected_documents)} unexpected source Documents "
+                        f"exist; examples: {examples}"
+                    )
+                contract_filenames = expected_filenames
+            else:
+                contract_filenames = source_filenames
             expected = {
                 (filename, amenity_name)
-                for filename in source_filenames & archive_names
+                for filename in contract_filenames & archive_names
                 for amenity_name in parse_amenity_section(
                     corpus.read(filename).decode("utf-8"), filename
                 ).names
             }
-    except (BadZipFile, FileNotFoundError, UnicodeDecodeError, AmenitySectionError) as exc:
+    except (
+        BadZipFile,
+        FileNotFoundError,
+        UnicodeDecodeError,
+        AmenitySectionError,
+    ) as exc:
         problems.append(f"could not read authoritative amenity sources: {exc}")
         return problems
 
-    actual = {
-        (row["filename"], row["amenity_name"])
-        for row in assertion_rows
-        if row["filename"] is not None and row["amenity_name"] is not None
-    }
+    actual_pairs: list[tuple[str, str]] = []
+    for row in offer_rows:
+        relationship_id = row["relationship_id"]
+        relationship_source = row["relationship_source_filename"]
+        amenity_name = row["amenity_name"]
+        provenance_filenames = row["provenance_filenames"]
+        if not amenity_name:
+            problems.append(
+                f"OFFERS_AMENITY relationship {relationship_id} targets an "
+                "Amenity without a name"
+            )
+            continue
+        if len(provenance_filenames) != 1:
+            problems.append(
+                f"OFFERS_AMENITY relationship {relationship_id} for "
+                f"{amenity_name!r} resolves through its Hotel to "
+                f"{len(provenance_filenames)} source Documents, expected 1"
+            )
+            continue
+        provenance_filename = provenance_filenames[0]
+        if relationship_source != provenance_filename:
+            problems.append(
+                f"OFFERS_AMENITY relationship {relationship_id} has "
+                f"source_filename {relationship_source!r}, expected "
+                f"{provenance_filename!r} from Hotel provenance"
+            )
+        actual_pairs.append((provenance_filename, amenity_name))
+
+    pair_counts = Counter(actual_pairs)
+    actual = set(actual_pairs)
     missing = expected - actual
     unexpected = actual - expected
     if missing:
@@ -143,11 +209,11 @@ def amenity_reconciliation_problems(
             f"{examples}"
         )
 
-    for row in assertion_rows:
-        if row["relationship_count"] != 1:
+    for (filename, amenity_name), relationship_count in sorted(pair_counts.items()):
+        if relationship_count != 1:
             problems.append(
-                f"{row['filename']}: {row['amenity_name']} has "
-                f"{row['relationship_count']} OFFERS_AMENITY relationships, "
+                f"{filename}: {amenity_name} has {relationship_count} "
+                "OFFERS_AMENITY relationships, "
                 "expected 1"
             )
 
@@ -167,6 +233,11 @@ def amenity_reconciliation_problems(
             + ", ".join(sorted(unexpected_names)[:5])
         )
     for row in amenity_rows:
+        if not row["amenity_name"]:
+            problems.append(
+                f"{row['node_count']} Amenity node(s) have no canonical name"
+            )
+            continue
         if row["node_count"] != 1:
             problems.append(
                 f"Amenity {row['amenity_name']!r} has {row['node_count']} nodes, "
@@ -175,17 +246,45 @@ def amenity_reconciliation_problems(
 
     print(
         f"Amenity reconciliation: {len(source_filenames)} sources, "
-        f"{len(expected_names)} names, {len(actual)} graph assertions, "
+        f"{len(expected_names)} names, {len(offer_rows)} graph relationships, "
+        f"{len(actual)} distinct graph assertions, "
         f"{len(expected)} expected assertions"
     )
     return problems
 
 
+def parse_args() -> argparse.Namespace:
+    """Parse the release artifact contract to validate."""
+    parser = argparse.ArgumentParser(
+        description="Reconcile a restored graph with the committed amenity sources."
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("prebuilt", "full"),
+        default="prebuilt",
+        help="Expected artifact source set. Default: prebuilt.",
+    )
+    return parser.parse_args()
+
+
 def main() -> int:
     """Validate the configured restored graph and print actionable defects."""
+    args = parse_args()
     require_neo4j_env()
+    try:
+        with ZipFile(CORPUS_ARCHIVE) as corpus:
+            expected_filenames = expected_source_filenames(
+                set(corpus.namelist()), args.mode
+            )
+    except (BadZipFile, FileNotFoundError) as exc:
+        print(f"Could not read the committed corpus archive: {exc}")
+        return 1
     with GraphDatabase.driver(neo4j_uri(), auth=neo4j_auth()) as driver:
-        problems = amenity_reconciliation_problems(driver, graph_database())
+        problems = amenity_reconciliation_problems(
+            driver,
+            graph_database(),
+            expected_filenames=expected_filenames,
+        )
     if problems:
         print("Amenity reconciliation failed:")
         for problem in problems:
