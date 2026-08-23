@@ -31,8 +31,9 @@ additive check, and live evaluation evidence remain.**
   host memory during the long build.
 - The active memory-bounded retry is sequential because it loaded its Python
   process before parallel extraction support was added. At the latest
-  checkpoint, 166 Documents and 166 distinct Hotels were committed and source
-  167 was running without an extraction failure in this retry.
+  checkpoint, 228 Documents and 228 distinct Hotels were committed and source
+  229 was running without an extraction failure in this retry. This is 77.3%
+  of the 295-document candidate corpus, with 67 documents remaining.
 - A stopped read-only guard container now holds the active Neo4j volume so
   failed-script cleanup cannot delete its committed partial graph. Because
   this process predates resume metadata, that graph is preserved for recovery
