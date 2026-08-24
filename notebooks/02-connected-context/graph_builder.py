@@ -806,7 +806,7 @@ def report(driver: Driver) -> None:
         ).single()
         print(f"  Counting  hotels with a pool: {record['hotels']}")
 
-        print("  Multi-hop  Cairo hotels with spa AND pool:")
+        print("  Connected traversal  Cairo hotels with spa AND pool:")
         rows = neo4j_session.run(
             """
             MATCH (h:Hotel)-[:OFFERS_AMENITY]->(spa:Amenity),

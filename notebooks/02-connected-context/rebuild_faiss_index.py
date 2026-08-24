@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Rebuild Module 2's standalone FAISS baseline from Aura chunk vectors.
+"""Rebuild the facilitator-only FAISS baseline from Aura chunk vectors.
 
-This is a facilitator task. Workshop participants use the committed artifacts.
+The learner path does not use FAISS. This script supports optional evaluation.
 The script reads vectors already created by Module 1, so it makes no Bedrock
 calls and keeps FAISS on the same embedding contract as Aura.
 """

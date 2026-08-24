@@ -28,7 +28,7 @@ GraphRAG combines these signals instead of treating one as universally best. The
 
 | Question shape | Retrieval pattern | Evidence returned |
 |---|---|---|
-| Paraphrased description | Vector | Relevant source chunks with score and provenance |
+| Paraphrased description | Vector | Relevant source `Chunk` nodes with score and provenance |
 | Exact postal code or hotel name | Hybrid | Semantic matches plus exact-term matches |
 | Semantic match that needs hotel fields | VectorCypher | Matched source plus connected names, ratings, amenities, and provenance |
 | Flexible structured filter | Text2Cypher | Database records selected by a generated read-only query |

@@ -235,7 +235,10 @@ def test_shared_readiness_rejects_missing_ambiguous_and_shared_hotels() -> None:
     assert any("shared-a.txt, shared-b.txt" in item for item in problems)
 
 
-def test_report_readiness_includes_hotel_provenance_failures(monkeypatch) -> None:
+def test_report_readiness_includes_hotel_provenance_failures(
+    monkeypatch,
+    capsys,
+) -> None:
     monkeypatch.setattr(
         retrieval_setup,
         "graph_counts",
@@ -244,14 +247,44 @@ def test_report_readiness_includes_hotel_provenance_failures(monkeypatch) -> Non
     monkeypatch.setattr(retrieval_setup, "fixture_problems", Mock(return_value=[]))
     monkeypatch.setattr(
         retrieval_setup,
+        "source_fixture_problems",
+        Mock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        retrieval_setup,
+        "chicago_filter_records",
+        Mock(
+            return_value=[
+                {
+                    "hotel_name": retrieval_setup.CHICAGO_QUALIFIER,
+                    "qualifies": True,
+                },
+                {
+                    "hotel_name": retrieval_setup.CHICAGO_EXCLUSION,
+                    "qualifies": False,
+                },
+            ]
+        ),
+    )
+    monkeypatch.setattr(
+        retrieval_setup,
+        "chicago_filter_problems",
+        Mock(return_value=[]),
+    )
+    monkeypatch.setattr(
+        retrieval_setup,
         "hotel_provenance_problems",
         Mock(return_value=["hotel provenance is incomplete"]),
     )
 
     problems = retrieval_setup.report_readiness(Mock(), expected_documents=2)
+    output = capsys.readouterr().out
 
     assert "Hotel count is 1, expected 2" in problems
     assert "hotel provenance is incomplete" in problems
+    assert "Chicago candidates: 2" in output
+    assert "Chicago spa-and-pool qualifiers: ['Lakeview Horizon Suites']" in output
+    assert "Chicago exclusions: ['Windward Mile Tower']" in output
 
 
 def test_restored_graph_reconciliation_proves_chicago_hotels_share_wifi(

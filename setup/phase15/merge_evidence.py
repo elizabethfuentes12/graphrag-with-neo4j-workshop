@@ -24,6 +24,8 @@ PINNED_FIELDS = (
     "region",
     "top_k",
     "judge_samples",
+    "judge_evidence_budget",
+    "evaluator_generation",
     "run_generation",
     "neo4j_uri",
     "neo4j_database",

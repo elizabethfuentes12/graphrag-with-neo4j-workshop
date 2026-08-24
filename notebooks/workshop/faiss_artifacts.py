@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Build and validate Module 2's standalone FAISS artifacts."""
+"""Build and validate the facilitator-only FAISS evaluation artifacts."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ class FaissArtifactError(ValueError):
 
 @dataclass(frozen=True)
 class FaissManifest:
-    """Compatibility contract stored beside the Module 2 FAISS index."""
+    """Compatibility contract stored beside the facilitator FAISS index."""
 
     embedding_model_id: str
     embedding_dimensions: int
@@ -239,7 +239,7 @@ def load_faiss_artifacts(
     corpus_path: Path,
     manifest_path: Path,
 ) -> tuple[Any, list[dict[str, Any]]]:
-    """Load Module 2's baseline only after validating every compatibility edge."""
+    """Load the facilitator baseline after validating every compatibility edge."""
     manifest = FaissManifest.from_path(manifest_path)
     documents = read_documents(corpus_path)
     try:

@@ -4,8 +4,10 @@ weight: 40
 ---
 
 Module 2 compared retrieval patterns and selected a fixed Hybrid-Cypher path for
-the application. Module 3 applies that path in a grounded agent and keeps the
-reservation write behind a reviewed command.
+the application because its hotel questions need exact-name support and
+connected named fields. Module 3 applies that path through
+`search_hotel_knowledge` and keeps the reservation write behind a reviewed
+command.
 
 Open `notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb`.
 

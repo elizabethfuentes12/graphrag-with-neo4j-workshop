@@ -51,6 +51,16 @@ notebooks/workshop/workshop.egg-info/
 # Executed notebook copies from setup/run_notebooks.py --keep-output
 setup/notebook-output/
 
+# Durable compact Phase 1.5 decisions. Raw trials, generated detail reports,
+# logs, executed notebooks, and archived notebooks remain ignored.
+!evidence/
+evidence/*
+!evidence/phase15/
+evidence/phase15/*
+!evidence/phase15/README.md
+!evidence/phase15/PHASE-1.5-FINDINGS.md
+!evidence/phase15/PHASE-1.5-AMENITY-RECHECK.md
+
 # pytest, from the checks in setup/
 .pytest_cache/
 

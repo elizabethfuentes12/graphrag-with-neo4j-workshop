@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Run the live post-build evidence suite into one explicit directory.
+"""Run the facilitator-only live evidence suite into one explicit directory.
 
 The default sequence captures deterministic Phase 1.5 graph facts, runs the
 full vector-versus-graph agent harness, then smoke-tests Modules 1 through 3.
@@ -9,6 +9,10 @@ the exact commands and return codes.
 
 This command uses Bedrock and the configured Neo4j graph. It does not run any
 deployment notebook or create AWS infrastructure.
+
+The learner workflow does not call this command. Raw output is local diagnostic
+material until it is copied to durable storage and a tracked compact report
+records its immutable URI and checksum.
 
 Usage from the workshop environment:
 

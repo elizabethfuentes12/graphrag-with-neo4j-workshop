@@ -34,6 +34,133 @@ REQUIRED_SOURCE_FILES = (
     "hotel-cairo-001.txt",
     "hotel-cairo-002.txt",
     "hotel-chicago-001.txt",
+    "hotel-chicago-002.txt",
+)
+
+SOURCE_READINESS_QUERY = """
+    CYPHER 25
+    UNWIND $sources AS source
+    OPTIONAL MATCH (document:Document {source_filename: source.source_filename})
+    OPTIONAL MATCH (chunk:Chunk)-[:FROM_DOCUMENT]->(document)
+    OPTIONAL MATCH (hotel:Hotel)-[:FROM_CHUNK]->(chunk)
+    OPTIONAL MATCH (hotel)-[:OFFERS_AMENITY]->(amenity:Amenity)
+    RETURN source.source_filename AS source_filename,
+           count(DISTINCT document) AS document_count,
+           count(DISTINCT chunk) AS chunk_count,
+           count(DISTINCT CASE
+               WHEN chunk.embedding IS NOT NULL
+                AND size(chunk.embedding) = $dimensions
+               THEN chunk
+           END) AS embedded_chunk_count,
+           count(DISTINCT hotel) AS hotel_count,
+           count(DISTINCT CASE
+               WHEN hotel IS NOT NULL THEN
+                   elementId(hotel) + '|' + elementId(chunk) + '|' + elementId(document)
+           END) AS source_path_count,
+           collect(DISTINCT chunk.text) AS chunk_texts,
+           collect(DISTINCT hotel.name) AS hotel_names,
+           collect(DISTINCT hotel.address) AS hotel_addresses,
+           collect(DISTINCT hotel.guest_rating) AS guest_ratings,
+           collect(DISTINCT amenity.name) AS amenities
+    ORDER BY source_filename
+""".strip()
+
+CHICAGO_FILTER_QUERY = """
+    CYPHER 25
+    MATCH (document:Document)<-[:FROM_DOCUMENT]-(chunk:Chunk)<-[:FROM_CHUNK]-(hotel:Hotel)
+    WHERE document.source_filename IN $source_filenames
+      AND hotel.name IS NOT NULL
+    OPTIONAL MATCH (hotel)-[:OFFERS_AMENITY]->(amenity:Amenity)
+    WITH document.source_filename AS source_filename,
+         hotel.name AS hotel_name,
+         hotel.guest_rating AS guest_rating,
+         collect(DISTINCT amenity.name) AS amenities
+    WITH *,
+         any(name IN amenities WHERE toLower(name) CONTAINS 'spa') AS has_spa,
+         any(name IN amenities WHERE toLower(name) CONTAINS 'pool') AS has_pool
+    RETURN source_filename,
+           hotel_name,
+           guest_rating,
+           amenities,
+           has_spa,
+           has_pool,
+           has_spa AND has_pool AS qualifies,
+           CASE
+               WHEN has_spa AND has_pool THEN []
+               WHEN NOT has_spa AND NOT has_pool THEN ['spa', 'swimming pool']
+               WHEN NOT has_spa THEN ['spa']
+               ELSE ['swimming pool']
+           END AS missing_required_amenities
+    ORDER BY hotel_name
+""".strip()
+
+CHICAGO_SOURCE_FILES = (
+    "hotel-chicago-001.txt",
+    "hotel-chicago-002.txt",
+)
+CHICAGO_QUALIFIER = "Lakeview Horizon Suites"
+CHICAGO_EXCLUSION = "Windward Mile Tower"
+FITNESS_AMENITY = "24-" "Hour Fitness Center"
+
+
+@dataclass(frozen=True)
+class SourceFixture:
+    """Exact source-backed graph facts needed by a Module 2 example."""
+
+    source_filename: str
+    hotel_name: str
+    address_term: str
+    chunk_terms: tuple[str, ...]
+    amenities: tuple[str, ...]
+    guest_rating: float | None = None
+
+    def row(self) -> dict[str, str]:
+        """Return the query parameter row for this fixture."""
+        return {"source_filename": self.source_filename}
+
+
+SOURCE_FIXTURES = (
+    SourceFixture(
+        source_filename="hotel-cairo-001.txt",
+        hotel_name="AnyCompany Cairo Nile View",
+        address_term="Cairo 11519",
+        chunk_terms=("AnyCompany Cairo Nile View", "3:00 PM"),
+        amenities=(
+            "Outdoor Swimming Pool",
+            "Full-Service Spa",
+            FITNESS_AMENITY,
+            "Complimentary High-Speed Wifi",
+            "On-Site Restaurant",
+            "Nile Views",
+        ),
+        guest_rating=4.5,
+    ),
+    SourceFixture(
+        source_filename="hotel-chicago-001.txt",
+        hotel_name=CHICAGO_EXCLUSION,
+        address_term="60611",
+        chunk_terms=(CHICAGO_EXCLUSION, "60611"),
+        amenities=(
+            FITNESS_AMENITY,
+            "Complimentary High-Speed Wifi",
+            "On-Site Restaurant",
+            "Lounge Bar",
+            "Business Center",
+        ),
+    ),
+    SourceFixture(
+        source_filename="hotel-chicago-002.txt",
+        hotel_name=CHICAGO_QUALIFIER,
+        address_term="Chicago",
+        chunk_terms=(CHICAGO_QUALIFIER,),
+        amenities=(
+            "Outdoor Swimming Pool",
+            FITNESS_AMENITY,
+            "Complimentary High-Speed Wifi",
+            "On-Site Restaurant",
+            "Full-Service Spa",
+        ),
+    ),
 )
 
 # Derived from the pinned schema rather than restated. The extraction contract
@@ -82,7 +209,7 @@ REQUIRED_FIXTURES = (
         parameters={},
     ),
     Fixture(
-        name="Cairo spa-and-pool multi-hop result",
+        name="Cairo spa-and-pool connected traversal result",
         query="""
             MATCH (h:Hotel)-[:OFFERS_AMENITY]->(spa:Amenity),
                   (h)-[:OFFERS_AMENITY]->(pool:Amenity)
@@ -129,6 +256,154 @@ def missing_source_fixtures(paths: Iterable[Path]) -> list[str]:
     """Return required source filenames absent from ``paths``."""
     selected = {path.name for path in paths}
     return sorted(set(REQUIRED_SOURCE_FILES) - selected)
+
+
+def _source_fixture_problems(
+    records: Iterable[Mapping[str, Any]],
+) -> list[str]:
+    """Return exact source, path, property, and amenity fixture defects."""
+    by_source = {record["source_filename"]: record for record in records}
+    problems: list[str] = []
+
+    for fixture in SOURCE_FIXTURES:
+        record = by_source.get(fixture.source_filename)
+        if record is None:
+            problems.append(f"missing readiness record for {fixture.source_filename}")
+            continue
+
+        for field in (
+            "document_count",
+            "chunk_count",
+            "embedded_chunk_count",
+            "hotel_count",
+            "source_path_count",
+        ):
+            if record.get(field) != 1:
+                problems.append(
+                    f"{fixture.source_filename} has {record.get(field, 0)} {field}, "
+                    "expected 1"
+                )
+
+        hotel_names = set(record.get("hotel_names", []))
+        if hotel_names != {fixture.hotel_name}:
+            problems.append(
+                f"{fixture.source_filename} has hotel names "
+                f"{sorted(hotel_names)}, expected [{fixture.hotel_name!r}]"
+            )
+
+        addresses = [str(value) for value in record.get("hotel_addresses", [])]
+        if len(addresses) != 1 or fixture.address_term not in addresses[0]:
+            problems.append(
+                f"{fixture.source_filename} does not have one Hotel address "
+                f"containing {fixture.address_term!r}"
+            )
+
+        chunk_texts = [str(value) for value in record.get("chunk_texts", [])]
+        if len(chunk_texts) != 1:
+            problems.append(
+                f"{fixture.source_filename} has {len(chunk_texts)} Chunk texts, "
+                "expected 1"
+            )
+        else:
+            missing_terms = [
+                term for term in fixture.chunk_terms if term not in chunk_texts[0]
+            ]
+            if missing_terms:
+                problems.append(
+                    f"{fixture.source_filename} Chunk is missing terms: "
+                    + ", ".join(missing_terms)
+                )
+
+        actual_amenities = set(record.get("amenities", []))
+        expected_amenities = set(fixture.amenities)
+        if actual_amenities != expected_amenities:
+            missing = sorted(expected_amenities - actual_amenities)
+            unexpected = sorted(actual_amenities - expected_amenities)
+            if missing:
+                problems.append(
+                    f"{fixture.source_filename} is missing authored amenities: "
+                    + ", ".join(missing)
+                )
+            if unexpected:
+                problems.append(
+                    f"{fixture.source_filename} has unexpected amenities: "
+                    + ", ".join(unexpected)
+                )
+
+        if fixture.guest_rating is not None:
+            ratings = set(record.get("guest_ratings", []))
+            if ratings != {fixture.guest_rating}:
+                problems.append(
+                    f"{fixture.source_filename} has guest ratings "
+                    f"{sorted(ratings)}, expected [{fixture.guest_rating}]"
+                )
+
+    return problems
+
+
+def source_fixture_problems(driver: Driver) -> list[str]:
+    """Read and validate exact source-backed Module 2 graph fixtures."""
+    with _session(driver) as session:
+        records = list(
+            session.run(
+                SOURCE_READINESS_QUERY,
+                sources=[fixture.row() for fixture in SOURCE_FIXTURES],
+                dimensions=EMBEDDING_DIMENSIONS,
+            )
+        )
+    return _source_fixture_problems(records)
+
+
+def chicago_filter_records(driver: Driver) -> list[dict[str, Any]]:
+    """Return the deterministic Chicago candidates and filter evidence."""
+    with _session(driver) as session:
+        return [
+            dict(record)
+            for record in session.run(
+                CHICAGO_FILTER_QUERY,
+                source_filenames=list(CHICAGO_SOURCE_FILES),
+            )
+        ]
+
+
+def chicago_filter_problems(records: Iterable[Mapping[str, Any]]) -> list[str]:
+    """Validate the two Chicago candidates, qualifier, and exclusion."""
+    candidates = list(records)
+    problems: list[str] = []
+    expected_sources = set(CHICAGO_SOURCE_FILES)
+    actual_sources = {record.get("source_filename") for record in candidates}
+    if len(candidates) != 2 or actual_sources != expected_sources:
+        problems.append(
+            "Chicago filter returned "
+            f"{len(candidates)} candidates from {sorted(str(s) for s in actual_sources)}, "
+            f"expected 2 from {sorted(expected_sources)}"
+        )
+
+    qualifiers = {
+        record.get("hotel_name") for record in candidates if record.get("qualifies")
+    }
+    if qualifiers != {CHICAGO_QUALIFIER}:
+        problems.append(
+            f"Chicago filter qualifiers are {sorted(str(q) for q in qualifiers)}, "
+            f"expected [{CHICAGO_QUALIFIER!r}]"
+        )
+
+    excluded = [
+        record
+        for record in candidates
+        if record.get("hotel_name") == CHICAGO_EXCLUSION
+    ]
+    if len(excluded) != 1 or excluded[0].get("qualifies"):
+        problems.append(f"Chicago filter did not explicitly exclude {CHICAGO_EXCLUSION}")
+    elif set(excluded[0].get("missing_required_amenities", [])) != {
+        "spa",
+        "swimming pool",
+    }:
+        problems.append(
+            f"{CHICAGO_EXCLUSION} exclusion does not name its missing spa and pool"
+        )
+
+    return problems
 
 
 def _session(driver: Driver):
@@ -300,14 +575,26 @@ def hotel_provenance_problems(driver: Driver) -> list[str]:
 def report_readiness(driver: Driver, expected_documents: int) -> list[str]:
     """Print readiness counts and return all graph fixture problems."""
     documents, chunks, labels, relationships = graph_counts(driver)
+    chicago_records = chicago_filter_records(driver)
+    qualifying_names = [
+        record["hotel_name"] for record in chicago_records if record["qualifies"]
+    ]
+    excluded_names = [
+        record["hotel_name"] for record in chicago_records if not record["qualifies"]
+    ]
     print("\nModule 1 readiness report:")
     print(f"  documents: {documents} (expected {expected_documents})")
     print(f"  chunks: {chunks} (expected {documents})")
     print(f"  extracted labels: {labels}")
     print(f"  relationships: {relationships}")
+    print(f"  Chicago candidates: {len(chicago_records)}")
+    print(f"  Chicago spa-and-pool qualifiers: {qualifying_names}")
+    print(f"  Chicago exclusions: {excluded_names}")
 
     problems = hotel_provenance_problems(driver)
     problems.extend(fixture_problems(driver))
+    problems.extend(source_fixture_problems(driver))
+    problems.extend(chicago_filter_problems(chicago_records))
     if documents != expected_documents:
         problems.insert(
             0,

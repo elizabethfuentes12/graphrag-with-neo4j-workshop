@@ -10,6 +10,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
+from evaluator_contract import GROUNDING_LABELS
+
 ARMS = ("vector", "graph")
 CONDITIONS = ("notebook", "grounded")
 QUESTION_ORDER = (
@@ -28,6 +30,33 @@ QUESTION_TITLES = {
     "chicago_shared_amenities": "Chicago shared amenities (bounded traversal)",
     "suite_and_spa": "Suite under $600 with a spa (traversal at scale)",
 }
+
+
+def trials_per_evaluation_cell(trials: list[dict[str, Any]]) -> int | None:
+    """Return the common question, arm, and condition cell size."""
+    counts = Counter(
+        (
+            trial["question_key"],
+            trial["arm"],
+            trial.get("condition", "notebook"),
+        )
+        for trial in trials
+    )
+    sizes = set(counts.values())
+    return sizes.pop() if len(sizes) == 1 else None
+
+
+def grounding_labels_are_publishable(run: dict[str, Any]) -> bool:
+    """Return whether the run uses the complete-evidence evaluator contract."""
+    trials = run.get("trials", [])
+    return bool(trials) and run.get("evaluator_generation") == 2 and all(
+        trial.get("judge_evidence_complete") is True
+        and trial.get("judge_samples_valid") is True
+        and trial.get("judge_error") is None
+        and isinstance(trial.get("grounding"), str)
+        and trial.get("grounding") in GROUNDING_LABELS
+        for trial in trials
+    )
 
 
 def tally(trials: list[dict[str, Any]], field: str) -> str:
@@ -89,8 +118,18 @@ def main() -> int:
     )
     add(f"Corpus checksum: `{run['corpus_sha256_now']}`")
     batches = run.get("source_files", [])
-    per_cell = len(trials) // (len(QUESTION_ORDER) * len(ARMS))
-    add(f"Trials: {len(trials)} ({per_cell} per question per arm), k={run['top_k']}")
+    per_cell = trials_per_evaluation_cell(trials)
+    rendered_per_cell = str(per_cell) if per_cell is not None else "unbalanced"
+    add(
+        f"Trials: {len(trials)} ({rendered_per_cell} per question, arm, and "
+        f"prompt condition), k={run['top_k']}"
+    )
+    if not grounding_labels_are_publishable(run):
+        add("")
+        add("> **Historical evaluator warning:** Grounding labels in this run are")
+        add("> invalid for publication. The run lacks the complete-evidence evaluator")
+        add("> contract or contains an incomplete judge result. Preserve factual")
+        add("> observations separately and run a repaired rescore before citing rates.")
     if batches:
         add("")
         add(

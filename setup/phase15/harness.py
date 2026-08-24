@@ -1,13 +1,10 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Phase 1.5: measure the repaired FAISS baseline against the Neo4j graph.
+"""Facilitator-only Phase 1.5 comparison of FAISS and Neo4j retrieval.
 
-This harness is deliberately independent of Module 2's notebook. The notebook
-still carries the loading, truncation, model-pinning, agent-reuse, and
-exception-swallowing defects catalogued in defects.md, and any one of them
-would contaminate the measurement. Everything here uses the committed
-manifest-validated FAISS artifact, the pinned workshop model, the shared AWS
-and Neo4j helpers, and read-only database sessions.
+The learner path does not use FAISS. This optional harness uses the committed,
+manifest-validated baseline, the pinned workshop model, shared AWS and Neo4j
+helpers, and read-only database sessions.
 
 Each trial gets a fresh agent, so token counts and tool histories never carry
 across questions. Retrieval evidence is captured before the model speaks, which
@@ -20,7 +17,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from collections import Counter
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -59,6 +55,14 @@ from workshop.retrieval_contract import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL_ID,
     EMBEDDING_PURPOSE,
+)
+
+from evaluator_contract import (
+    JudgeResponseError,
+    parse_judge_response,
+    rationale_for_label,
+    unscored_sample,
+    winning_label,
 )
 
 TOP_K = 3
@@ -193,6 +197,7 @@ class CypherCall:
     cypher: str
     records: list[dict[str, Any]] = field(default_factory=list)
     error: str | None = None
+    rendered_evidence: str | None = None
 
 
 def bedrock_client(region: str) -> Any:
@@ -313,7 +318,8 @@ def make_graph_agent(
             call.error = f"{type(exc).__name__}: {exc}"
             raise
         call.records = records
-        return render_records(records)
+        call.rendered_evidence = render_records(records)
+        return call.rendered_evidence
 
     query_knowledge_graph.__doc__ = GRAPH_TOOL_DOC
     return Agent(
@@ -340,27 +346,29 @@ def usage_of(result: Any) -> dict[str, int] | None:
 # deciding the module's claim, which is the same reason the trials repeat.
 JUDGE_SAMPLES = 3
 
-# The agents see untruncated tool output, which is the point of removing the row
-# caps. The grader is a different budget: a 78-row result set beside a long answer
-# ran it out of output tokens. Both arms are trimmed by the same rule so the
-# grader's view stays symmetric, and the trim announces itself.
-JUDGE_EVIDENCE_BUDGET = 40_000
+# A scored label is valid only when the judge receives every character of tool
+# evidence the agent received. Larger evidence is rejected before a judge call
+# and remains unscored, so the release gate can prevent its publication.
+JUDGE_EVIDENCE_BUDGET = 60_000
 
 
-def trim_for_judge(evidence: str) -> str:
-    """Bound the grader's copy of the evidence, identically for both arms."""
-    if len(evidence) <= JUDGE_EVIDENCE_BUDGET:
-        return evidence
-    dropped = len(evidence) - JUDGE_EVIDENCE_BUDGET
-    return (
-        evidence[:JUDGE_EVIDENCE_BUDGET]
-        + f"\n\n[{dropped} further characters of tool evidence not shown to the judge]"
-    )
+class JudgeEvidenceError(ValueError):
+    """Raised when complete tool evidence does not fit the judge contract."""
+
+
+def complete_judge_evidence(evidence: str) -> str:
+    """Return complete evidence or reject it before any grading call."""
+    if len(evidence) > JUDGE_EVIDENCE_BUDGET:
+        raise JudgeEvidenceError(
+            f"judge evidence has {len(evidence)} characters, "
+            f"limit is {JUDGE_EVIDENCE_BUDGET}; trial must remain unscored"
+        )
+    return evidence
 
 
 def judge_once(
     region: str, question: str, reference: Any, evidence: str, answer: str
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """Score one answer once, with a fresh pinned grader."""
     grader = Agent(
         name="Judge",
@@ -370,41 +378,46 @@ def judge_once(
     prompt = (
         f"QUESTION\n{question}\n\n"
         f"REFERENCE FACTS\n{json.dumps(reference, indent=2)}\n\n"
-        f"TOOL EVIDENCE THE AGENT RECEIVED\n{trim_for_judge(evidence)}\n\n"
+        f"TOOL EVIDENCE THE AGENT RECEIVED\n{complete_judge_evidence(evidence)}\n\n"
         f"AGENT ANSWER\n{answer}\n"
     )
     raw = str(grader(prompt)).strip()
-    if raw.startswith("```"):
-        raw = "\n".join(raw.splitlines()[1:-1]).strip()
     try:
-        parsed = json.loads(raw)
-    except json.JSONDecodeError:
-        return {"factuality": "unscored", "grounding": "unscored", "rationale": raw[:400]}
-    return {
-        "factuality": str(parsed.get("factuality", "unscored")),
-        "grounding": str(parsed.get("grounding", "unscored")),
-        "rationale": str(parsed.get("rationale", ""))[:600],
-    }
+        parsed = parse_judge_response(raw)
+    except JudgeResponseError as exc:
+        return unscored_sample(raw, str(exc))
+    return parsed | {"raw_response": raw, "parse_error": None}
 
 
 def judge(
     region: str, question: str, reference: Any, evidence: str, answer: str
 ) -> dict[str, Any]:
     """Score one answer by majority vote over independent grader samples."""
+    complete_judge_evidence(evidence)
     samples = [
         judge_once(region, question, reference, evidence, answer)
         for _ in range(JUDGE_SAMPLES)
     ]
-    # Counter breaks a three-way split on first-seen order, so an unresolved
-    # vote falls back to the first sample rather than to an arbitrary label.
-    factuality = Counter(sample["factuality"] for sample in samples).most_common(1)
-    grounding = Counter(sample["grounding"] for sample in samples).most_common(1)
+    factuality, factuality_votes = winning_label(samples, "factuality")
+    grounding, grounding_votes = winning_label(samples, "grounding")
+    factuality_rationale = rationale_for_label(samples, "factuality", factuality)
+    grounding_rationale = rationale_for_label(samples, "grounding", grounding)
     return {
-        "factuality": factuality[0][0],
-        "grounding": grounding[0][0],
-        "factuality_votes": factuality[0][1],
-        "grounding_votes": grounding[0][1],
-        "rationale": samples[0]["rationale"],
+        "factuality": factuality,
+        "grounding": grounding,
+        "factuality_votes": factuality_votes,
+        "grounding_votes": grounding_votes,
+        "factuality_rationale": factuality_rationale,
+        "grounding_rationale": grounding_rationale,
+        "rationale": (
+            f"Factuality: {factuality_rationale} "
+            f"Grounding: {grounding_rationale}"
+        ),
+        "judge_evidence_complete": True,
+        "judge_samples_valid": all(
+            sample.get("parse_error") is None for sample in samples
+        ),
+        "judge_error": None,
         "judge_samples": samples,
     }
 
@@ -415,12 +428,11 @@ def vector_evidence_text(retrievals: list[Retrieval]) -> str:
         return "(the agent made no retrieval call)"
     blocks = []
     for retrieval in retrievals:
-        header = "\n".join(
-            f"  {name}  score={score:.4f}"
-            for name, score in zip(retrieval.filenames, retrieval.scores)
+        body = "\n\n".join(
+            f"[{name}]\n{text}"
+            for name, text in zip(retrieval.filenames, retrieval.texts)
         )
-        body = "\n\n".join(retrieval.texts)
-        blocks.append(f"search_faqs({retrieval.query!r}) returned:\n{header}\n\n{body}")
+        blocks.append(f"search_faqs({retrieval.query!r}) returned:\n{body}")
     return "\n\n".join(blocks)
 
 
@@ -430,7 +442,7 @@ def graph_evidence_text(calls: list[CypherCall]) -> str:
         return "(the agent made no graph call)"
     blocks = []
     for call in calls:
-        detail = call.error if call.error else json.dumps(call.records, default=str)
+        detail = call.error if call.error else call.rendered_evidence
         blocks.append(f"cypher:\n{call.cypher}\nresult:\n{detail}")
     return "\n\n".join(blocks)
 
@@ -475,6 +487,9 @@ def run_trial(
         "factuality": "unscored",
         "grounding": "unscored",
         "rationale": "",
+        "judge_evidence_complete": False,
+        "judge_samples_valid": False,
+        "judge_error": None,
     }
     if answer and not skip_judge:
         # Same reasoning as the trial-level catch above, and it is here because
@@ -484,7 +499,9 @@ def run_trial(
         try:
             scores = judge(region, question["prompt"], reference, evidence, answer)
         except Exception as exc:  # noqa: BLE001
-            scores["rationale"] = f"judge failed: {type(exc).__name__}: {exc}"
+            message = f"judge failed: {type(exc).__name__}: {exc}"
+            scores["rationale"] = message
+            scores["judge_error"] = message
 
     print(
         f"  [{arm}/{condition}] {question['key']} trial {trial}: "
@@ -569,7 +586,9 @@ def main() -> int:
         "trials_per_cell": args.trials,
         "conditions": list(args.conditions),
         "judge_samples": JUDGE_SAMPLES,
-        "run_generation": 2,
+        "judge_evidence_budget": JUDGE_EVIDENCE_BUDGET,
+        "run_generation": 3,
+        "evaluator_generation": 2,
         "neo4j_uri": neo4j_uri(),
         "neo4j_database": database,
         "faiss_manifest": manifest,

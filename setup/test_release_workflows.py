@@ -163,12 +163,28 @@ def test_release_smoke_gate_derives_24_trials_and_rejects_quality_gaps() -> None
             "tool_error": None,
             "factuality": "correct",
             "grounding": "grounded",
+            "judge_evidence_complete": True,
+            "judge_samples_valid": True,
+            "judge_error": None,
+            "judge_samples": [
+                {
+                    "factuality": "correct",
+                    "grounding": "grounded",
+                    "rationale": "valid sample",
+                    "parse_error": None,
+                }
+            ],
         }
         for question in questions
         for arm in run_live_evidence.ARMS
         for condition in run_live_evidence.CONDITIONS
     ]
-    run = {"trials_per_cell": 1, "trials": trials}
+    run = {
+        "evaluator_generation": 2,
+        "trials_per_cell": 1,
+        "judge_samples": 1,
+        "trials": trials,
+    }
 
     assert len(trials) == 24
     assert (

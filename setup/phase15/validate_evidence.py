@@ -11,6 +11,37 @@ from itertools import product
 from pathlib import Path
 from typing import Any
 
+from evaluator_contract import FACTUALITY_LABELS, GROUNDING_LABELS
+
+
+def judge_samples_are_valid(
+    trial: dict[str, Any],
+    expected_count: int | None,
+) -> bool:
+    """Return whether every recorded judge sample satisfies its contract."""
+    samples = trial.get("judge_samples")
+    if not isinstance(samples, list) or not samples:
+        return False
+    if expected_count is not None and len(samples) != expected_count:
+        return False
+    for sample in samples:
+        if not isinstance(sample, dict):
+            return False
+        factuality = sample.get("factuality")
+        grounding = sample.get("grounding")
+        rationale = sample.get("rationale")
+        if (
+            not isinstance(factuality, str)
+            or factuality not in FACTUALITY_LABELS
+            or not isinstance(grounding, str)
+            or grounding not in GROUNDING_LABELS
+            or not isinstance(rationale, str)
+            or not rationale.strip()
+            or sample.get("parse_error") is not None
+        ):
+            return False
+    return True
+
 
 def evidence_problems(
     run: dict[str, Any],
@@ -28,6 +59,11 @@ def evidence_problems(
     expected_cells = set(product(questions, arms, conditions))
     expected_trials = len(expected_cells) * trials_per_cell
     problems = []
+    if run.get("evaluator_generation") != 2:
+        problems.append(
+            "evaluator_generation: "
+            f"found {run.get('evaluator_generation')!r}, expected 2"
+        )
     if run.get("trials_per_cell") != trials_per_cell:
         problems.append(
             "header trials_per_cell: "
@@ -81,6 +117,65 @@ def evidence_problems(
     ]
     if unscored:
         problems.append(f"unscored trial positions: {unscored}")
+
+    invalid_labels = []
+    for position, trial in enumerate(trials, start=1):
+        factuality = trial.get("factuality")
+        grounding = trial.get("grounding")
+        if (
+            not isinstance(factuality, str)
+            or factuality not in FACTUALITY_LABELS
+            or not isinstance(grounding, str)
+            or grounding not in GROUNDING_LABELS
+        ):
+            invalid_labels.append(position)
+    if invalid_labels:
+        problems.append(f"invalid judge labels in trial positions: {invalid_labels}")
+
+    incomplete_evidence = [
+        position
+        for position, trial in enumerate(trials, start=1)
+        if trial.get("judge_evidence_complete") is not True
+    ]
+    if incomplete_evidence:
+        problems.append(
+            "incomplete judge evidence in trial positions: "
+            f"{incomplete_evidence}"
+        )
+
+    recorded_sample_count = run.get("judge_samples")
+    if (
+        isinstance(recorded_sample_count, bool)
+        or not isinstance(recorded_sample_count, int)
+        or recorded_sample_count < 1
+    ):
+        problems.append(
+            "judge_samples header must be a positive integer, found "
+            f"{recorded_sample_count!r}"
+        )
+    expected_sample_count = (
+        recorded_sample_count
+        if isinstance(recorded_sample_count, int)
+        and not isinstance(recorded_sample_count, bool)
+        and recorded_sample_count > 0
+        else None
+    )
+    invalid_samples = [
+        position
+        for position, trial in enumerate(trials, start=1)
+        if trial.get("judge_samples_valid") is not True
+        or not judge_samples_are_valid(trial, expected_sample_count)
+    ]
+    if invalid_samples:
+        problems.append(f"invalid judge samples in trial positions: {invalid_samples}")
+
+    judge_errors = [
+        position
+        for position, trial in enumerate(trials, start=1)
+        if trial.get("judge_error") is not None
+    ]
+    if judge_errors:
+        problems.append(f"judge errors in trial positions: {judge_errors}")
 
     return problems
 

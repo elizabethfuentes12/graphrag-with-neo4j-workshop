@@ -6,7 +6,7 @@ Apply the fixed Hybrid-Cypher pattern selected in Module 2. Build a grounded
 agent that declines unsupported questions, then use a protected reservation
 command to test a rule-enforced write.
 
-**The retrieval path uses vector and full-text search to find candidate chunks. A reviewed Cypher traversal returns connected facts as named fields, including the stable `hotel_id` used by the reservation command.**
+**The retrieval path uses vector and full-text search to find candidate `Chunk` nodes. A reviewed Cypher traversal returns connected facts as named fields, including the stable `hotel_id` used by the reservation command.**
 
 **At a Glance**
 
@@ -39,7 +39,7 @@ The database enforces two behaviors:
 | `3.1_grounded_booking_agent.ipynb` | The grounded agent and the protected reservation write |
 | `reservation_command.py` | The local reservation command that Module 5 deploys with the agent |
 
-The production retriever lives in `workshop/hybrid_retrieval.py`. It exposes a function that accepts a single argument. Modules 4 and 5 deploy that same function unchanged.
+The production retriever lives in `workshop/hybrid_retrieval.py`. Module 2 selects its fixed Hybrid-Cypher pattern because the application needs exact hotel-name support and connected graph fields. The `search_hotel_knowledge` function exposes that decision through one `query` argument. Modules 4 and 5 deploy the same function unchanged.
 
 ## The workshop page
 

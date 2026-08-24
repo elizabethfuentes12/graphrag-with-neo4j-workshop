@@ -375,16 +375,15 @@ def invoke(
         # same MODEL_ID override every module reads. Restating the literal here
         # would put a second copy in the tree, and the copy that drifts is the
         # one that decides what the deployed agent runs on.
-        # No `temperature`. The workshop model is claude-sonnet-5, which rejects
-        # the parameter outright with "`temperature` is deprecated for this
-        # model" rather than ignoring it, so passing it fails every invocation
-        # at the Converse call. Module 3.2 still sets it because its own default
-        # is claude-sonnet-4-6, which accepts it.
+        # No `temperature`. The shared workshop model is claude-sonnet-5, which
+        # rejects the parameter with "`temperature` is deprecated for this
+        # model." Module 3.1 uses the same shared model ID and also omits the
+        # parameter.
         model = BedrockModel(
             model_id=default_model_id(),
             region_name=aws_region(),
         )
-        # Same agent Module 3.2 built. Only where it runs changes.
+        # Same grounded booking agent Module 3.1 built. Only its runtime changes.
         hotel_agent = Agent(
             name="hotel_agent",
             model=model,

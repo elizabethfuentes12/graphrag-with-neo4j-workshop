@@ -40,7 +40,8 @@ coverage, provenance, and context size with the source-only result.
 
 :::alert{type="info" header="Extraction defines the graph result"}
 Graph enrichment reflects the facts that the extraction pipeline placed in the
-graph. Source provenance remains visible so you can inspect omissions or merges.
+graph. It is not an independent source of truth. Source provenance remains
+visible so you can inspect omissions or merges against the authored document.
 :::
 
 ## Structured Filtering
@@ -48,6 +49,14 @@ graph. Source provenance remains visible so you can inspect omissions or merges.
 Structured retrieval lets Neo4j apply filters over connected fields and
 relationships. The notebook displays the query and returned records so the
 selection mechanism remains visible.
+
+## Select the Application Retriever
+
+The booking application needs exact hotel-name support and connected named
+fields in the same evidence record. Module 2 therefore selects the fixed
+`HybridCypherRetriever` exposed by `search_hotel_knowledge`. Module 3 applies
+that function and focuses on grounding, abstention, and the protected write
+instead of comparing retrieval patterns again.
 
 ## Next
 
