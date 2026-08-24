@@ -17,7 +17,8 @@ weight: 2
 2. Go to **Model access → Manage model access**
 3. Enable\:
    - **Amazon Nova 2 Multimodal Embeddings** (`amazon.nova-2-multimodal-embeddings-v1:0`)
-   - **Claude Sonnet 4** (`us.anthropic.claude-sonnet-4-6`)
+   - **Claude Sonnet 5** (`us.anthropic.claude-sonnet-5`)
+   - **Titan Text Embeddings V2** (`amazon.titan-embed-text-v2:0`)
 4. Click **Save changes**
 
 ---

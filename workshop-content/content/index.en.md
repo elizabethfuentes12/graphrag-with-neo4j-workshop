@@ -5,7 +5,7 @@ weight: 0
 
 ## Build Agents from Connected Evidence
 
-Semantic search finds source text that is relevant to a question. Graph traversal can extend that match with named fields, relationships, and provenance. The two signals solve different parts of the retrieval problem.
+A booking agent is useful only when it can name the hotel it means and show where that answer came from. Semantic search finds source text that is relevant to a question. Graph traversal can extend that match with named fields, relationships, and provenance. The two signals solve different parts of the retrieval problem.
 
 This workshop uses a hotel booking scenario to compare four retrieval patterns, select a fixed production retriever, and wire a grounded agent with :link[Amazon Bedrock AgentCore]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}, :link[Neo4j]{href="https://neo4j.com/" external=true} retrieval tools, and inspectable graph memory.
 

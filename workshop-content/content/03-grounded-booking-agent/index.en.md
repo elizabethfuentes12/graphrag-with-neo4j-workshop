@@ -3,11 +3,11 @@ title: "Module 3: Build the Grounded Booking Agent"
 weight: 40
 ---
 
-Module 2 selected a fixed Hybrid-Cypher path because hotel questions need exact-name support and connected named fields. Module 3 uses that path through `search_hotel_knowledge` and keeps reservation writes behind a reviewed command.
-
-Open `notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb`.
+Ask a booking agent for a guest rating and it can return a plausible number it never read, then accept a reservation the hotel cannot honor. Module 2 selected a fixed Hybrid-Cypher path because hotel questions need exact-name support and connected named fields. Module 3 uses that path through `search_hotel_knowledge` and keeps reservation writes behind a reviewed command.
 
 :image[Grounded agent architecture: Neo4j enforces retrieval, rules, and writes; Amazon Bedrock handles reasoning only]{src="../../images/03-grounded-agent-architecture.png" width=800}
+
+Open `notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb`.
 
 ### Query 1: Retrieve Amenities and a Guest Rating
 

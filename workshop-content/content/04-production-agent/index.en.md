@@ -13,6 +13,8 @@ The Module 3 booking agent calls tools in the notebook process and stores state 
 | Tool authentication | **IAM SigV4**: requests signed with AWS credentials |
 | State limited to one session | **AgentCore Memory**: extracted records available across sessions |
 
+Part 1 closes the first two gaps with a Gateway in front of two retrieval Lambdas, and Part 2 closes the third with AgentCore Memory.
+
 :image[Module 4 architecture: a notebook agent uses AgentCore Memory and calls two Neo4j retrieval Lambdas through an IAM-authenticated Gateway]{src="../../images/03-agentcore-architecture.png" width=800}
 
 ---

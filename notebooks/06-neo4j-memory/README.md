@@ -11,7 +11,7 @@ The preference connects to its source and hotel through graph relationships. Tho
 - **Provenance:** Connects each preference to the message that produced it, so you can inspect and correct the stored value.
 - **Neo4j writes:** Creates `Conversation`, `Message`, `User`, and `Preference` nodes. It also creates `DERIVED_FROM` and `ABOUT_HOTEL` relationships while preserving every `Hotel` node.
 - **AWS service:** Uses Amazon Titan Text Embeddings V2 on Amazon Bedrock through the memory library.
-- **Cleanup:** Stores memory records in the module namespace so one scoped script can remove them.
+- **Cleanup:** Stores memory records in the module namespace so the notebook's optional final cell can remove them.
 
 ---
 
@@ -50,7 +50,7 @@ Module 4 Part 2 introduces managed memory. This module shows how explicit graph 
 |---|---|
 | `6.1_neo4j_memory.ipynb` | The module notebook |
 | `memory_helpers.py` | Builds the memory client on the hotel graph's Neo4j instance and contains the provenance and recall queries |
-| `cleanup_memory.py` | Removes namespaced memory records, tagged preferences, and workshop-owned relationships while preserving every `Hotel` node |
+| `cleanup_memory.py` | Implements the scoped cleanup used by the notebook's optional final cell |
 
 ## The workshop page
 

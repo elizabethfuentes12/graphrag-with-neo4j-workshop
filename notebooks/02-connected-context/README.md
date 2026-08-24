@@ -31,18 +31,15 @@ independently.
 |---|---|
 | [`2.1_connected_context.ipynb`](2.1_connected_context.ipynb) | Compares vector, hybrid, Vector-Cypher, and structured retrieval evidence |
 
-In the hosted workshop, Module 1 already prepared the graph. Check it without
-writing before the notebook:
+In Workshop Studio, Module 1 already prepared the graph. Run the notebook cells
+in order. The **Verify the prepared graph** cell performs the non-destructive
+readiness check directly from Python, so no terminal command is required.
 
-```bash
-uv run prepare_graph.py --mode full --check-only
-```
-
-### From scratch or self-paced
-
-For a from-scratch self-paced graph, choose `--mode lite` or `--mode full` and
-add `--rebuild`. That explicit flag permits the script to clear and rebuild the
-extraction graph.
+If the readiness cell reports that Module 2.1 is not ready, return to the Module
+1 notebook, run its cells through completion, and then rerun Module 2.1 from the
+top. The Module 2.1 notebook only reads the graph and never clears learner work.
+For setup outside Workshop Studio, follow the self-paced instructions in the
+[repository README](../../README.md).
 
 ## Evidence and application boundaries
 

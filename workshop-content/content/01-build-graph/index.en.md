@@ -5,11 +5,9 @@ weight: 20
 
 ## Build a Typed Graph from Documents
 
-Claude on :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} converts five hotel FAQ documents into a queryable knowledge graph. `SimpleKGPipeline` from the :link[neo4j-graphrag]{href="https://neo4j.com/docs/neo4j-graphrag-python/current/" external=true} package creates and embeds `Chunk` nodes from each document, then extracts typed facts from their text. A deterministic parser reads the existing hotel amenity bullets directly.
+Ask a hotel search which Cairo hotels have a spa that costs extra, and an embedding alone cannot answer it. An embedding groups text by meaning. It does not record that the hotel sits in Cairo, that it offers a spa, or that the spa costs extra. This module writes those facts down as nodes and relationships, so a query can match them directly instead of inferring them from nearby text.
 
-An embedding groups text by meaning. Extraction records specific facts as nodes and relationships, such as a hotel's address, rooms, policies, and services. The amenity list is already structured, so code uses each exact bullet label as the shared amenity name. This structure allows a query to match those facts directly. This module writes the embeddings and graph facts, and every later module reads them.
-
-You add five hotels that the workshop held out of the prepared graph. The remaining modules query them as part of the full dataset.
+You add five hotels that the workshop held out of the prepared graph. This module writes the embeddings and the graph facts for them, and every later module reads both.
 
 :::alert{type="info" header="The graph keeps these hotels"}
 The five hotels remain in the graph because later modules use them.
@@ -72,6 +70,8 @@ Later modules run retrieval against the combined graph, including your five hote
 ---
 
 ## How the Extraction Pipeline Works
+
+Claude on :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} extracts the facts stated in prose, and `SimpleKGPipeline` from the :link[neo4j-graphrag]{href="https://neo4j.com/docs/neo4j-graphrag-python/current/" external=true} package runs that extraction. The same pipeline creates and embeds the `Chunk` node for each document. The amenity list is already structured, so a deterministic parser reads those bullets directly and uses each exact label as the shared amenity name.
 
 For each document, `SimpleKGPipeline` runs the first five stages. The deterministic amenity parser then runs. The workshop sets the behavior for every stage.
 

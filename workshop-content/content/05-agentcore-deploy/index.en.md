@@ -5,18 +5,20 @@ weight: 60
 
 ## Deploy the Agent to AgentCore Runtime
 
-The grounded booking agent from Module 3 runs in a Jupyter kernel on your laptop. Your local environment holds the Neo4j password, and your AWS credentials authorize the Bedrock calls.
+Nothing outside your notebook can call the grounded booking agent from Module 3. It runs in the Workshop Studio notebook kernel. The notebook environment holds the Neo4j password, and its AWS credentials authorize the Bedrock calls.
 
-In this module, you package a deployment-oriented version of the agent in a container managed by :link[Amazon Bedrock AgentCore Runtime]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}. It reuses the retrieval code, grounding instructions, and reservation command from Module 3.1. It also exposes the command as an agent tool and adds Runtime request handling.
+In this module, you package a deployment-oriented version of the agent in a container managed by :link[Amazon Bedrock AgentCore Runtime]{href="https://aws.amazon.com/bedrock/agentcore/" external=true}. This deployment changes where the agent runs and how callers invoke it.
 
 | Module 3.1 | Module 5.1 |
 |---|---|
 | Runs in your kernel | Runs in a container AgentCore starts |
-| Your laptop holds the Neo4j password | The Runtime holds it, injected at launch |
+| The notebook environment holds the Neo4j password | The Runtime holds it, injected at launch |
 | Reachable only from Jupyter | Invoked through `InvokeAgentRuntime` by authorized AWS clients |
 | Session is your kernel's memory | Each invocation uses a caller-provided session ID |
 
-This deployment changes where the agent runs and how callers invoke it. In Module 3.1, the agent uses one retrieval tool and calls the reservation command directly in the write examples. In Module 5, the deployed agent uses both operations as tools. It retains the grounding instructions that tell it to decline questions the graph cannot answer.
+The deployed agent reuses the retrieval code, grounding instructions, and reservation command from Module 3.1. It also adds Runtime request handling.
+
+In Module 3.1, the agent uses one retrieval tool and calls the reservation command directly in the write examples. In Module 5, the deployed agent uses both operations as tools. It retains the grounding instructions that tell it to decline questions the graph cannot answer.
 
 ---
 
@@ -88,9 +90,9 @@ Neo4j rejects requests above the guest limit inside the write transaction. The i
 
 Each successful invocation logs a start line and a completion line with the tools used and the command status. Use the caller-provided `request_id` to correlate log entries for reservation requests.
 
-:::code{language=bash showCopyAction=true}
-aws logs tail /aws/bedrock-agentcore/runtimes/<RUNTIME_ID>-DEFAULT --follow
-:::
+Run the notebook's **Read recent Runtime logs** cell. It uses boto3 to read the
+Runtime's CloudWatch log group and displays recent entries directly in the
+notebook.
 
 The application's failure log records only the exception type, which keeps the exception message out of that log entry. The handler then raises the exception so AgentCore can report the invocation failure.
 

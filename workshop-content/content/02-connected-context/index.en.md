@@ -5,21 +5,15 @@ weight: 30
 
 ## Compare Retrieval Evidence
 
+Vector search returns the passage that reads closest to a question. That is enough
+when the answer sits inside that passage. Ask which Chicago hotels offer both a spa
+and a swimming pool, and the answer depends on facts held in two separate documents.
+
 Use semantic search to find a relevant source, then use graph structure to return
 connected facts as named fields. This module compares retrieval evidence before
 any optional answer generation.
 
 Open `notebooks/02-connected-context/2.1_connected_context.ipynb`.
-
-:image[Decision tree for selecting a Neo4j retrieval pattern by query shape]{src="../../images/02-retrieval-decision-tree.png" width=800}
-
-| Retriever | Best for | Contribution |
-|-----------|----------|--------------|
-| `VectorRetriever` | Paraphrased questions | Semantic relevance |
-| `HybridRetriever` | Names, identifiers, and postal codes | Semantic and exact-term relevance |
-| `VectorCypherRetriever` | Semantic lookup with connected context | Semantic entry plus graph expansion |
-| Reviewed fixed Cypher | Known structured questions | Application-owned database filtering over named fields and relationships |
-| `Text2CypherRetriever` (optional) | Flexible structured questions | Model-generated read-only database queries |
 
 :::alert{type="info" header="Use One Neo4j Connection"}
 Every module uses the same Neo4j credentials. Configure one connection.
@@ -31,18 +25,14 @@ read-only Neo4j user so the database independently rejects writes.
 ## Prepare the Graph
 
 The notebook verifies its graph fixtures and both retrieval indexes before it
-constructs a retriever. Module 1 already prepared the hosted graph. Check it
-without writing from `notebooks/02-connected-context/`:
+constructs a retriever. Module 1 already prepared the hosted graph. Run the
+Module 2.1 notebook cells in order. Its **Verify the prepared graph** cell runs
+the non-destructive readiness check directly from Python, so Workshop Studio
+does not require terminal access.
 
-:::code{language=bash}
-uv run prepare_graph.py --mode full --check-only
-:::
-
-### Build the Graph from Scratch
-
-For a from-scratch or self-paced build, choose `--mode lite` or `--mode full`
-and add `--rebuild`. The `--rebuild` flag permits whole-graph deletion, so do not
-use it on hosted learner work you want to preserve.
+If the readiness cell reports that Module 2.1 is not ready, return to the Module
+1 notebook, run its cells through completion, and then rerun Module 2.1 from the
+top. The Module 2.1 notebook only reads the graph and never clears learner work.
 
 ## Semantic and Exact-Term Retrieval
 
@@ -69,6 +59,16 @@ relationships. The notebook displays the query and returned records so the
 selection mechanism remains visible.
 
 ## Select the Application Retriever
+
+:image[Decision tree for selecting a Neo4j retrieval pattern by query shape]{src="../../images/02-retrieval-decision-tree.png" width=800}
+
+| Retriever | Best for | Contribution |
+|-----------|----------|--------------|
+| `VectorRetriever` | Paraphrased questions | Semantic relevance |
+| `HybridRetriever` | Names, identifiers, and postal codes | Semantic and exact-term relevance |
+| `VectorCypherRetriever` | Semantic lookup with connected context | Semantic entry plus graph expansion |
+| Reviewed fixed Cypher | Known structured questions | Application-owned database filtering over named fields and relationships |
+| `Text2CypherRetriever` (optional) | Flexible structured questions | Model-generated read-only database queries |
 
 The booking application needs exact hotel-name support and connected named
 fields in the same evidence record. Module 2 therefore selects the fixed
