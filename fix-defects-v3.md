@@ -79,9 +79,9 @@ pass one notebook and fail the next.
 
 | Module | Notebook | Status | Commit | Date | Note |
 | --- | --- | --- | --- | --- | --- |
-| 1 | `1.1_build_graph.ipynb` | not run | | | |
-| 2 | `2.1_connected_context.ipynb` | not run | | | |
-| 3 | `3.1_grounded_booking_agent.ipynb` | not run | | | |
+| 1 | `1.1_build_graph.ipynb` | passed | `b1e2684` | 2026-08-23 | Live additive and idempotence paths passed. |
+| 2 | `2.1_connected_context.ipynb` | passed | `b1e2684` | 2026-08-23 | Neo4j 5.27-compatible ordering passed live. |
+| 3 | `3.1_grounded_booking_agent.ipynb` | passed | `b1e2684` | 2026-08-23 | Abstention, guest limit, and retry assertions passed. |
 
 Status values are `not run`, `passed`, `failed`, and `stale`. Use `stale` when a
 notebook passed and a later change re-opened it under the re-run rule below.
@@ -132,6 +132,9 @@ notebook passed and a later change re-opened it under the re-run rule below.
 
 **Done when:** all three rows read `passed` at one commit and the record is
 committed.
+
+**Result:** Complete. The offline suite (214 tests), repository checker, and
+full live Modules 1--3 gate passed for `b1e2684`. See `live-validation.md`.
 
 ## Item 3: Keep one simple tracked artifact record
 
