@@ -18,7 +18,8 @@ Open `notebooks/02-connected-context/2.1_connected_context.ipynb`.
 | `VectorRetriever` | Paraphrased questions | Semantic relevance |
 | `HybridRetriever` | Names, identifiers, and postal codes | Semantic and exact-term relevance |
 | `VectorCypherRetriever` | Semantic lookup with connected context | Semantic entry plus graph expansion |
-| `Text2CypherRetriever` | Flexible structured questions | Database filtering over named fields and relationships |
+| Reviewed fixed Cypher | Known structured questions | Application-owned database filtering over named fields and relationships |
+| `Text2CypherRetriever` (optional) | Flexible structured questions | Model-generated read-only database queries |
 
 ## Prepare the Graph
 

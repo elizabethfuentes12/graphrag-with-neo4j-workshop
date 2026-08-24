@@ -6,32 +6,6 @@ Use these prompts in [Canva's AI image generator](https://www.canva.com/ai-image
 
 ---
 
-## Diagram 1: RAG vs. Graph-RAG Problem
-**Filename:** `01-rag-vs-graphrag-problem.png`
-**Dimensions:** 1600 × 900 px (16:9)
-
-**Canva prompt:**
-```
-Clean, modern technical diagram on white background. Split into two columns:
-
-LEFT COLUMN labeled "Traditional RAG" with orange warning icon:
-- Show 3 document chunks floating, labeled "Top-3 chunks"
-- Arrow pointing to a brain/LLM icon
-- LLM generates a number with a question mark, labeled "Fabricated average"
-- Small dashed border with text "Only sees 3 of 300 documents"
-
-RIGHT COLUMN labeled "Graph-RAG" with green checkmark icon:
-- Show a network/graph of connected nodes (hotels, amenities, cities)
-- Arrow pointing to a database cylinder labeled "Neo4j"
-- Database returns exact number, labeled "AVG() computed across all 300 hotels"
-- Small solid border with text "Queries all 300 hotels"
-
-Footer: "Same question: What is the average guest rating of hotels in Paris?"
-Style: AWS workshop style, flat design, Inter font, colors: #232F3E dark navy, #FF9900 orange for RAG failures, #1DB954 green for Graph-RAG successes
-```
-
----
-
 ## Diagram 3: Retrieval Patterns Decision Tree
 **Filename:** `02-retrieval-decision-tree.png`
 **Editable source:** `02-retrieval-decision-tree.excalidraw`
@@ -47,7 +21,7 @@ Modern flowchart decision tree on a white background with pastel node colors.
 
 START: Diamond shape "What evidence does the question need?" at top
 
-FOUR BRANCHES flowing down:
+FOUR WORKSHOP BRANCHES flowing down, plus one separate optional extension:
 
 BRANCH 1 (leftmost, purple):
 Label: "Semantic or paraphrased source lookup"
@@ -71,13 +45,17 @@ then named fields include provenance
 Example: "Amenities and rating for the Cairo hotel"
 
 BRANCH 4 (rightmost, orange):
-Label: "Flexible structured filtering"
-Arrow to rounded rectangle: "Text2CypherRetriever"
-Sub-label: "database selection over named fields and relationships"
-Evidence: generated read-only Cypher and records
+Label: "Reviewed structured filtering"
+Arrow to rounded rectangle: "Reviewed fixed Cypher"
+Sub-label: "application-owned query over named fields and relationships"
+Evidence: reviewed Cypher and database records
 Example: "Chicago hotels with a spa and pool"
 
 BOTTOM ROW: All four arrows connect to a final box "Neo4j Knowledge Graph."
+
+SEPARATE OPTIONAL EXTENSION (orange dashed outline):
+Arrow from the start diamond to "Optional: Text2CypherRetriever"
+Sub-label: "Model-generated read-only Cypher for flexible questions"
 
 Style: clean sans-serif font, flat design, white background, colored borders
 matching branch colors
@@ -134,5 +112,5 @@ Style: AWS architecture style, two-tone zones, flat icons, clean labels, profess
 - Set canvas to **1600 × 900 px (landscape 16:9)** before generating. This locks the horizontal format.
 - Export as **PNG** (not JPEG) to preserve sharp text edges.
 - After saving, reference in workshop content with\:
-  `:image[Alt text]{src="/static/images/FILENAME.png" width=800}`
+  `:image[Alt text]{src="../../images/FILENAME.png" width=800}`
 - All diagrams use brand-neutral colors. Do not include logos other than Neo4j and AWS marks.

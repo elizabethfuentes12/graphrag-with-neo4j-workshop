@@ -82,7 +82,11 @@
           "type": "arrow"
         },
         {
-          "id": "decision-to-text2cypher",
+          "id": "decision-to-fixed-cypher",
+          "type": "arrow"
+        },
+        {
+          "id": "decision-to-optional-text2cypher",
           "type": "arrow"
         }
       ],
@@ -1233,7 +1237,7 @@
       "lastCommittedPoint": null
     },
     {
-      "id": "text2cypher-need",
+      "id": "fixed-cypher-need",
       "type": "rectangle",
       "x": 1180,
       "y": 235,
@@ -1259,15 +1263,15 @@
       },
       "boundElements": [
         {
-          "id": "text2cypher-need-text",
+          "id": "fixed-cypher-need-text",
           "type": "text"
         },
         {
-          "id": "decision-to-text2cypher",
+          "id": "decision-to-fixed-cypher",
           "type": "arrow"
         },
         {
-          "id": "text2cypher-need-to-card",
+          "id": "fixed-cypher-need-to-card",
           "type": "arrow"
         }
       ],
@@ -1275,7 +1279,7 @@
       "link": null
     },
     {
-      "id": "text2cypher-need-text",
+      "id": "fixed-cypher-need-text",
       "type": "text",
       "x": 1198,
       "y": 247,
@@ -1302,16 +1306,16 @@
       "link": null,
       "fontSize": 16,
       "fontFamily": 5,
-      "text": "Flexible structured\nfiltering",
-      "originalText": "Flexible structured\nfiltering",
+      "text": "Reviewed structured\nfiltering",
+      "originalText": "Reviewed structured\nfiltering",
       "textAlign": "center",
       "verticalAlign": "middle",
       "lineHeight": 1.25,
       "autoResize": false,
-      "containerId": "text2cypher-need"
+      "containerId": "fixed-cypher-need"
     },
     {
-      "id": "text2cypher-card",
+      "id": "fixed-cypher-card",
       "type": "rectangle",
       "x": 1180,
       "y": 355,
@@ -1337,15 +1341,15 @@
       },
       "boundElements": [
         {
-          "id": "text2cypher-card-title",
+          "id": "fixed-cypher-card-title",
           "type": "text"
         },
         {
-          "id": "text2cypher-need-to-card",
+          "id": "fixed-cypher-need-to-card",
           "type": "arrow"
         },
         {
-          "id": "text2cypher-card-to-graph",
+          "id": "fixed-cypher-card-to-graph",
           "type": "arrow"
         }
       ],
@@ -1353,7 +1357,7 @@
       "link": null
     },
     {
-      "id": "text2cypher-card-title",
+      "id": "fixed-cypher-card-title",
       "type": "text",
       "x": 1200,
       "y": 372,
@@ -1380,16 +1384,16 @@
       "link": null,
       "fontSize": 18,
       "fontFamily": 5,
-      "text": "Text2CypherRetriever",
-      "originalText": "Text2CypherRetriever",
+      "text": "Reviewed fixed Cypher",
+      "originalText": "Reviewed fixed Cypher",
       "textAlign": "center",
       "verticalAlign": "middle",
       "lineHeight": 1.25,
       "autoResize": false,
-      "containerId": "text2cypher-card"
+      "containerId": "fixed-cypher-card"
     },
     {
-      "id": "text2cypher-card-body",
+      "id": "fixed-cypher-card-body",
       "type": "text",
       "x": 1204,
       "y": 420,
@@ -1416,8 +1420,8 @@
       "link": null,
       "fontSize": 13,
       "fontFamily": 5,
-      "text": "Database selection over named fields\nand relationships\n\nEvidence\nGenerated read-only Cypher and records\n\nExample\nChicago hotels with a spa and pool",
-      "originalText": "Database selection over named fields\nand relationships\n\nEvidence\nGenerated read-only Cypher and records\n\nExample\nChicago hotels with a spa and pool",
+      "text": "Application-owned query over named fields\nand relationships\n\nEvidence\nReviewed Cypher and database records\n\nExample\nChicago hotels with a spa and pool",
+      "originalText": "Application-owned query over named fields\nand relationships\n\nEvidence\nReviewed Cypher and database records\n\nExample\nChicago hotels with a spa and pool",
       "textAlign": "left",
       "verticalAlign": "middle",
       "lineHeight": 1.25,
@@ -1425,7 +1429,7 @@
       "containerId": null
     },
     {
-      "id": "decision-to-text2cypher",
+      "id": "decision-to-fixed-cypher",
       "type": "arrow",
       "x": 800,
       "y": 190,
@@ -1472,7 +1476,7 @@
       },
       "endBinding": {
         "mode": "orbit",
-        "elementId": "text2cypher-need",
+        "elementId": "fixed-cypher-need",
         "fixedPoint": [
           0.5,
           0
@@ -1484,7 +1488,140 @@
       "lastCommittedPoint": null
     },
     {
-      "id": "text2cypher-need-to-card",
+      "id": "optional-text2cypher",
+      "type": "rectangle",
+      "x": 1000,
+      "y": 86,
+      "width": 530,
+      "height": 96,
+      "angle": 0,
+      "strokeColor": "#e67700",
+      "backgroundColor": "#fff9db",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed",
+      "roughness": 0,
+      "opacity": 100,
+      "seed": 2601,
+      "version": 1,
+      "versionNonce": 18207,
+      "isDeleted": false,
+      "locked": false,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 3
+      },
+      "boundElements": [
+        {
+          "id": "optional-text2cypher-text",
+          "type": "text"
+        },
+        {
+          "id": "decision-to-optional-text2cypher",
+          "type": "arrow"
+        }
+      ],
+      "updated": 1787464800000,
+      "link": null
+    },
+    {
+      "id": "optional-text2cypher-text",
+      "type": "text",
+      "x": 1020,
+      "y": 101,
+      "width": 490,
+      "height": 66,
+      "angle": 0,
+      "strokeColor": "#e67700",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "solid",
+      "roughness": 0,
+      "opacity": 100,
+      "seed": 2602,
+      "version": 1,
+      "versionNonce": 18214,
+      "isDeleted": false,
+      "locked": false,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": null,
+      "boundElements": [],
+      "updated": 1787464800000,
+      "link": null,
+      "fontSize": 16,
+      "fontFamily": 5,
+      "text": "Optional: Text2CypherRetriever\nModel-generated read-only Cypher for flexible questions",
+      "originalText": "Optional: Text2CypherRetriever\nModel-generated read-only Cypher for flexible questions",
+      "textAlign": "center",
+      "verticalAlign": "middle",
+      "lineHeight": 1.25,
+      "autoResize": false,
+      "containerId": "optional-text2cypher"
+    },
+    {
+      "id": "decision-to-optional-text2cypher",
+      "type": "arrow",
+      "x": 965,
+      "y": 135,
+      "width": 35,
+      "height": 0,
+      "angle": 0,
+      "strokeColor": "#e67700",
+      "backgroundColor": "transparent",
+      "fillStyle": "solid",
+      "strokeWidth": 2,
+      "strokeStyle": "dashed",
+      "roughness": 0,
+      "opacity": 100,
+      "seed": 2603,
+      "version": 1,
+      "versionNonce": 18221,
+      "isDeleted": false,
+      "locked": false,
+      "groupIds": [],
+      "frameId": null,
+      "roundness": {
+        "type": 2
+      },
+      "boundElements": [],
+      "updated": 1787464800000,
+      "link": null,
+      "points": [
+        [
+          0,
+          0
+        ],
+        [
+          35,
+          0
+        ]
+      ],
+      "startBinding": {
+        "mode": "orbit",
+        "elementId": "decision",
+        "fixedPoint": [
+          1,
+          0.5
+        ]
+      },
+      "endBinding": {
+        "mode": "orbit",
+        "elementId": "optional-text2cypher",
+        "fixedPoint": [
+          0,
+          0.5
+        ]
+      },
+      "startArrowhead": null,
+      "endArrowhead": "arrow",
+      "elbowed": false,
+      "lastCommittedPoint": null
+    },
+    {
+      "id": "fixed-cypher-need-to-card",
       "type": "arrow",
       "x": 1350,
       "y": 311,
@@ -1523,7 +1660,7 @@
       ],
       "startBinding": {
         "mode": "orbit",
-        "elementId": "text2cypher-need",
+        "elementId": "fixed-cypher-need",
         "fixedPoint": [
           0.5,
           1
@@ -1531,7 +1668,7 @@
       },
       "endBinding": {
         "mode": "orbit",
-        "elementId": "text2cypher-card",
+        "elementId": "fixed-cypher-card",
         "fixedPoint": [
           0.5,
           0
@@ -1543,7 +1680,7 @@
       "lastCommittedPoint": null
     },
     {
-      "id": "text2cypher-card-to-graph",
+      "id": "fixed-cypher-card-to-graph",
       "type": "arrow",
       "x": 1350,
       "y": 655,
@@ -1582,7 +1719,7 @@
       ],
       "startBinding": {
         "mode": "orbit",
-        "elementId": "text2cypher-card",
+        "elementId": "fixed-cypher-card",
         "fixedPoint": [
           0.5,
           1
@@ -1644,7 +1781,7 @@
           "type": "arrow"
         },
         {
-          "id": "text2cypher-card-to-graph",
+          "id": "fixed-cypher-card-to-graph",
           "type": "arrow"
         }
       ],

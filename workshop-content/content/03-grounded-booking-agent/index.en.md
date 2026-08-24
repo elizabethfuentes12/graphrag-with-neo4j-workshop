@@ -3,7 +3,7 @@ title: "Module 3: Build the Grounded Booking Agent"
 weight: 40
 ---
 
-Module 2 compared retrieval patterns and selected a fixed Hybrid-Cypher path for
+Module 2 selected a fixed Hybrid-Cypher path for
 the application because its hotel questions need exact-name support and
 connected named fields. Module 3 applies that path through
 `search_hotel_knowledge` and keeps the reservation write behind a reviewed

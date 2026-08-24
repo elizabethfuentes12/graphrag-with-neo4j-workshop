@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 import struct
-
+from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 STATIC_IMAGES = REPO_ROOT / "static" / "images"
 WORKSHOP_IMAGES = REPO_ROOT / "workshop-content" / "images"
+CONTENT_ROOT = REPO_ROOT / "workshop-content" / "content"
+NOTEBOOKS_ROOT = REPO_ROOT / "notebooks"
 SOURCE_NAME = "02-retrieval-decision-tree.excalidraw"
 EXPORT_NAME = "02-retrieval-decision-tree.png"
 
@@ -43,10 +44,34 @@ def test_unsupported_retrieval_comparison_is_not_active() -> None:
         assert not (tree / "02-retrieval-patterns-comparison.png").exists()
 
 
+def test_decision_tree_assigns_the_chicago_example_to_fixed_cypher() -> None:
+    """The workshop query belongs to reviewed Cypher, not Text2Cypher."""
+    document = json.loads(_source_text())
+    text_by_id = {
+        element["id"]: element["text"].replace("\n", " ")
+        for element in document["elements"]
+        if element["type"] == "text"
+    }
+    chicago_owners = {
+        element_id
+        for element_id, text in text_by_id.items()
+        if "Chicago hotels with a spa and pool" in text
+    }
+
+    assert chicago_owners == {"fixed-cypher-card-body"}
+    assert text_by_id["fixed-cypher-card-title"] == "Reviewed fixed Cypher"
+    assert "Reviewed Cypher and database records" in text_by_id[
+        "fixed-cypher-card-body"
+    ]
+    assert text_by_id["optional-text2cypher-text"].startswith(
+        "Optional: Text2CypherRetriever"
+    )
+    assert "Chicago hotels" not in text_by_id["optional-text2cypher-text"]
+
+
 def test_decision_tree_teaches_the_locked_retrieval_roles() -> None:
-    """The editable source must state the Phase 5 teaching contract."""
-    source = _source_text()
-    document = json.loads(source)
+    """The editable source must state the learner-facing retrieval contract."""
+    document = json.loads(_source_text())
     diagram_text = " ".join(
         element["text"].replace("\n", " ")
         for element in document["elements"]
@@ -60,8 +85,9 @@ def test_decision_tree_teaches_the_locked_retrieval_roles() -> None:
         "Semantic match finds a Chunk node",
         "Reviewed traversal expands the graph",
         "Named fields include provenance",
-        "Flexible structured filtering",
-        "Database selection over named fields",
+        "Reviewed structured filtering",
+        "Application-owned query over named fields",
+        "Model-generated read-only Cypher for flexible questions",
         "Chicago hotels with a spa and pool",
     )
     for phrase in required_text:
@@ -70,6 +96,8 @@ def test_decision_tree_teaches_the_locked_retrieval_roles() -> None:
     forbidden_text = (
         "Count or aggregate",
         "how many hotels have a pool",
+        "Flexible structured filtering",
+        "Generated read-only Cypher and records",
         "Speed:",
         "Accuracy:",
     )
@@ -90,6 +118,54 @@ def test_decision_tree_uses_clean_excalidraw_styles() -> None:
         assert element["fillStyle"] == "solid"
         if element["type"] == "text":
             assert element["fontFamily"] == 5
+
+
+def test_module_2_table_marks_text2cypher_optional() -> None:
+    """The module table mirrors the fixed-query ownership in the diagram."""
+    content = (
+        CONTENT_ROOT / "02-connected-context" / "index.en.md"
+    ).read_text(encoding="utf-8")
+
+    assert "| Reviewed fixed Cypher | Known structured questions |" in content
+    assert "| `Text2CypherRetriever` (optional) |" in content
+
+
+def test_module_3_says_module_2_selected_the_application_path() -> None:
+    """Module 3 must not claim Module 2 compared the application configuration."""
+    content = (
+        CONTENT_ROOT / "03-grounded-booking-agent" / "index.en.md"
+    ).read_text(encoding="utf-8")
+    notebook = json.loads(
+        (
+            NOTEBOOKS_ROOT
+            / "03-grounded-booking-agent"
+            / "3.1_grounded_booking_agent.ipynb"
+        ).read_text(encoding="utf-8")
+    )
+    notebook_markdown = " ".join(
+        "".join(cell["source"])
+        for cell in notebook["cells"]
+        if cell["cell_type"] == "markdown"
+    )
+
+    assert "Module 2 selected a fixed Hybrid-Cypher path" in content
+    assert "Module 2 compared retrieval patterns" not in content
+    assert "selects this fixed Hybrid-Cypher pattern" in notebook_markdown
+    assert "compares this configuration" not in notebook_markdown
+    assert "compares vector, hybrid" not in notebook_markdown
+
+
+def test_retired_problem_image_and_stale_prompt_path_are_absent() -> None:
+    """Image trees keep only active assets and teach the content-relative path."""
+    prompts = []
+    for tree in (STATIC_IMAGES, WORKSHOP_IMAGES):
+        assert not (tree / "01-rag-vs-graphrag-problem.png").exists()
+        prompt = (tree / "DIAGRAM_PROMPTS.md").read_text(encoding="utf-8")
+        assert "01-rag-vs-graphrag-problem.png" not in prompt
+        assert '../../images/FILENAME.png' in prompt
+        assert '/static/images/FILENAME.png' not in prompt
+        prompts.append(prompt)
+    assert prompts[0] == prompts[1]
 
 
 def test_decision_tree_png_is_the_expected_canvas_size() -> None:

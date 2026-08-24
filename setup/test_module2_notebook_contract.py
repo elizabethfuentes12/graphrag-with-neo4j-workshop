@@ -190,11 +190,12 @@ def test_database_and_optional_text2cypher_boundaries_are_visible() -> None:
     assert "pinned_schema_text()" in code
     assert "EXPLAIN {cypher}" in code
     assert "TEXT2CYPHER_TIMEOUT_SECONDS = 15" in code
-    assert "NEO4J_READ_USERNAME" in code
-    assert "NEO4J_READ_PASSWORD" in code
-    assert "SHOW CURRENT USER" in code
-    assert "'reader' not in roles or roles & write_roles" in code
-    assert "with read_driver.session(" in code
+    # The planner check is the whole boundary. A separate reader credential would
+    # block this optional cell for every learner running the shared workshop
+    # account, so the notebook must not reintroduce one.
+    assert "NEO4J_READ_USERNAME" not in code
+    assert "SHOW CURRENT USER" not in code
+    assert "with driver.session(" in code
     assert "generated_cypher" in code
     assert "read_only_validation" in code
     assert "result_count" in code

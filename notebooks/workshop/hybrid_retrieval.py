@@ -195,7 +195,7 @@ def build_retriever(
 
 @lru_cache(maxsize=1)
 def _get_retriever() -> HybridCypherRetriever:
-    secret_id = os.environ.get(contracts.READ_SECRET_ID_ENV)
+    secret_id = os.environ.get(contracts.RETRIEVAL_SECRET_ID_ENV)
     config = (
         Neo4jConfig.from_secret(secret_id)
         if secret_id
@@ -405,7 +405,7 @@ def build_graph_query_retriever(
 
 @lru_cache(maxsize=1)
 def _get_graph_query_retriever() -> Text2CypherRetriever:
-    secret_id = os.environ.get(contracts.READ_SECRET_ID_ENV)
+    secret_id = os.environ.get(contracts.RETRIEVAL_SECRET_ID_ENV)
     config = (
         Neo4jConfig.from_secret(secret_id)
         if secret_id
