@@ -5,19 +5,19 @@ weight: 20
 
 ## Build a Typed Graph from Documents
 
-Claude on :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} converts five hotel FAQ documents into a queryable knowledge graph. `SimpleKGPipeline` from the :link[neo4j-graphrag]{href="https://neo4j.com/docs/neo4j-graphrag-python/current/" external=true} package creates and embeds `Chunk` nodes from each document, then extracts typed facts from their text. A small deterministic step reads the existing hotel amenity bullets directly.
+Claude on :link[Amazon Bedrock]{href="https://aws.amazon.com/bedrock/" external=true} converts five hotel FAQ documents into a queryable knowledge graph. `SimpleKGPipeline` from the :link[neo4j-graphrag]{href="https://neo4j.com/docs/neo4j-graphrag-python/current/" external=true} package creates and embeds `Chunk` nodes from each document, then extracts typed facts from their text. A deterministic parser reads the existing hotel amenity bullets directly.
 
 An embedding groups text by meaning. Extraction records specific facts as nodes and relationships, such as a hotel's address, rooms, policies, and services. The amenity list is already structured, so code uses each exact bullet label as the shared amenity name. This structure allows a query to match those facts directly. This module writes the embeddings and graph facts, and every later module reads them.
 
-You add five hotels that were held out of the prepared graph. The remaining modules query them as part of the full dataset.
+You add five hotels that the workshop held out of the prepared graph. The remaining modules query them as part of the full dataset.
 
 :::alert{type="info" header="The graph keeps these hotels"}
-The five hotels remain in the graph after this module because later modules use them. Nothing in this module deletes them.
+The five hotels remain in the graph because later modules use them.
 :::
 
 ---
 
-## What the Graph Looks Like
+## Graph Structure
 
 The build writes two connected layers.
 
@@ -25,7 +25,7 @@ The build writes two connected layers.
 
 **The domain layer holds the facts stated in that text.** A `Hotel` node carries the name, address, and guest rating as properties. Typed relationships connect it to `Room`, `Amenity`, `Policy`, and `Service` nodes. The LLM extracts the prose facts. The parser reads amenities from the `## Hotel Amenities` list. Cypher queries read this layer.
 
-`FROM_CHUNK` and `FROM_DOCUMENT` connect the two layers. A search finds a chunk, then a graph traversal reaches its typed facts and source document.
+`FROM_CHUNK` and `FROM_DOCUMENT` connect the two layers. A search finds a chunk. A graph traversal then reaches its typed facts and source document.
 
 :::code{language=text}
 hotel-tokyo-002.txt
@@ -57,11 +57,11 @@ Every domain relationship starts at `Hotel`, so each document produces a one-hop
 
 ---
 
-## Why You Extract Five Documents
+## Why the Module Extracts Five Documents
 
 The source archive contains the workshop hotel FAQ corpus. The graph dump restored during Setup contains the preloaded documents, extracted with the same pinned schema used in this module. Building the full corpus takes hours. You extract five held-out documents in about four minutes.
 
-You extract the `-002` document for Tokyo, Sydney, Rio de Janeiro, Cape Town, and Prague. These documents keep the build separate from the fixtures used by later modules\:
+You extract the `-002` document for Tokyo, Sydney, Rio de Janeiro, Cape Town, and Prague. These documents keep your build separate from the fixtures used by later modules\:
 
 - Later-module fixtures do not depend on these five `-002` hotels, so rebuilding them preserves the required fixture data.
 - The dump retains the `-001` hotel for each city, which keeps those cities in the graph during extraction.
@@ -73,7 +73,7 @@ Later modules run retrieval against the combined graph, including your five hote
 
 ## How the Extraction Pipeline Works
 
-The build runs six stages for each document. `SimpleKGPipeline` owns the first five, then the deterministic amenity parser runs. The workshop sets the behavior for every stage.
+For each document, `SimpleKGPipeline` runs the first five stages. The deterministic amenity parser then runs. The workshop sets the behavior for every stage.
 
 | Stage | What it does here |
 |-------|-------------------|
@@ -132,7 +132,7 @@ Each source document already contains one `## Hotel Amenities` bullet list. Aski
 
 This boundary also handles negative prose safely. A later sentence such as "Pool facilities are not available at this property" sits outside the authoritative list and cannot create a positive Pool amenity.
 
-The full explanation is one sentence: use the LLM for prose, and parse a structured list directly when the source already provides one. The prebuilt graph and the five documents you add use this same rule.
+Use the LLM for prose, and parse a structured list directly when the source already provides one. The prebuilt graph and the five documents you add use this same rule.
 
 The notebook includes an optional comparison. It extracts one document without a schema and prints the labels created by the LLM. The comparison uses a temporary source identity and removes only that data after either success or failure. Participant and preloaded documents remain unchanged.
 
@@ -157,7 +157,7 @@ The build enforces one uniqueness constraint for deterministic identity: `Amenit
 
 ## What the Build Verifies
 
-The build ends with four checks. It stops when any check fails\:
+The build runs four checks and stops when any check fails\:
 
 1. **The schema held.** The build lists every label this run's own chunks produced and fails if an off-schema label appears.
 2. **Every source produced one hotel.** A document with zero or multiple Hotels fails, as does one Hotel shared by multiple source documents.
@@ -182,9 +182,9 @@ At the end, the notebook compares the document and hotel counts from before and 
 
 ## Learn the Agent Basics for Module 3
 
-At the end of this notebook, a short section introduces the :link[Strands Agents SDK]{href="https://strandsagents.com/" external=true}. It explains how an `Agent` works, why `BedrockModel` uses an explicit model ID, and how the `@tool` decorator exposes a Python function to the model. Module 2 first compares retrieved evidence and selects a fixed retrieval function. Module 3 gives that function to the agent.
+The final notebook section introduces the :link[Strands Agents SDK]{href="https://strandsagents.com/" external=true}. It explains how an `Agent` works, why `BedrockModel` uses an explicit model ID, and how the `@tool` decorator exposes a Python function to the model. Module 2 first compares retrieved evidence and selects a fixed retrieval function. Module 3 gives that function to the agent.
 
-Accurate tool results provide the foundation for grounded answers. The application must also recognize when those results do not support the request. A fixed model ID holds the runtime configuration steady, but model wording can still vary.
+Accurate tool results support grounded answers. The application must also recognize when those results do not support the request. A fixed model ID holds the runtime configuration steady, but model wording can still vary.
 
 ## Next
 

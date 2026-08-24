@@ -16,7 +16,7 @@ In this module, you package a deployment-oriented version of the agent in a cont
 | Reachable only from Jupyter | Invoked through `InvokeAgentRuntime` by authorized AWS clients |
 | Session is your kernel's memory | Each invocation uses a caller-provided session ID |
 
-The deployment changes where the agent runs and how callers invoke it. Module 3.1 used one retrieval tool and called the reservation command directly in its write examples. Module 5 gives the deployed agent both operations as tools and preserves the grounding instructions that tell it to decline questions the graph cannot answer.
+This deployment changes where the agent runs and how callers invoke it. In Module 3.1, the agent uses one retrieval tool and calls the reservation command directly in the write examples. In Module 5, the deployed agent uses both operations as tools. It retains the grounding instructions that tell it to decline questions the graph cannot answer.
 
 ---
 
@@ -51,7 +51,7 @@ Both tools connect directly to Neo4j from the deployed process. Neo4j enforces t
 
 ## Prepare the Docker Build Context
 
-Docker can copy files only from its build context. The agent depends on two files outside that context:
+Docker copies files only from its build context. The agent needs two files outside that context:
 
 - `notebooks/workshop/`, the package every module shares
 - `notebooks/03-grounded-booking-agent/reservation_command.py`, the graph-enforced write path
@@ -64,7 +64,7 @@ The staging step builds `workshop/` as a wheel with `uv build --wheel`. It also 
 
 ## Run Five Smoke Tests
 
-The notebook invokes the deployed Runtime and checks the tools' structured results. These results show what retrieval and Neo4j decided. The tests also check selected response text to confirm that the model used the retrieved facts.
+The notebook invokes the deployed Runtime and checks the tools' structured results. These results show the retrieval and Neo4j decisions. The tests also check selected response text to confirm that the model used the retrieved facts.
 
 | Test | What it verifies |
 |---|---|
@@ -75,7 +75,7 @@ The notebook invokes the deployed Runtime and checks the tools' structured resul
 | 10-guest request, delivered twice | The first call creates one node, and the retry returns `duplicate=true` without creating another |
 
 :::alert{type="info" header="Confirm retrieval before testing refusals"}
-A failed retriever can cause the agent to decline every question. The hotel-details test first requires a specific value from the graph, which confirms that retrieval works. The availability test then checks both the refusal and the retrieved fixture-hotel address. Together, these assertions show that the agent declined because live availability is missing, not because retrieval failed.
+A failed retriever can make the agent decline every question. The hotel-details test first requires a specific value from the graph, which confirms that retrieval works. The availability test then checks both the refusal and the retrieved fixture-hotel address. Together, these assertions show that the agent declined because live availability is missing, not because retrieval failed.
 :::
 
 :::alert{type="info" header="Verify policy enforcement and safe retries"}

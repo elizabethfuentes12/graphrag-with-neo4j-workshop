@@ -21,8 +21,8 @@ Open `notebooks/02-connected-context/2.1_connected_context.ipynb`.
 | Reviewed fixed Cypher | Known structured questions | Application-owned database filtering over named fields and relationships |
 | `Text2CypherRetriever` (optional) | Flexible structured questions | Model-generated read-only database queries |
 
-:::alert{type="info" header="One workshop credential"}
-Every module uses the same Neo4j credentials so you configure one connection.
+:::alert{type="info" header="Use One Neo4j Connection"}
+Every module uses the same Neo4j credentials. Configure one connection.
 The optional Text2Cypher example first plans generated Cypher with `EXPLAIN` and
 runs it only when Neo4j classifies it as read-only. In production, use a
 read-only Neo4j user so the database independently rejects writes.
@@ -38,10 +38,10 @@ without writing from `notebooks/02-connected-context/`:
 uv run prepare_graph.py --mode full --check-only
 :::
 
-### From Scratch or Self-Paced
+### Build the Graph from Scratch
 
 For a from-scratch or self-paced build, choose `--mode lite` or `--mode full`
-and add `--rebuild`. That explicit flag permits whole-graph deletion, so do not
+and add `--rebuild`. The `--rebuild` flag permits whole-graph deletion, so do not
 use it on hosted learner work you want to preserve.
 
 ## Semantic and Exact-Term Retrieval
@@ -57,9 +57,9 @@ relationships to return the connected hotel and its named fields. Compare field
 coverage, provenance, and context size with the source-only result.
 
 :::alert{type="info" header="Extraction defines the graph result"}
-Graph enrichment reflects the facts that the extraction pipeline placed in the
-graph. It is not an independent source of truth. Source provenance remains
-visible so you can inspect omissions or merges against the authored document.
+Graph enrichment contains the facts that the extraction pipeline placed in the
+graph. It is not an independent source of truth. Source provenance remains visible so
+you can compare omissions or merges with the authored document.
 :::
 
 ## Structured Filtering
@@ -72,9 +72,7 @@ selection mechanism remains visible.
 
 The booking application needs exact hotel-name support and connected named
 fields in the same evidence record. Module 2 therefore selects the fixed
-`HybridCypherRetriever` exposed by `search_hotel_knowledge`. Module 3 applies
-that function and focuses on grounding, abstention, and the protected write
-instead of comparing retrieval patterns again.
+`HybridCypherRetriever` exposed by `search_hotel_knowledge`. Module 3 applies that function for grounding, abstention, and the protected write.
 
 ## Next
 

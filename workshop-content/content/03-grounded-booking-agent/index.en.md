@@ -3,11 +3,7 @@ title: "Module 3: Build the Grounded Booking Agent"
 weight: 40
 ---
 
-Module 2 selected a fixed Hybrid-Cypher path for
-the application because its hotel questions need exact-name support and
-connected named fields. Module 3 applies that path through
-`search_hotel_knowledge` and keeps the reservation write behind a reviewed
-command.
+Module 2 selected a fixed Hybrid-Cypher path because hotel questions need exact-name support and connected named fields. Module 3 uses that path through `search_hotel_knowledge` and keeps reservation writes behind a reviewed command.
 
 Open `notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb`.
 
@@ -23,7 +19,7 @@ Run this query. The `HybridCypherRetriever` uses full-text search to match the h
 
 > **"Does AnyCompany Cairo Nile View guarantee room availability next weekend?"**
 
-Run this query. The graph has no `guaranteedAvailability` property because Neo4j holds hotel knowledge while live inventory is outside its scope. The retrieved evidence cannot confirm availability, so the agent abstains.
+Run this query. Neo4j stores hotel knowledge, and live inventory is outside its scope. The graph has no `guaranteedAvailability` property. The retrieved evidence cannot confirm availability, so the agent abstains.
 
 ### Reject a 15-guest reservation
 

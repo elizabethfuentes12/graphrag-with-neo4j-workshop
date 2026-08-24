@@ -5,8 +5,7 @@ weight: 50
 
 ## Deploy the Agent Tools and Memory
 
-The Module 3 booking agent calls tools in the notebook process and keeps state
-only for the current session. Module 4 adds three production capabilities:
+The Module 3 booking agent calls tools in the notebook process and stores state only for the current session. Module 4 adds three production capabilities:
 
 | Gap | Fix |
 |---|---|
@@ -35,7 +34,7 @@ Studio removes them when the event ends. In your own account, delete them from
 the console or CLI when you finish.
 :::
 
-Module 4 packages two retrieval patterns behind a managed endpoint:
+Module 4 exposes two retrieval patterns through a managed endpoint:
 
 | Gateway tool | Retriever | Question shape |
 |---|---|---|
@@ -96,7 +95,7 @@ This notebook creates one AgentCore Memory resource. The resource can incur char
 
 **Session 1:** A guest provides a name, loyalty number, and room preference.
 
-AgentCore extracts asynchronously. The notebook polls and shows what was extracted:
+AgentCore extracts these records asynchronously. The notebook polls the service and shows the extracted records:
 
 :::code{language=bash}
 🧠 Preferences extracted (1 record(s)):
