@@ -2,7 +2,11 @@
 
 **Status: Complete. The rebuilt candidate, isolated restore, five-document
 additive path, 24-cell agent smoke, Modules 1 through 3 notebook smoke, release
-automation, and published static artifact have passed their release gates.**
+automation, and replacement static artifact in the working tree have passed
+their release gates.**
+
+For a concise final summary, see
+[`clean-graph-final-state.md`](clean-graph-final-state.md).
 
 ## Current progress
 
@@ -38,8 +42,10 @@ automation, and published static artifact have passed their release gates.**
 - Future facilitator builds default to three concurrent Bedrock extractions;
   `GRAPH_BUILD_CONCURRENCY` accepts a bounded value from 1 through 8. Module 1
   remains sequential by default.
-- The rebuild used local Neo4j only and did not connect to Aura or replace
-  `static/neo4j-hotel-graph.dump`. The recovered 6.2 MiB candidate is
+- Candidate construction used local Neo4j only and did not connect to Aura.
+  It did not replace `static/neo4j-hotel-graph.dump` until after the candidate
+  passed the restore, additive, live-evidence, and publication-review gates.
+  The recovered 6.2 MiB candidate is
   `setup/neo4j-hotel-graph-prebuilt.dump`, with SHA-256
   `a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02`.
 - The long-running shell read a concurrently updated copy of its script after
@@ -61,9 +67,12 @@ automation, and published static artifact have passed their release gates.**
 - Modules 1 and 2 passed in the complete live notebook run. Module 3 exposed a
   negation-sensitive availability assertion; after the assertion was repaired,
   its finalized notebook passed all nine cells in a clean rerun.
-- The accepted candidate was copied to `static/neo4j-hotel-graph.dump`; both
-  files have SHA-256
+- The accepted candidate was copied to `static/neo4j-hotel-graph.dump` in the
+  repository working tree; both files have SHA-256
   `a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02`.
+- The completed changes, evidence, candidate, and replacement static dump are
+  not yet committed or pushed. That version-control handoff is separate from
+  the completed technical release checklist.
 - All disposable prebuilt, recovery, additive, and final-validation Neo4j
   containers and volumes were removed after their artifacts and evidence were
   saved.
@@ -497,9 +506,11 @@ lint, formatting, and release-script syntax checks pass.
 The `prebuilt` build mode validates the complete 300-document corpus before
 selecting 295 documents. The release script isolates the build from Aura,
 enables and verifies APOC, and writes a candidate without replacing the
-checked-in artifact. The real build completed all 295 sources; the candidate
-then passed an isolated restore, the five-document additive path, and final
-publication review. The accepted candidate is now the checked-in static dump.
+repository's existing static artifact. The real build completed all 295
+sources; the candidate then passed an isolated restore, the five-document
+additive path, and final
+publication review. The accepted candidate is now the replacement static dump
+in the repository working tree.
 
 ### Phase 3: Add focused tests and update the workshop story
 
@@ -574,7 +585,7 @@ completed extraction work across recoverable failures.
   failure.
 - [x] Require the final build readiness gates to pass before dumping Neo4j.
 - [x] Generate `setup/neo4j-hotel-graph-prebuilt.dump` without replacing the
-  checked-in artifact.
+  repository's existing static artifact during candidate construction.
 - [x] Record an honest recovered manifest with the directly evidenced duration,
   candidate size and checksum, final readiness gates, wrapper failure, and
   explicit unavailable build-start commit, critical-file hashes, and immutable
@@ -648,8 +659,9 @@ not required to publish the graph artifact.
   recorded evidence.
 - [x] Review the candidate before replacing or publishing
   `static/neo4j-hotel-graph.dump`.
-- [x] Replace the checked-in artifact after the instruction to complete the
-  entire release checklist, then verify its checksum matches the candidate.
+- [x] Replace the repository's tracked static artifact in the working tree
+  after the instruction to complete the entire release checklist, then verify
+  its checksum matches the candidate.
 
 ### 6. Make every release operation reusable
 
@@ -708,3 +720,32 @@ start/finish path and will not need recovery.
   generated values.
 - [x] The participant-facing explanation remains appropriate for an
   introductory four-hour workshop.
+
+## Final review
+
+**Status: Complete**
+
+The plan was audited again on 2026-08-23 against the saved artifacts and
+release evidence. Every required checklist item is complete, and no required
+technical release work remains.
+
+- The candidate and replacement static dump are both 6,542,982 bytes and have
+  SHA-256
+  `a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02`.
+- The additive evidence records an exact transition from 295 to 300 Documents
+  and Hotels, from 1,606 to 1,632 amenity assertions, and from 172 to 175 pool
+  sources, with no reconciliation problems.
+- The live-evidence gate records six questions, 24 unique evaluation cells,
+  no tool errors, and no unscored trials. The successful Module 3 rerun records
+  a pass after the assertion defect was corrected.
+- The pinned offline setup suite passes 153 tests with one intentional skip.
+  Repository integrity, shell syntax, Ruff lint and formatting, and diff
+  whitespace checks also pass.
+- No shared Aura graph was modified, and all disposable Neo4j containers and
+  volumes used by the release work were removed.
+
+The only remaining actions are non-blocking handoff choices: commit and push
+the working-tree changes if they are approved, optionally run the 240-trial
+statistical benchmark if comparative rate claims are needed, and use a future
+fresh build to capture native build-start provenance instead of the honest
+recovered provenance attached to this candidate.
