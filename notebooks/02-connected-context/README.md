@@ -17,6 +17,12 @@ evidence directly, so its lessons do not depend on one generated answer.
 - **Graph changes:** the notebook reads the prepared graph and does not change
   it.
 
+The workshop uses the same Neo4j credentials in every module so participants
+configure one connection. Optional Text2Cypher plans its generated statement
+with `EXPLAIN` and runs it only when Neo4j classifies it as read-only. In
+production, use a read-only Neo4j user so the database enforces that boundary
+independently.
+
 ---
 
 ## The notebook

@@ -10,7 +10,9 @@ resolves here exactly as it does in the notebook.
 
 This tool reads. The Cypher is model-generated, and ``Text2CypherRetriever``
 plans it with ``EXPLAIN`` and refuses to run anything the planner does not
-report as read-only.
+report as read-only. The workshop reuses its ordinary Neo4j credential to keep
+participant setup small; a production deployment should use a read-only Neo4j
+user as an independent database boundary.
 """
 
 from typing import Any, Mapping

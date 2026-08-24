@@ -2,17 +2,17 @@
 
 Date: 2026-08-23
 Branch: `restructure-modules-02-03`
-Status: live run and merge record open
+Status: live validation open
 
-This file lists only work that is still open. The notebooks are the specification
-and the tests are the enforcement. The design history lives in
-`workfolder/defects-v2.md` and `workfolder/defects.md`, which are frozen.
+This tracked file lists only work that is still open. The notebooks are the
+specification and the tests are the enforcement. Files under `workfolder/` are
+local author notes, not release records and not required in a fresh clone.
 
 ## Already complete
 
 The deterministic graph build, the amenity parser, and the published dump are
-finished and recorded in
-[`workfolder/clean-graph-final-state.md`](workfolder/clean-graph-final-state.md).
+finished. The tracked artifact is `static/neo4j-hotel-graph.dump`; its identity
+is recorded in Item 3 below.
 The Module 2 and Module 3 restructure is implemented. That work covered safe graph
 preparation that refuses to clear a populated graph without an explicit rebuild
 request, a self-cleaning optional Module 1 demo, the locked Cairo and Chicago
@@ -41,7 +41,10 @@ Offline work. No credentials needed.
 - [x] Correct the image path in `DIAGRAM_PROMPTS.md` in both image trees.
 
 The optional editable source for `03-grounded-agent-architecture.png` is
-deferred and does not block this workshop.
+deferred and does not block this workshop. For this small workshop, a maintained
+PNG plus its authoring prompt is sufficient. Automatic discovery of every
+learner page is also deferred; the small explicit `LEARNER_FILES` list remains
+the intentionally simple contract and must be updated when a page is added.
 
 **Done when:** the offline suite passes, `setup/check_repo.py` image parity and
 content-reference checks pass, and no active page references a deleted image.
@@ -89,8 +92,8 @@ notebook passed and a later change re-opened it under the re-run rule below.
   under test. The offline suite and `setup/check_repo.py` pass at that commit.
 - [ ] Read `.env` and confirm the non-secret Neo4j host and database identify the
   intended workshop environment. Do this before any write.
-- [ ] Record the starting graph identity. The accepted artifact holds 300
-  Documents, 300 Hotels, 65 Amenities, and 1,632 amenity assertions.
+- [ ] Record the starting graph identity. The accepted prebuilt artifact holds
+  295 Documents, 295 Hotels, 65 Amenities, and 1,606 amenity assertions.
 
 ### During the run
 
@@ -100,19 +103,24 @@ notebook passed and a later change re-opened it under the re-run rule below.
   arrival time, the Chicago postal code and cancellation policy, the enriched
   Cairo record and its provenance, and the Chicago candidate, qualifier, and
   exclusion.
-- [ ] Confirm the optional Module 1 demo leaves the graph counts unchanged.
+- [ ] Confirm Module 1 adds the five held-out sources, producing 300 Documents,
+  300 Hotels, 65 Amenities, and 1,632 amenity assertions.
+- [ ] Confirm the optional Module 1 demo itself leaves the graph counts
+  unchanged and does not affect the five participant sources.
 - [ ] Confirm Module 3 abstention, guest-limit enforcement, and idempotent
   reservation retries pass.
-- [ ] Confirm the optional Module 2 Text2Cypher cell runs on the ordinary
-  workshop credentials and reports `passed: EXPLAIN query_type=r`. This cell no
-  longer needs a separate reader credential. Its output is supporting evidence,
-  so a failure here does not fail the gate, but a blocked state now means a real
-  defect rather than an absent credential.
+- [ ] Confirm the optional Module 2 Text2Cypher cell uses the same Neo4j
+  credentials as the rest of the workshop and reports
+  `passed: EXPLAIN query_type=r`. The workshop intentionally avoids a second
+  reader credential: `EXPLAIN` is the application guard here, while production
+  deployments should use a read-only Neo4j user as an independent database
+  boundary. Its output is supporting evidence, so a failure does not fail the
+  deterministic Module 2 gate.
 
 ### After the run
 
-- [ ] Record the ending graph counts and compare them against the starting
-  counts.
+- [ ] Record the ending graph counts and confirm the expected transition from
+  the 295-document prebuilt graph to the 300-document learner-complete graph.
 - [ ] Write the result to the tracked root file `live-validation.md`: commit,
   date, starting and ending graph counts, model ID, region, database, and pass or
   fail for each notebook.
@@ -125,7 +133,7 @@ notebook passed and a later change re-opened it under the re-run rule below.
 **Done when:** all three rows read `passed` at one commit and the record is
 committed.
 
-## Item 3: Reconcile `clean-graph-final-state.md`
+## Item 3: Keep one simple tracked artifact record
 
 - [x] Delete the "Optional 240-trial benchmark" section. It documents
   `setup/run_live_evidence.py`, which no longer exists.
@@ -137,7 +145,15 @@ committed.
   6,542,982 bytes with SHA-256
   `a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02`, verified
   2026-08-23.
-- [ ] Record the commit and publication state once this branch merges.
+- [x] Record that the dump entered Git in commit
+  `3ce32f87bca0368a68b3184f297fed506ee09eb6`.
+- [x] Keep `workfolder/clean-graph-final-state.md` as an optional local author
+  note. Do not require it, `workfolder/defects-v2.md`, or a separate publication
+  dossier in a fresh clone.
+
+The only additional tracked record will be the short `live-validation.md`
+created by Item 2. That is enough for a simple workshop: the repository contains
+the artifact and tests, while the small record says which commit was run live.
 
 ## Item 4: Run Modules 4 through 6 live
 
@@ -215,6 +231,11 @@ ends. Fixing it is out of scope here.
 **Done when:** all four rows read `passed` at one commit, the result is added to
 `live-validation.md`, and the cleanup checklist is closed.
 
+This ordered run is sufficient for basic workshop testing. It verifies that the
+participant notebooks can create their resources, call their main paths, assert
+their expected results, and clean up. It is not a production load, penetration,
+disaster-recovery, or long-duration reliability test.
+
 ## Constraints that still bind
 
 - The locked Module 2 facts live in `notebooks/workshop/retrieval_setup.py` as
@@ -227,7 +248,8 @@ ends. Fixing it is out of scope here.
 - `prepare_graph.py` requires `--rebuild` before any whole-graph clear, including
   a clear against an empty graph. `--resume` carries the same destructive intent
   for the checkpoint workflow.
-- Adding a learner page means adding it to `LEARNER_FILES` in
+- The workshop intentionally uses a small explicit learner-page inventory.
+  Adding a learner page means adding it to `LEARNER_FILES` in
   `setup/test_phase5_content_contract.py`.
 - Executed notebooks under `setup/notebook-output/` are local diagnostics and stay
   untracked. Do not publish detailed logs.

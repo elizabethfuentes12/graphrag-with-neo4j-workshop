@@ -32,7 +32,12 @@ folder.
 
 ## Part 1: Deploy Retrieval Tools
 
-The Lambda functions expose retrieval interfaces. `search_hotel_knowledge` uses reviewed static Cypher. `graph_query` relies on the Text2Cypher planning guard to reject writes. The reservation command from Module 3 remains outside the Gateway. In production, connect both functions with a read-only Neo4j user for a database-enforced boundary.
+The Lambda functions expose retrieval interfaces. `search_hotel_knowledge` uses
+reviewed static Cypher. `graph_query` relies on the Text2Cypher planning guard to
+reject writes. The reservation command from Module 3 remains outside the
+Gateway. The workshop reuses the same Neo4j credential here to keep setup
+simple. In production, connect both functions with a read-only Neo4j user for a
+database-enforced boundary.
 
 `mcp-proxy-for-aws` authenticates with IAM SigV4 and signs each request with the
 caller's AWS credentials. This connection does not require an API key.

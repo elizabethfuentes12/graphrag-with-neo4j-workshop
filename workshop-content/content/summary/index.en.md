@@ -49,7 +49,10 @@ This comparison is about evidence quality and fit. Answer generation comes later
 `HybridCypherRetriever` is the one the workshop ships to production, behind `search_hotel_knowledge` in `notebooks/workshop/hybrid_retrieval.py`. It takes a single `query` argument. There is no ranker, alpha, or top-k parameter for a caller to set, because those comparisons were made once, by you, and a request does not get to re-run them.
 
 :::alert{type="warning" header="Model-generated Cypher"}
-`Text2CypherRetriever` executes Cypher a model wrote. In production it goes behind a read-only user and a read-only IAM policy, never on the path that writes.
+`Text2CypherRetriever` executes Cypher a model wrote. The workshop uses its one
+shared Neo4j credential and runs a planner check before execution. In production,
+use a read-only Neo4j user so the database independently rejects writes, and
+grant the surrounding application only the IAM permissions it needs.
 :::
 
 ---

@@ -21,6 +21,13 @@ Open `notebooks/02-connected-context/2.1_connected_context.ipynb`.
 | Reviewed fixed Cypher | Known structured questions | Application-owned database filtering over named fields and relationships |
 | `Text2CypherRetriever` (optional) | Flexible structured questions | Model-generated read-only database queries |
 
+:::alert{type="info" header="One workshop credential"}
+Every module uses the same Neo4j credentials so you configure one connection.
+The optional Text2Cypher example first plans generated Cypher with `EXPLAIN` and
+runs it only when Neo4j classifies it as read-only. In production, use a
+read-only Neo4j user so the database independently rejects writes.
+:::
+
 ## Prepare the Graph
 
 The notebook verifies its graph fixtures and both retrieval indexes before it
