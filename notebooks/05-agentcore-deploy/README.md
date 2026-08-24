@@ -21,6 +21,10 @@ The grounded booking agent from Module 3.1 runs in a notebook kernel on your lap
 
 Docker can copy files only from its build context, so the notebook stages the shared `workshop` package and `reservation_command.py` in `runtime_app/` before the build. It then creates the execution role and ECR repository, launches the Runtime with the AgentCore starter toolkit, tags the deployment resources, and runs five smoke tests against the live endpoint.
 
+The notebook can be launched from the repository root, `notebooks/`, or this
+module directory. The deployment build context remains this module's
+`runtime_app/` directory in every case.
+
 The cells that create or invoke AWS resources check `DEPLOY_READY` first. They skip when AWS credentials or any of the four Neo4j environment variables are missing. The local staging step still runs so you can inspect the build context without deploying.
 
 ## Prerequisites

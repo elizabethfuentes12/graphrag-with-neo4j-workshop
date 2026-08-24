@@ -59,6 +59,7 @@ SOURCE_READINESS_QUERY = """
            END) AS source_path_count,
            collect(DISTINCT chunk.text) AS chunk_texts,
            collect(DISTINCT hotel.name) AS hotel_names,
+           collect(DISTINCT hotel.hotel_id) AS hotel_ids,
            collect(DISTINCT hotel.address) AS hotel_addresses,
            collect(DISTINCT hotel.guest_rating) AS guest_ratings,
            collect(DISTINCT amenity.name) AS amenities
@@ -68,12 +69,14 @@ SOURCE_READINESS_QUERY = """
 CHICAGO_FILTER_QUERY = """
     CYPHER 25
     MATCH (document:Document)<-[:FROM_DOCUMENT]-(chunk:Chunk)<-[:FROM_CHUNK]-(hotel:Hotel)
-    WHERE document.source_filename IN $source_filenames
+    WHERE hotel.address IS NOT NULL
+      AND toLower(hotel.address) CONTAINS toLower($city)
       AND hotel.name IS NOT NULL
     OPTIONAL MATCH (hotel)-[:OFFERS_AMENITY]->(amenity:Amenity)
     WITH document.source_filename AS source_filename,
          hotel.name AS hotel_name,
          hotel.guest_rating AS guest_rating,
+         chunk.text AS source_chunk,
          collect(DISTINCT amenity.name) AS amenities
     WITH *,
          any(name IN amenities WHERE toLower(name) CONTAINS 'spa') AS has_spa,
@@ -82,6 +85,7 @@ CHICAGO_FILTER_QUERY = """
            hotel_name,
            guest_rating,
            amenities,
+           source_chunk,
            has_spa,
            has_pool,
            has_spa AND has_pool AS qualifies,
@@ -100,6 +104,8 @@ CHICAGO_SOURCE_FILES = (
 )
 CHICAGO_QUALIFIER = "Lakeview Horizon Suites"
 CHICAGO_EXCLUSION = "Windward Mile Tower"
+CHICAGO_CITY = "Chicago"
+CAIRO_HOTEL_ID = "81393d51-1df3-4f53-b58e-e4cda9736fd7"
 FITNESS_AMENITY = "24-" "Hour Fitness Center"
 
 
@@ -113,6 +119,7 @@ class SourceFixture:
     chunk_terms: tuple[str, ...]
     amenities: tuple[str, ...]
     guest_rating: float | None = None
+    hotel_id: str | None = None
 
     def row(self) -> dict[str, str]:
         """Return the query parameter row for this fixture."""
@@ -134,6 +141,7 @@ SOURCE_FIXTURES = (
             "Nile Views",
         ),
         guest_rating=4.5,
+        hotel_id=CAIRO_HOTEL_ID,
     ),
     SourceFixture(
         source_filename="hotel-chicago-001.txt",
@@ -187,7 +195,7 @@ class Fixture:
     minimum: int = 1
 
 
-REQUIRED_FIXTURES = (
+BUILD_HEALTH_FIXTURES = (
     Fixture(
         name="Paris ratings for aggregation",
         query="""
@@ -291,6 +299,14 @@ def _source_fixture_problems(
                 f"{sorted(hotel_names)}, expected [{fixture.hotel_name!r}]"
             )
 
+        if fixture.hotel_id is not None:
+            hotel_ids = list(record.get("hotel_ids", []))
+            if hotel_ids != [fixture.hotel_id]:
+                problems.append(
+                    f"{fixture.source_filename} has hotel IDs {hotel_ids}, "
+                    f"expected exactly [{fixture.hotel_id!r}]"
+                )
+
         addresses = [str(value) for value in record.get("hotel_addresses", [])]
         if len(addresses) != 1 or fixture.address_term not in addresses[0]:
             problems.append(
@@ -361,7 +377,7 @@ def chicago_filter_records(driver: Driver) -> list[dict[str, Any]]:
             dict(record)
             for record in session.run(
                 CHICAGO_FILTER_QUERY,
-                source_filenames=list(CHICAGO_SOURCE_FILES),
+                city=CHICAGO_CITY,
             )
         ]
 
@@ -507,11 +523,11 @@ def graph_counts(driver: Driver) -> tuple[int, int, dict[str, int], dict[str, in
     return document_count, chunk_count, label_counts, relationship_counts
 
 
-def fixture_problems(driver: Driver) -> list[str]:
-    """Return missing or under-populated required graph fixtures."""
+def build_health_problems(driver: Driver) -> list[str]:
+    """Return broader defects protected by the build-time graph health gate."""
     problems: list[str] = []
     with _session(driver) as session:
-        for fixture in REQUIRED_FIXTURES:
+        for fixture in BUILD_HEALTH_FIXTURES:
             record = session.run(fixture.query, **dict(fixture.parameters)).single()
             actual = 0 if record is None else record["actual"]
             if actual < fixture.minimum:
@@ -592,7 +608,7 @@ def report_readiness(driver: Driver, expected_documents: int) -> list[str]:
     print(f"  Chicago exclusions: {excluded_names}")
 
     problems = hotel_provenance_problems(driver)
-    problems.extend(fixture_problems(driver))
+    problems.extend(build_health_problems(driver))
     problems.extend(source_fixture_problems(driver))
     problems.extend(chicago_filter_problems(chicago_records))
     if documents != expected_documents:

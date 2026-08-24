@@ -23,6 +23,9 @@ The preference connects to its source and hotel through graph relationships. Tho
 
 Every actor and session identifier includes a short run ID, which separates each run from earlier transcripts. Each live cell opens and closes its own memory client, so a failure cannot leave a connection open for the next cell. Live cells skip when credentials are unavailable.
 
+The notebook can be launched from the repository root, `notebooks/`, or this
+module directory. It resolves `memory_helpers.py` to this folder in every case.
+
 ## Compare Managed and Graph Memory
 
 Module 4 Part 2 introduces managed memory. This module shows how explicit graph writes add immediate recall, direct correction, source provenance, and relationships to domain data.

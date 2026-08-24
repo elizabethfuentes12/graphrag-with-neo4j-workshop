@@ -25,6 +25,12 @@ An AWS Workshop Studio workshop in six modules. You build a hotel knowledge grap
 
 Each module folder under `notebooks/` carries its own `README.md`: an At a Glance summary, what the module proves, and what every file in the folder is for.
 
+Notebook path setup supports three launch locations: the repository root,
+`notebooks/`, and the notebook's own module directory. All three resolve the
+same repository assets. If a launcher uses another working directory, set
+`WORKSHOP_NOTEBOOKS_DIR` to the absolute `notebooks/` directory; the notebooks
+validate that it contains the shared `workshop` package before using it.
+
 ---
 
 ## Architecture

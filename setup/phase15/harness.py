@@ -35,6 +35,20 @@ for entry in (str(NOTEBOOKS_DIR), str(Path(__file__).resolve().parent)):
     if entry not in sys.path:
         sys.path.insert(0, entry)
 
+from evaluator_contract import (
+    EVALUATOR_GENERATION,
+    EVIDENCE_HASH_ALGORITHM,
+    FACTUALITY_LABELS,
+    GROUNDING_LABELS,
+    JUDGE_RESPONSE_FIELDS,
+    JudgeResponseError,
+    evidence_metadata,
+    evidence_text_from_trial,
+    parse_judge_response,
+    rationale_for_label,
+    unscored_sample,
+    winning_label,
+)
 from reference_facts import graph_facts, source_facts
 from strands import Agent, tool
 from strands.models import BedrockModel
@@ -55,14 +69,6 @@ from workshop.retrieval_contract import (
     EMBEDDING_DIMENSIONS,
     EMBEDDING_MODEL_ID,
     EMBEDDING_PURPOSE,
-)
-
-from evaluator_contract import (
-    JudgeResponseError,
-    parse_judge_response,
-    rationale_for_label,
-    unscored_sample,
-    winning_label,
 )
 
 TOP_K = 3
@@ -419,32 +425,42 @@ def judge(
         ),
         "judge_error": None,
         "judge_samples": samples,
+        **evidence_metadata(evidence),
     }
 
 
 def vector_evidence_text(retrievals: list[Retrieval]) -> str:
     """Render the retrieved set the way the agent received it."""
-    if not retrievals:
-        return "(the agent made no retrieval call)"
-    blocks = []
-    for retrieval in retrievals:
-        body = "\n\n".join(
-            f"[{name}]\n{text}"
-            for name, text in zip(retrieval.filenames, retrieval.texts)
-        )
-        blocks.append(f"search_faqs({retrieval.query!r}) returned:\n{body}")
-    return "\n\n".join(blocks)
+    return evidence_text_from_trial(
+        {"arm": "vector", "retrieval": [asdict(item) for item in retrievals]}
+    )
 
 
 def graph_evidence_text(calls: list[CypherCall]) -> str:
     """Render the Cypher the model wrote and the rows Neo4j returned."""
-    if not calls:
-        return "(the agent made no graph call)"
-    blocks = []
-    for call in calls:
-        detail = call.error if call.error else call.rendered_evidence
-        blocks.append(f"cypher:\n{call.cypher}\nresult:\n{detail}")
-    return "\n\n".join(blocks)
+    return evidence_text_from_trial(
+        {"arm": "graph", "retrieval": [asdict(item) for item in calls]}
+    )
+
+
+def evaluator_settings() -> dict[str, Any]:
+    """Return the complete evaluator configuration pinned across slices."""
+    return {
+        "top_k": TOP_K,
+        "judge_samples": JUDGE_SAMPLES,
+        "judge_evidence_budget": JUDGE_EVIDENCE_BUDGET,
+        "judge_evidence_hash": EVIDENCE_HASH_ALGORITHM,
+        "graph_result_budget": GRAPH_RESULT_BUDGET,
+        "questions": QUESTIONS,
+        "conditions": list(CONDITIONS),
+        "vector_prompt": NOTEBOOK_VECTOR_PROMPT,
+        "graph_prompt": NOTEBOOK_GRAPH_PROMPT,
+        "grounding_suffix": GROUNDING_SUFFIX,
+        "judge_system_prompt": JUDGE_SYSTEM_PROMPT,
+        "judge_response_fields": sorted(JUDGE_RESPONSE_FIELDS),
+        "factuality_labels": sorted(FACTUALITY_LABELS),
+        "grounding_labels": sorted(GROUNDING_LABELS),
+    }
 
 
 def run_trial(
@@ -490,6 +506,7 @@ def run_trial(
         "judge_evidence_complete": False,
         "judge_samples_valid": False,
         "judge_error": None,
+        **evidence_metadata(evidence),
     }
     if answer and not skip_judge:
         # Same reasoning as the trial-level catch above, and it is here because
@@ -585,10 +602,12 @@ def main() -> int:
         "top_k": TOP_K,
         "trials_per_cell": args.trials,
         "conditions": list(args.conditions),
+        "arms": list(args.arms),
         "judge_samples": JUDGE_SAMPLES,
         "judge_evidence_budget": JUDGE_EVIDENCE_BUDGET,
         "run_generation": 3,
-        "evaluator_generation": 2,
+        "evaluator_generation": EVALUATOR_GENERATION,
+        "evaluator_settings": evaluator_settings(),
         "neo4j_uri": neo4j_uri(),
         "neo4j_database": database,
         "faiss_manifest": manifest,

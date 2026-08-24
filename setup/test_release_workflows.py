@@ -17,6 +17,7 @@ import run_notebook_smoke
 PHASE15_DIR = Path(__file__).with_name("phase15")
 if str(PHASE15_DIR) not in sys.path:
     sys.path.insert(0, str(PHASE15_DIR))
+import evaluator_contract
 import validate_evidence
 
 ADDITIVE_WRAPPER = Path(__file__).with_name("run_additive_validation.sh")
@@ -154,35 +155,113 @@ def test_live_worker_and_gate_commands_use_distinct_dynamic_contracts(
 
 def test_release_smoke_gate_derives_24_trials_and_rejects_quality_gaps() -> None:
     questions = list(run_live_evidence.QUESTION_KEYS)
-    trials = [
-        {
-            "question_key": question,
-            "arm": arm,
-            "condition": condition,
-            "trial": 1,
-            "tool_error": None,
-            "factuality": "correct",
-            "grounding": "grounded",
-            "judge_evidence_complete": True,
-            "judge_samples_valid": True,
-            "judge_error": None,
-            "judge_samples": [
-                {
+    rationale = "All claims are present in the evidence."
+    trials = []
+    for question in questions:
+        for arm in run_live_evidence.ARMS:
+            for condition in run_live_evidence.CONDITIONS:
+                raw_response = json.dumps(
+                    {
+                        "factuality": "correct",
+                        "grounding": "grounded",
+                        "rationale": rationale,
+                    }
+                )
+                trial = {
+                    "question_key": question,
+                    "arm": arm,
+                    "condition": condition,
+                    "trial": 1,
+                    "tool_error": None,
                     "factuality": "correct",
                     "grounding": "grounded",
-                    "rationale": "valid sample",
-                    "parse_error": None,
+                    "judge_evidence_complete": True,
+                    "judge_samples_valid": True,
+                    "judge_error": None,
+                    "factuality_votes": 1,
+                    "grounding_votes": 1,
+                    "factuality_rationale": rationale,
+                    "grounding_rationale": rationale,
+                    "rationale": (
+                        f"Factuality: {rationale} Grounding: {rationale}"
+                    ),
+                    "judge_samples": [
+                        {
+                            "factuality": "correct",
+                            "grounding": "grounded",
+                            "rationale": rationale,
+                            "raw_response": raw_response,
+                            "parse_error": None,
+                        }
+                    ],
+                    "retrieval": (
+                        [
+                            {
+                                "query": "question",
+                                "filenames": ["hotel.txt"],
+                                "texts": ["evidence"],
+                            }
+                        ]
+                        if arm == "vector"
+                        else [
+                            {
+                                "cypher": "RETURN 1",
+                                "error": None,
+                                "rendered_evidence": (
+                                    "Found 1 results:\n  {'value': 1}"
+                                ),
+                            }
+                        ]
+                    ),
                 }
-            ],
-        }
-        for question in questions
-        for arm in run_live_evidence.ARMS
-        for condition in run_live_evidence.CONDITIONS
-    ]
+                evidence = evaluator_contract.evidence_text_from_trial(trial)
+                trial.update(evaluator_contract.evidence_metadata(evidence))
+                trials.append(trial)
+    manifest = {
+        "embedding_model_id": "embedding-model",
+        "embedding_dimensions": 2,
+        "embedding_purpose": "GENERIC_INDEX",
+        "document_count": 1,
+        "corpus_sha256": "a" * 64,
+        "vectors_sha256": "b" * 64,
+        "vector_source": "test",
+        "faiss_metric": "inner_product",
+        "vector_normalization": "l2",
+    }
     run = {
-        "evaluator_generation": 2,
+        "evaluator_generation": evaluator_contract.EVALUATOR_GENERATION,
         "trials_per_cell": 1,
+        "top_k": 3,
         "judge_samples": 1,
+        "judge_evidence_budget": 60_000,
+        "evaluator_settings": {
+            "top_k": 3,
+            "judge_samples": 1,
+            "judge_evidence_budget": 60_000,
+            "judge_evidence_hash": "sha256",
+            "graph_result_budget": 60_000,
+            "questions": [{"key": question} for question in questions],
+            "conditions": list(run_live_evidence.CONDITIONS),
+            "vector_prompt": "vector prompt",
+            "graph_prompt": "graph prompt",
+            "grounding_suffix": " grounding suffix",
+            "judge_system_prompt": "judge prompt",
+            "judge_response_fields": ["factuality", "grounding", "rationale"],
+            "factuality_labels": ["correct", "incorrect", "partial"],
+            "grounding_labels": [
+                "fabricated",
+                "grounded",
+                "insufficient",
+                "unsupported_correct",
+            ],
+        },
+        "arms": list(run_live_evidence.ARMS),
+        "conditions": list(run_live_evidence.CONDITIONS),
+        "embedding_model_id": "embedding-model",
+        "index_dimensions": 2,
+        "index_vectors": 1,
+        "corpus_sha256_now": "a" * 64,
+        "faiss_manifest": manifest,
         "trials": trials,
     }
 

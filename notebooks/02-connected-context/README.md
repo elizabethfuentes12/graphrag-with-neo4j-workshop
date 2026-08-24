@@ -25,8 +25,18 @@ evidence directly, so its lessons do not depend on one generated answer.
 |---|---|
 | [`2.1_connected_context.ipynb`](2.1_connected_context.ipynb) | Compares vector, hybrid, Vector-Cypher, and structured retrieval evidence |
 
-Run `prepare_graph.py --mode lite` from this directory before the notebook when
-you need to create or repair the deterministic workshop graph.
+In the hosted workshop, Module 1 already prepared the graph. Check it without
+writing before the notebook:
+
+```bash
+uv run prepare_graph.py --mode full --check-only
+```
+
+### From scratch or self-paced
+
+For a from-scratch self-paced graph, choose `--mode lite` or `--mode full` and
+add `--rebuild`. That explicit flag permits the script to clear and rebuild the
+extraction graph.
 
 ## Evidence and application boundaries
 
@@ -47,17 +57,9 @@ reservation command.
 |---|---|
 | `2.1_connected_context.ipynb` | The module notebook |
 | `hotel-faqs.zip` | The source corpus stored with the workshop |
-| `faqs_docs.json` | Corpus mapping for the facilitator-only FAISS evaluation baseline |
-| `faqs_vector.index` | Facilitator-only FAISS evaluation index |
-| `faqs_vector.manifest.json` | Compatibility contract for the facilitator-only FAISS artifacts |
 | `graph_builder.py` | The extraction pipeline shared with Module 1 |
 | `graph_config.py` | Chunking and deterministic corpus selection |
 | `prepare_graph.py` | Prepares the graph for this module when you run the workshop outside the hosted environment |
-| `rebuild_faiss_index.py` | Rebuilds facilitator-only FAISS artifacts from graph embeddings |
-
-The learner notebook does not load FAISS. See the tracked
-[`evidence/phase15` retention policy](../../evidence/phase15/README.md) before
-running or publishing the optional facilitator benchmark.
 
 ## The workshop page
 

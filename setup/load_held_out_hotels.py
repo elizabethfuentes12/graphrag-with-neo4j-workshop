@@ -65,13 +65,7 @@ def main() -> int:
     from graph_builder import run_additive_build
     from held_out_documents import extract_held_out
 
-    # `extract_held_out()` defaults to paths relative to the current working
-    # directory, which is correct for the notebook (cwd is Module 1's folder)
-    # and wrong for a script that can be run from anywhere.
-    paths = extract_held_out(
-        archive=MODULE_2 / "hotel-faqs.zip",
-        data_dir=MODULE_1 / "data",
-    )
+    paths = extract_held_out()
 
     return asyncio.run(
         run_additive_build(paths, "Loading the five held-out hotels")

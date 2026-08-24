@@ -10,7 +10,8 @@ from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from evaluator_contract import GROUNDING_LABELS
+from evaluator_contract import BENCHMARK_TRIALS_PER_CELL, EVALUATOR_GENERATION
+from validate_evidence import evidence_problems
 
 ARMS = ("vector", "graph")
 CONDITIONS = ("notebook", "grounded")
@@ -47,15 +48,28 @@ def trials_per_evaluation_cell(trials: list[dict[str, Any]]) -> int | None:
 
 
 def grounding_labels_are_publishable(run: dict[str, Any]) -> bool:
-    """Return whether the run uses the complete-evidence evaluator contract."""
-    trials = run.get("trials", [])
-    return bool(trials) and run.get("evaluator_generation") == 2 and all(
-        trial.get("judge_evidence_complete") is True
-        and trial.get("judge_samples_valid") is True
-        and trial.get("judge_error") is None
-        and isinstance(trial.get("grounding"), str)
-        and trial.get("grounding") in GROUNDING_LABELS
-        for trial in trials
+    """Return whether the canonical benchmark passes the authoritative gate."""
+    return not publication_problems(run)
+
+
+def publication_problems(run: dict[str, Any]) -> list[str]:
+    """Validate the complete 240-trial benchmark used for reported rates."""
+    return evidence_problems(
+        run,
+        questions=list(QUESTION_ORDER),
+        arms=list(ARMS),
+        conditions=list(CONDITIONS),
+        trials_per_cell=BENCHMARK_TRIALS_PER_CELL,
+    )
+
+
+def is_historical_run(run: dict[str, Any]) -> bool:
+    """Return whether a run predates the strict evaluator generation."""
+    generation = run.get("evaluator_generation")
+    return generation is None or (
+        isinstance(generation, int)
+        and not isinstance(generation, bool)
+        and generation < EVALUATOR_GENERATION
     )
 
 
@@ -92,8 +106,15 @@ def main() -> int:
     args = parser.parse_args()
 
     run = json.loads(args.evidence.read_text(encoding="utf-8"))
+    strict_problems = publication_problems(run)
+    if strict_problems and not is_historical_run(run):
+        for problem in strict_problems:
+            print(f"ERROR: {problem}")
+        return 1
+
     trials = run["trials"]
-    by_cell: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    publishable = not strict_problems
+    by_cell: dict[tuple[str, str, str], list[dict[str, Any]]] = defaultdict(list)
     for trial in trials:
         by_cell[
         (trial["question_key"], trial["arm"], trial.get("condition", "notebook"))
@@ -124,12 +145,13 @@ def main() -> int:
         f"Trials: {len(trials)} ({rendered_per_cell} per question, arm, and "
         f"prompt condition), k={run['top_k']}"
     )
-    if not grounding_labels_are_publishable(run):
+    if not publishable:
         add("")
         add("> **Historical evaluator warning:** Grounding labels in this run are")
-        add("> invalid for publication. The run lacks the complete-evidence evaluator")
-        add("> contract or contains an incomplete judge result. Preserve factual")
-        add("> observations separately and run a repaired rescore before citing rates.")
+        add("> invalid for publication. No judge label or rate is publishable because")
+        add("> the run lacks the complete-evidence evaluator contract or contains an")
+        add("> incomplete judge result. Preserve deterministic factual observations")
+        add("> separately and run a repaired rescore before citing rates.")
     if batches:
         add("")
         add(
@@ -207,10 +229,19 @@ def main() -> int:
                 ]
                 mean_tokens = round(sum(tokens) / len(tokens)) if tokens else "n/a"
                 mean_calls = round(sum(t["tool_calls"] for t in cell) / len(cell), 1)
+                factuality = (
+                    tally(cell, "factuality")
+                    if publishable
+                    else "invalid (historical)"
+                )
+                grounding = (
+                    tally(cell, "grounding")
+                    if publishable
+                    else "invalid (historical)"
+                )
                 add(
                     f"| {QUESTION_TITLES[key]} | {arm} | {condition} | "
-                    f"{tally(cell, 'factuality')} | "
-                    f"{tally(cell, 'grounding')} | {mean_tokens} | {mean_calls} |"
+                    f"{factuality} | {grounding} | {mean_tokens} | {mean_calls} |"
                 )
     add("")
 
@@ -238,8 +269,14 @@ def main() -> int:
         for condition in CONDITIONS:
             for arm in ARMS:
               for trial in by_cell.get((key, arm, condition), []):
+                  factuality = (
+                      trial["factuality"] if publishable else "invalid historical label"
+                  )
+                  grounding = (
+                      trial["grounding"] if publishable else "invalid historical label"
+                  )
                   add(f"**{arm} / {condition} trial {trial['trial']}** "
-                      f"({trial['factuality']} / {trial['grounding']}, "
+                      f"({factuality} / {grounding}, "
                       f"{trial['tool_calls']} tool calls, {trial['elapsed_seconds']}s)")
                   add("")
                   if arm == "vector":

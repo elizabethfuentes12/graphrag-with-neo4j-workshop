@@ -244,7 +244,9 @@ def test_report_readiness_includes_hotel_provenance_failures(
         "graph_counts",
         Mock(return_value=(2, 2, {"Hotel": 1}, {})),
     )
-    monkeypatch.setattr(retrieval_setup, "fixture_problems", Mock(return_value=[]))
+    monkeypatch.setattr(
+        retrieval_setup, "build_health_problems", Mock(return_value=[])
+    )
     monkeypatch.setattr(
         retrieval_setup,
         "source_fixture_problems",

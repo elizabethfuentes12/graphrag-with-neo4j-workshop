@@ -15,9 +15,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from evaluator_contract import EVALUATOR_GENERATION
+
 # Fields that must be identical across slices for the merge to be meaningful.
-# `run_utc` and `trials_per_cell` are expected to differ or repeat, so they are
-# not checked here.
+# `run_utc` differs because workers start independently. Every setting that
+# affects interpretation must otherwise be identical.
 PINNED_FIELDS = (
     "model_id",
     "embedding_model_id",
@@ -32,17 +34,32 @@ PINNED_FIELDS = (
     "corpus_sha256_now",
     "index_dimensions",
     "index_vectors",
+    "trials_per_cell",
+    "conditions",
+    "arms",
+    "faiss_manifest",
+    "evaluator_settings",
 )
 
 
 def check_headers(runs: list[dict[str, Any]]) -> None:
     """Raise when the slices disagree on anything that would invalidate pooling."""
+    if not runs:
+        raise ValueError("at least one evidence slice is required")
     first = runs[0]
     for field in PINNED_FIELDS:
+        if first.get("evaluator_generation") == EVALUATOR_GENERATION and any(
+            field not in run for run in runs
+        ):
+            raise ValueError(f"current evaluator slices are missing {field}")
         values = {json.dumps(run.get(field), sort_keys=True) for run in runs}
         if len(values) > 1:
             raise ValueError(f"slices disagree on {field}: {sorted(values)}")
     for field in ("source_facts", "graph_facts"):
+        if first.get("evaluator_generation") == EVALUATOR_GENERATION and any(
+            field not in run for run in runs
+        ):
+            raise ValueError(f"current evaluator slices are missing {field}")
         reference = json.dumps(first.get(field), sort_keys=True, default=str)
         for run in runs[1:]:
             if json.dumps(run.get(field), sort_keys=True, default=str) != reference:

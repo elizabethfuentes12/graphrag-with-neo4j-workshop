@@ -15,17 +15,22 @@ import sys
 import zipfile
 from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+NOTEBOOKS_ROOT = SCRIPT_DIR.parent
+REPO_ROOT = NOTEBOOKS_ROOT.parent
+
 # Add notebooks/ root to path so the workshop package can be found. `insert`
 # rather than `append`: the notebooks bootstrap the same way, and a single
 # convention is one less thing that behaves differently between the two.
-sys.path.insert(0, str(Path(__file__).parent.parent))
+sys.path.insert(0, str(NOTEBOOKS_ROOT))
 
 
 os.environ["OTEL_SDK_DISABLED"] = "true"
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(NOTEBOOKS_ROOT / ".env")
+load_dotenv(REPO_ROOT / ".env")
 
 from graph_builder import connect, graph_database, report, run_build
 from graph_config import HELD_OUT_DOCUMENTS, select_lite_files
@@ -38,12 +43,13 @@ from workshop.fixtures import (
 from workshop.retrieval_setup import (
     ReadinessError,
     ensure_retrieval_indexes,
+    graph_counts,
     report_readiness,
     verify_retrieval_indexes,
 )
 
-DATA_DIR = Path("data")
-CORPUS_ZIP = Path("hotel-faqs.zip")
+DATA_DIR = SCRIPT_DIR / "data"
+CORPUS_ZIP = SCRIPT_DIR / "hotel-faqs.zip"
 LITE_DOCUMENTS = 30
 EXPECTED_CORPUS_DOCUMENTS = 300
 
@@ -162,7 +168,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--rebuild",
         action="store_true",
-        help="Rebuild even when the selected graph is already ready.",
+        help="Explicitly permit a from-scratch build and whole-graph clearing.",
     )
     parser.add_argument(
         "--resume",
@@ -200,14 +206,17 @@ def main() -> int:
         return 1
 
     driver = connect()
-    needs_build = args.rebuild or args.resume
+    explicit_build = args.rebuild or args.resume
+    problems: list[str] = []
+    observed_documents = 0
+    observed_chunks = 0
+    observed_hotels = 0
     try:
         # The index contract is checked before the build decision, never after
         # it. An index that exists at the wrong dimension cannot serve the
         # vectors a build writes, and --rebuild used to skip this check and
         # surface the same failure fifteen minutes later.
-        if args.check_only:
-            problems = []
+        if not explicit_build:
             try:
                 verify_retrieval_indexes(driver)
             except ReadinessError as exc:
@@ -218,14 +227,11 @@ def main() -> int:
             except ReadinessError as exc:
                 print(f"\n❌ {exc}")
                 return 1
-            problems = []
-
-        if not args.rebuild and not args.resume:
+        if not explicit_build:
+            observed_documents, observed_chunks, labels, _ = graph_counts(driver)
+            observed_hotels = labels.get("Hotel", 0)
             problems.extend(report_readiness(driver, expected_documents=len(paths)))
-            problems.extend(
-                booking_agent_problems(driver, apply_fixtures=not args.check_only)
-            )
-            needs_build = bool(problems)
+            problems.extend(booking_agent_problems(driver, apply_fixtures=False))
             # The acceptance queries print whether or not a build runs, so a
             # ready graph still shows what Module 2 will be asking it.
             if not problems:
@@ -233,15 +239,25 @@ def main() -> int:
     finally:
         driver.close()
 
-    if not needs_build:
+    if not explicit_build and not problems:
         print("\n✅ The workshop graph is ready; no rebuild needed.")
         return 0
-    if not args.rebuild:
-        print("\nGraph preparation is incomplete:")
+    if not explicit_build:
+        print("\n❌ Graph readiness check failed; no graph data was changed.")
+        print(
+            "Observed graph size: "
+            f"{observed_documents} Documents, {observed_chunks} Chunks, "
+            f"{observed_hotels} Hotels. "
+            f"Expected {len(paths)} of each for --mode {args.mode}."
+        )
         for problem in problems:
             print(f"  - {problem}")
-        if args.check_only:
-            return 1
+        print(
+            "Run again with --check-only after correcting the reported issue. "
+            "To discard and rebuild the whole graph from scratch, explicitly add "
+            "--rebuild."
+        )
+        return 1
 
     titles = {
         "lite": "🚀 LITE BUILD",

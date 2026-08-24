@@ -26,6 +26,10 @@ the agent through its `tools` interface.
 
 Run `4.1` first. `4.2` connects to the Gateway `4.1` created.
 
+Both notebooks can be launched from the repository root, `notebooks/`, or this
+module directory. Module 4.1 always packages the `lambda_tools/` tree from this
+folder.
+
 ## Part 1: Deploy Retrieval Tools
 
 The Lambda functions expose retrieval interfaces. `search_hotel_knowledge` uses reviewed static Cypher. `graph_query` relies on the Text2Cypher planning guard to reject writes. The reservation command from Module 3 remains outside the Gateway. In production, connect both functions with a read-only Neo4j user for a database-enforced boundary.

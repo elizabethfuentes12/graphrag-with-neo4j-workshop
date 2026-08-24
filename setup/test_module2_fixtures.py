@@ -31,6 +31,7 @@ def _ready_source_record(
         "source_path_count": 1,
         "chunk_texts": [" ".join(fixture.chunk_terms)],
         "hotel_names": [fixture.hotel_name],
+        "hotel_ids": [fixture.hotel_id] if fixture.hotel_id is not None else [],
         "hotel_addresses": [f"Fixture address {fixture.address_term}"],
         "guest_ratings": (
             [fixture.guest_rating] if fixture.guest_rating is not None else []
@@ -124,6 +125,41 @@ def test_exact_source_readiness_reports_path_chunk_and_amenity_defects() -> None
     assert any(
         "hotel-chicago-002.txt is missing authored amenities" in p for p in problems
     )
+
+
+@pytest.mark.parametrize(
+    ("hotel_ids", "hotel_count", "source_path_count"),
+    [
+        ([], 1, 1),
+        (["wrong-hotel-id"], 1, 1),
+        ([retrieval_setup.CAIRO_HOTEL_ID], 2, 2),
+    ],
+)
+def test_cairo_readiness_rejects_missing_wrong_and_duplicated_hotel_identity(
+    hotel_ids: list[str],
+    hotel_count: int,
+    source_path_count: int,
+) -> None:
+    records = [
+        _ready_source_record(fixture)
+        for fixture in retrieval_setup.SOURCE_FIXTURES
+    ]
+    cairo = records[0]
+    cairo["hotel_ids"] = hotel_ids
+    cairo["hotel_count"] = hotel_count
+    cairo["source_path_count"] = source_path_count
+
+    problems = retrieval_setup._source_fixture_problems(records)
+
+    assert problems
+    assert any("hotel-cairo-001.txt" in problem for problem in problems)
+
+
+def test_chicago_candidates_are_selected_by_city_not_expected_source_names() -> None:
+    query = retrieval_setup.CHICAGO_FILTER_QUERY
+
+    assert "$city" in query
+    assert "$source_filenames" not in query
 
 
 def test_chicago_filter_accepts_two_candidates_one_qualifier_and_exclusion() -> None:

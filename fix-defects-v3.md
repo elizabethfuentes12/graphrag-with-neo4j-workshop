@@ -2,7 +2,7 @@
 
 Date: 2026-08-23
 Source reviewed: `workfolder/defects-v2.md`, Phases 1 through 6
-Status: Pending
+Status: In progress
 
 This plan supersedes the pending implementation work in
 `workfolder/defects-v2.md`, including its Phases 5.5, 7, and 8. That document
@@ -101,7 +101,7 @@ current notebook run.
 
 ## Phase 1: Make graph preparation safe and repair deterministic contracts
 
-**Status:** Pending
+**Status:** Complete
 
 **Outcome:** Module 2 cannot erase a prepared graph without explicit rebuild
 intent, the optional demo cleans up only its own data, and every required
@@ -109,65 +109,65 @@ example enforces and displays the complete locked contract.
 
 **Checklist:**
 
-- [ ] Remove the unconditional lite-build prerequisite from the Module 2
+- [x] Remove the unconditional lite-build prerequisite from the Module 2
   notebook and workshop page. State that Module 1 already prepared the hosted
   graph.
-- [ ] Make the Module 2 readiness failure direct learners to the non-destructive
+- [x] Make the Module 2 readiness failure direct learners to the non-destructive
   check-only path before any rebuild guidance.
-- [ ] Keep lite and full preparation instructions under an explicit
+- [x] Keep lite and full preparation instructions under an explicit
   from-scratch or self-paced heading.
-- [ ] Change `prepare_graph.py` so an unexpected or incomplete populated graph
+- [x] Change `prepare_graph.py` so an unexpected or incomplete populated graph
   returns an actionable failure unless the caller explicitly requested a
   rebuild.
-- [ ] Require explicit rebuild intent before `prepare_graph.py` can reach the
+- [x] Require explicit rebuild intent before `prepare_graph.py` can reach the
   whole-graph clearing path. Report the observed and expected graph sizes in the
   refusal message.
-- [ ] Require `--rebuild` for builds against empty graphs as well as populated
+- [x] Require `--rebuild` for builds against empty graphs as well as populated
   graphs. Treat `--resume` as explicit destructive intent for the checkpoint
   workflow.
-- [ ] Add regression tests proving that default preparation and check-only mode
+- [x] Add regression tests proving that default preparation and check-only mode
   never call the destructive build path on a populated graph.
-- [ ] Give the optional unpinned demo a filename reserved solely for temporary
+- [x] Give the optional unpinned demo a filename reserved solely for temporary
   demo data. Do not reuse a held-out source filename.
-- [ ] Pass the temporary filename through the extraction metadata so the
+- [x] Pass the temporary filename through the extraction metadata so the
   generated `Document`, `Chunk`, and extracted entities can be found by the
   cleanup path.
-- [ ] Clear the same temporary filename in a guaranteed cleanup block, including
+- [x] Clear the same temporary filename in a guaranteed cleanup block, including
   extraction failure cases.
-- [ ] Replace the learner prose that says the demo leaves data behind with an
+- [x] Replace the learner prose that says the demo leaves data behind with an
   accurate cleanup promise after validation passes.
-- [ ] Add a regression that creates participant data first, runs the demo
+- [x] Add a regression that creates participant data first, runs the demo
   cleanup, and proves the participant source path and hotel remain unchanged.
-- [ ] Add `hotel_id` to the Cairo source fixture, readiness query, readiness
+- [x] Add `hotel_id` to the Cairo source fixture, readiness query, readiness
   validator, and focused negative tests.
-- [ ] Make readiness fail before retrieval when the Cairo ID is missing,
+- [x] Make readiness fail before retrieval when the Cairo ID is missing,
   duplicated, or different from the locked value.
-- [ ] Remove retired aggregation and counting fixtures from the Module 2
+- [x] Remove retired aggregation and counting fixtures from the Module 2
   notebook readiness gate.
-- [ ] Retain broader graph-health fixtures in build-time validation where they
+- [x] Retain broader graph-health fixtures in build-time validation where they
   still protect downstream tools, and rename them for the behavior they protect.
-- [ ] Select Chicago candidates through a city predicate rather than passing the
+- [x] Select Chicago candidates through a city predicate rather than passing the
   two expected source filenames as the candidate set.
-- [ ] Keep the expected Chicago filenames in readiness and result validation so
+- [x] Keep the expected Chicago filenames in readiness and result validation so
   the city-based query remains deterministic.
-- [ ] Give the fixed Chicago block an explicit pattern name and configuration,
+- [x] Give the fixed Chicago block an explicit pattern name and configuration,
   then display candidate and qualifying record context size, absent requested
   fields, source filename, and provenance.
-- [ ] Assert those Chicago display fields through structured notebook-contract
+- [x] Assert those Chicago display fields through structured notebook-contract
   tests instead of checking only for source-code strings.
-- [ ] Replace the Vector-Cypher blended context-size number with separate
+- [x] Replace the Vector-Cypher blended context-size number with separate
   measurements for structured fields and source text.
-- [ ] Apply the same measurement definitions to the vector arm so the learner
+- [x] Apply the same measurement definitions to the vector arm so the learner
   compares equivalent evidence.
-- [ ] Replace the full-corpus client-side text map with provenance resolution
+- [x] Replace the full-corpus client-side text map with provenance resolution
   tied to each retrieval result.
-- [ ] Make Vector-Cypher surface semantic hits that lack extracted Hotel context
+- [x] Make Vector-Cypher surface semantic hits that lack extracted Hotel context
   and explain why enrichment returned fewer complete records.
-- [ ] Give every acceptance assertion an actionable message containing the
+- [x] Give every acceptance assertion an actionable message containing the
   expected fact and observed evidence.
-- [ ] Report total Text2Cypher records separately from the bounded set displayed
+- [x] Report total Text2Cypher records separately from the bounded set displayed
   in the notebook.
-- [ ] Keep generated Text2Cypher outside the deterministic acceptance path.
+- [x] Keep generated Text2Cypher outside the deterministic acceptance path.
 
 **Validation:**
 
@@ -194,34 +194,38 @@ example enforces and displays the complete locked contract.
 **Notes:** This phase closes V3-1, V3-3, V3-4, V3-9, V3-11, V3-12, and V3-14.
 It must finish before any new live notebook acceptance run.
 
+**Validation result:** Complete offline. Phase 1 focused and related tests pass
+as part of the 268-test setup suite. The repository checker and whitespace
+validation pass. Live semantic acceptance remains Phase 5 work.
+
 ## Phase 2: Establish one working-directory contract
 
-**Status:** Pending
+**Status:** Complete
 
 **Outcome:** Active notebooks and helper scripts find the same repository assets
 from every supported launch location.
 
 **Checklist:**
 
-- [ ] Define one documented base-path contract for the repository root,
+- [x] Define one documented base-path contract for the repository root,
   notebooks root, current module, corpus archive, extracted data, shared package,
   reservation command, and deployment build context.
-- [ ] Preserve the documented `WORKSHOP_NOTEBOOKS_DIR` override and validate it
+- [x] Preserve the documented `WORKSHOP_NOTEBOOKS_DIR` override and validate it
   before use.
-- [ ] Update Module 1 bootstrap and held-out loading so they do not derive paths
+- [x] Update Module 1 bootstrap and held-out loading so they do not derive paths
   from the process working directory.
-- [ ] Update `prepare_graph.py` so its corpus archive, extracted data, environment
+- [x] Update `prepare_graph.py` so its corpus archive, extracted data, environment
   files, and imports resolve from the script location or shared base contract.
-- [ ] Apply the same locator to Modules 3 through 6 where imports, requirements,
+- [x] Apply the same locator to Modules 3 through 6 where imports, requirements,
   cleanup utilities, or deployment staging still use the process working
   directory.
-- [ ] Make the notebook runner set and report each notebook's execution directory
+- [x] Make the notebook runner set and report each notebook's execution directory
   explicitly.
-- [ ] Document the supported launch locations in the root and module setup prose.
-- [ ] Add path-contract tests from the repository root, notebooks root, and each
+- [x] Document the supported launch locations in the root and module setup prose.
+- [x] Add path-contract tests from the repository root, notebooks root, and each
   notebook's own active module directory. Tests must prove that every resolved
   asset is the same file in all three cases.
-- [ ] Add a fresh-clone path test that runs without extracted `data/`, caches, or
+- [x] Add a fresh-clone path test that runs without extracted `data/`, caches, or
   notebook output directories.
 
 **Validation:**
@@ -237,9 +241,14 @@ from every supported launch location.
 **Notes:** This phase closes V3-2. Keep path resolution independent from live
 credentials so most failures remain testable offline.
 
+**Validation result:** Complete offline. Path resolution tests cover Modules 1
+through 6, the held-out corpus helper, `prepare_graph.py`, and the supported
+launch locations without generated data. The combined 268-test setup suite and
+repository checker pass.
+
 ## Phase 3: Harden Phase 1.5 evidence publication controls
 
-**Status:** Pending
+**Status:** In progress
 
 **Outcome:** A report can mark judge labels publishable only after one strict,
 recomputed evidence contract passes.

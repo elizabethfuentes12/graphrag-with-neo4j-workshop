@@ -134,7 +134,7 @@ This boundary also handles negative prose safely. A later sentence such as "Pool
 
 The full explanation is one sentence: use the LLM for prose, and parse a structured list directly when the source already provides one. The prebuilt graph and the five documents you add use this same rule.
 
-The notebook includes an optional comparison. It extracts one document without a schema and prints the labels created by the LLM. That comparison leaves its document and its invented labels in the graph, and nothing later in the workshop reads them.
+The notebook includes an optional comparison. It extracts one document without a schema and prints the labels created by the LLM. The comparison uses a temporary source identity and removes only that data after either success or failure. Participant and preloaded documents remain unchanged.
 
 ---
 

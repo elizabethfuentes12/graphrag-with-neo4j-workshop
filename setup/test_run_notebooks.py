@@ -170,6 +170,37 @@ def test_a_broken_notebook_fails_with_the_reason(monkeypatch) -> None:
     assert "the helper was renamed" in result.detail
 
 
+def test_execution_directory_is_the_notebook_folder(
+    monkeypatch, tmp_path: Path
+) -> None:
+    """The runner passes the module folder to nbconvert explicitly."""
+    import nbconvert.preprocessors
+
+    module_dir = tmp_path / "03-probe"
+    module_dir.mkdir()
+    notebook_path = module_dir / "probe.ipynb"
+    nbformat.write(nbformat.v4.new_notebook(), notebook_path)
+    notebook = run_notebooks.Notebook("3", notebook_path)
+    observed = {}
+
+    class RecordingExecutor:
+        def __init__(self, **kwargs):
+            pass
+
+        def preprocess(self, document, resources):
+            observed.update(resources)
+
+    monkeypatch.setattr(
+        nbconvert.preprocessors, "ExecutePreprocessor", RecordingExecutor
+    )
+    monkeypatch.setattr(run_notebooks, "REPO_ROOT", tmp_path)
+
+    result = run_notebooks.run_notebook(notebook, tmp_path / "output", 60)
+
+    assert result.status == "PASS"
+    assert observed == {"metadata": {"path": str(module_dir)}}
+
+
 # --------------------------------------------------------------------------
 # Command line
 # --------------------------------------------------------------------------

@@ -23,8 +23,18 @@ Open `notebooks/02-connected-context/2.1_connected_context.ipynb`.
 ## Prepare the Graph
 
 The notebook verifies its graph fixtures and both retrieval indexes before it
-constructs a retriever. If preparation is required, run `prepare_graph.py` from
-`notebooks/02-connected-context/`.
+constructs a retriever. Module 1 already prepared the hosted graph. Check it
+without writing from `notebooks/02-connected-context/`:
+
+:::code{language=bash}
+uv run prepare_graph.py --mode full --check-only
+:::
+
+### From Scratch or Self-Paced
+
+For a from-scratch or self-paced build, choose `--mode lite` or `--mode full`
+and add `--rebuild`. That explicit flag permits whole-graph deletion, so do not
+use it on hosted learner work you want to preserve.
 
 ## Semantic and Exact-Term Retrieval
 

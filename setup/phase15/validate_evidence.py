@@ -11,36 +11,110 @@ from itertools import product
 from pathlib import Path
 from typing import Any
 
-from evaluator_contract import FACTUALITY_LABELS, GROUNDING_LABELS
+from evaluator_contract import (
+    EVALUATOR_GENERATION,
+    EVIDENCE_HASH_ALGORITHM,
+    FACTUALITY_LABELS,
+    GROUNDING_LABELS,
+    trial_judge_problems,
+)
+
+FAISS_MANIFEST_FIELDS = frozenset(
+    {
+        "embedding_model_id",
+        "embedding_dimensions",
+        "embedding_purpose",
+        "document_count",
+        "corpus_sha256",
+        "vectors_sha256",
+        "vector_source",
+        "faiss_metric",
+        "vector_normalization",
+    }
+)
+EVALUATOR_SETTING_FIELDS = frozenset(
+    {
+        "top_k",
+        "judge_samples",
+        "judge_evidence_budget",
+        "judge_evidence_hash",
+        "graph_result_budget",
+        "questions",
+        "conditions",
+        "vector_prompt",
+        "graph_prompt",
+        "grounding_suffix",
+        "judge_system_prompt",
+        "judge_response_fields",
+        "factuality_labels",
+        "grounding_labels",
+    }
+)
 
 
-def judge_samples_are_valid(
-    trial: dict[str, Any],
-    expected_count: int | None,
-) -> bool:
-    """Return whether every recorded judge sample satisfies its contract."""
-    samples = trial.get("judge_samples")
-    if not isinstance(samples, list) or not samples:
-        return False
-    if expected_count is not None and len(samples) != expected_count:
-        return False
-    for sample in samples:
-        if not isinstance(sample, dict):
-            return False
-        factuality = sample.get("factuality")
-        grounding = sample.get("grounding")
-        rationale = sample.get("rationale")
-        if (
-            not isinstance(factuality, str)
-            or factuality not in FACTUALITY_LABELS
-            or not isinstance(grounding, str)
-            or grounding not in GROUNDING_LABELS
-            or not isinstance(rationale, str)
-            or not rationale.strip()
-            or sample.get("parse_error") is not None
-        ):
-            return False
-    return True
+def positive_integer(value: Any) -> int | None:
+    """Return a positive integer, excluding Booleans, or ``None``."""
+    if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+        return None
+    return value
+
+
+def run_header_problems(run: dict[str, Any]) -> list[str]:
+    """Validate pinned evaluator and FAISS header consistency."""
+    problems: list[str] = []
+    if run.get("evaluator_generation") != EVALUATOR_GENERATION:
+        problems.append(
+            "evaluator_generation: "
+            f"found {run.get('evaluator_generation')!r}, "
+            f"expected {EVALUATOR_GENERATION}"
+        )
+
+    settings = run.get("evaluator_settings")
+    if not isinstance(settings, dict):
+        problems.append("evaluator_settings must be an object")
+    else:
+        if set(settings) != EVALUATOR_SETTING_FIELDS:
+            problems.append(
+                "evaluator_settings fields differ from the strict contract; "
+                f"missing={sorted(EVALUATOR_SETTING_FIELDS - set(settings))}, "
+                f"extra={sorted(set(settings) - EVALUATOR_SETTING_FIELDS)}"
+            )
+        shared_settings = {
+            "top_k": run.get("top_k"),
+            "judge_samples": run.get("judge_samples"),
+            "judge_evidence_budget": run.get("judge_evidence_budget"),
+        }
+        for field, top_level_value in shared_settings.items():
+            if settings.get(field) != top_level_value:
+                problems.append(
+                    f"evaluator setting {field} differs from the run header"
+                )
+        if settings.get("judge_evidence_hash") != EVIDENCE_HASH_ALGORITHM:
+            problems.append(
+                "evaluator setting judge_evidence_hash must be "
+                f"{EVIDENCE_HASH_ALGORITHM!r}"
+            )
+
+    manifest = run.get("faiss_manifest")
+    if not isinstance(manifest, dict):
+        problems.append("faiss_manifest must be an object")
+    else:
+        if set(manifest) != FAISS_MANIFEST_FIELDS:
+            problems.append(
+                "faiss_manifest fields differ from the compatibility contract; "
+                f"missing={sorted(FAISS_MANIFEST_FIELDS - set(manifest))}, "
+                f"extra={sorted(set(manifest) - FAISS_MANIFEST_FIELDS)}"
+            )
+        manifest_matches = {
+            "embedding_model_id": run.get("embedding_model_id"),
+            "embedding_dimensions": run.get("index_dimensions"),
+            "document_count": run.get("index_vectors"),
+            "corpus_sha256": run.get("corpus_sha256_now"),
+        }
+        for field, observed in manifest_matches.items():
+            if manifest.get(field) != observed:
+                problems.append(f"FAISS manifest {field} differs from loaded evidence")
+    return problems
 
 
 def evidence_problems(
@@ -51,18 +125,20 @@ def evidence_problems(
     conditions: list[str],
     trials_per_cell: int,
 ) -> list[str]:
-    """Return every completeness or trial-quality problem in one run."""
+    """Return every topology, evidence-integrity, and judge-result problem."""
     trials = run.get("trials")
     if not isinstance(trials, list):
         return ["trials must be a list"]
 
+    problems = run_header_problems(run)
     expected_cells = set(product(questions, arms, conditions))
     expected_trials = len(expected_cells) * trials_per_cell
-    problems = []
-    if run.get("evaluator_generation") != 2:
+    if run.get("arms") != arms:
+        problems.append(f"arms header: found {run.get('arms')!r}, expected {arms!r}")
+    if run.get("conditions") != conditions:
         problems.append(
-            "evaluator_generation: "
-            f"found {run.get('evaluator_generation')!r}, expected 2"
+            f"conditions header: found {run.get('conditions')!r}, "
+            f"expected {conditions!r}"
         )
     if run.get("trials_per_cell") != trials_per_cell:
         problems.append(
@@ -74,13 +150,18 @@ def evidence_problems(
 
     cells: dict[tuple[str, str, str], list[int]] = {}
     for position, trial in enumerate(trials, start=1):
+        if not isinstance(trial, dict):
+            problems.append(f"trial {position} must be an object")
+            continue
         try:
             cell = (
                 str(trial["question_key"]),
                 str(trial["arm"]),
                 str(trial["condition"]),
             )
-            trial_number = int(trial["trial"])
+            trial_number = positive_integer(trial["trial"])
+            if trial_number is None:
+                raise ValueError("trial number must be a positive integer")
         except (KeyError, TypeError, ValueError) as exc:
             problems.append(
                 f"trial {position} has an invalid cell or trial number: {exc}"
@@ -105,78 +186,53 @@ def evidence_problems(
     tool_errors = [
         position
         for position, trial in enumerate(trials, start=1)
-        if trial.get("tool_error") is not None
+        if isinstance(trial, dict) and trial.get("tool_error") is not None
     ]
     if tool_errors:
         problems.append(f"tool errors in trial positions: {tool_errors}")
 
-    unscored = [
+    judge_errors = [
         position
         for position, trial in enumerate(trials, start=1)
-        if trial.get("factuality") == "unscored" or trial.get("grounding") == "unscored"
+        if isinstance(trial, dict) and trial.get("judge_error") is not None
     ]
-    if unscored:
-        problems.append(f"unscored trial positions: {unscored}")
+    if judge_errors:
+        problems.append(f"judge errors in trial positions: {judge_errors}")
 
     invalid_labels = []
     for position, trial in enumerate(trials, start=1):
-        factuality = trial.get("factuality")
-        grounding = trial.get("grounding")
+        if not isinstance(trial, dict):
+            continue
         if (
-            not isinstance(factuality, str)
-            or factuality not in FACTUALITY_LABELS
-            or not isinstance(grounding, str)
-            or grounding not in GROUNDING_LABELS
+            trial.get("factuality") not in FACTUALITY_LABELS
+            or trial.get("grounding") not in GROUNDING_LABELS
         ):
             invalid_labels.append(position)
     if invalid_labels:
         problems.append(f"invalid judge labels in trial positions: {invalid_labels}")
 
-    incomplete_evidence = [
-        position
-        for position, trial in enumerate(trials, start=1)
-        if trial.get("judge_evidence_complete") is not True
-    ]
-    if incomplete_evidence:
-        problems.append(
-            "incomplete judge evidence in trial positions: "
-            f"{incomplete_evidence}"
-        )
-
-    recorded_sample_count = run.get("judge_samples")
-    if (
-        isinstance(recorded_sample_count, bool)
-        or not isinstance(recorded_sample_count, int)
-        or recorded_sample_count < 1
-    ):
+    sample_count = positive_integer(run.get("judge_samples"))
+    if sample_count is None:
         problems.append(
             "judge_samples header must be a positive integer, found "
-            f"{recorded_sample_count!r}"
+            f"{run.get('judge_samples')!r}"
         )
-    expected_sample_count = (
-        recorded_sample_count
-        if isinstance(recorded_sample_count, int)
-        and not isinstance(recorded_sample_count, bool)
-        and recorded_sample_count > 0
-        else None
-    )
-    invalid_samples = [
-        position
-        for position, trial in enumerate(trials, start=1)
-        if trial.get("judge_samples_valid") is not True
-        or not judge_samples_are_valid(trial, expected_sample_count)
-    ]
-    if invalid_samples:
-        problems.append(f"invalid judge samples in trial positions: {invalid_samples}")
+    evidence_budget = positive_integer(run.get("judge_evidence_budget"))
+    if evidence_budget is None:
+        problems.append(
+            "judge_evidence_budget header must be a positive integer, found "
+            f"{run.get('judge_evidence_budget')!r}"
+        )
 
-    judge_errors = [
-        position
-        for position, trial in enumerate(trials, start=1)
-        if trial.get("judge_error") is not None
-    ]
-    if judge_errors:
-        problems.append(f"judge errors in trial positions: {judge_errors}")
-
+    for position, trial in enumerate(trials, start=1):
+        if not isinstance(trial, dict):
+            continue
+        for problem in trial_judge_problems(
+            trial,
+            expected_sample_count=sample_count,
+            evidence_budget=evidence_budget,
+        ):
+            problems.append(f"trial {position} judge contract: {problem}")
     return problems
 
 
@@ -215,7 +271,7 @@ def main() -> int:
     )
     print(
         f"Evidence passed: {len(run['trials'])} trials in {len(cell_sizes)} cells; "
-        f"{args.trials_per_cell} trials per cell; no tool errors; all scored"
+        f"{args.trials_per_cell} trials per cell; strict judge evidence verified"
     )
     return 0
 

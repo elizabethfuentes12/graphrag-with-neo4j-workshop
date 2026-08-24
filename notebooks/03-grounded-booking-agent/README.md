@@ -41,6 +41,10 @@ The database enforces two behaviors:
 
 The production retriever lives in `workshop/hybrid_retrieval.py`. Module 2 selects its fixed Hybrid-Cypher pattern because the application needs exact hotel-name support and connected graph fields. The `search_hotel_knowledge` function exposes that decision through one `query` argument. Modules 4 and 5 deploy the same function unchanged.
 
+The notebook can be launched from the repository root, `notebooks/`, or this
+module directory. It resolves `reservation_command.py` to this folder in every
+case.
+
 ## The workshop page
 
 `workshop-content/content/03-grounded-booking-agent/index.en.md`

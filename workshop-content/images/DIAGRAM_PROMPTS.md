@@ -45,7 +45,7 @@ TOP: "300 Hotel FAQ Documents" in a document stack icon
 SPLIT INTO TWO PATHS:
 
 LEFT PATH labeled "RAG Agent":
-- FAISS index cylinder (blue) labeled "FAISS Vector Index"
+- Vector index cylinder (blue) labeled "Vector Search Index"
 - Arrow down to "Top-3 chunks" box
 - Arrow down to LLM brain icon labeled "Amazon Bedrock Claude"
 - Arrow down to speech bubble labeled "Summarized (possibly wrong)"
