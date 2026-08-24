@@ -8,8 +8,10 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import subprocess
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +27,22 @@ CRITICAL_FILES = {
     "uv_lock": Path("notebooks/workshop/uv.lock"),
     "build_script": Path("setup/build_prebuilt_graph.sh"),
     "manifest_writer": Path("setup/write_prebuilt_manifest.py"),
+}
+
+RECOVERY_GATES = {
+    "build_complete": "BUILD COMPLETE (295/295 ingests acknowledged)",
+    "document_count": ":Document nodes: 295 (expected 295)",
+    "chunk_count": ":Chunk nodes: 295 (expected 295, one chunk per document)",
+    "amenity_assertions": "✅ Materialized 1606 amenity assertions",
+    "retrieval_indexes": (
+        "✅ Retrieval indexes are online and match the embedding contract"
+    ),
+    "module_readiness": "  documents: 295 (expected 295)",
+    "pool_sources": "  Counting  hotels with a pool: 172",
+    "booking_fixtures": (
+        "✅ Fixture hotel IDs, the demo06_* constraints, and the "
+        "maximum-guests rule are in the graph"
+    ),
 }
 
 
@@ -119,6 +137,168 @@ def final_manifest(
     return manifest
 
 
+def _recovery_evidence(build_log: Path, image_tag: str) -> dict[str, Any]:
+    """Extract direct evidence from the final run in an appended build log."""
+    lines = build_log.read_text(encoding="utf-8").splitlines()
+    start_text = f"Starting disposable Neo4j with {image_tag}..."
+    start_indexes = [index for index, line in enumerate(lines) if line == start_text]
+    if not start_indexes:
+        raise ValueError(f"build log does not contain {start_text!r}")
+    start_index = start_indexes[-1]
+    successful_run = lines[start_index:]
+
+    gates = {}
+    for name, expected_text in RECOVERY_GATES.items():
+        matches = [
+            index
+            for index, line in enumerate(successful_run, start=start_index)
+            if line == expected_text
+        ]
+        if len(matches) != 1:
+            raise ValueError(
+                f"final build-log run contains {len(matches)} {name!r} gates; "
+                "expected exactly one"
+            )
+        gates[name] = {
+            "line": matches[0] + 1,
+            "text": expected_text,
+        }
+
+    duration_matches = []
+    for index, line in enumerate(successful_run, start=start_index):
+        match = re.fullmatch(r"real ([0-9]+(?:\.[0-9]+)?)", line)
+        if match:
+            duration_matches.append((index, float(match.group(1)), line))
+    if len(duration_matches) != 1:
+        raise ValueError(
+            "final build-log run must contain exactly one 'real <seconds>' timing"
+        )
+    duration_index, duration_seconds, duration_text = duration_matches[0]
+
+    failure_matches = [
+        (index, line)
+        for index, line in enumerate(successful_run, start=start_index)
+        if "syntax error near unexpected token" in line
+    ]
+    if len(failure_matches) != 1:
+        raise ValueError(
+            "final build-log run must contain exactly one recorded wrapper "
+            "syntax failure"
+        )
+    failure_index, failure_text = failure_matches[0]
+
+    return {
+        "path": build_log.name,
+        "sha256": sha256_file(build_log),
+        "successful_run_start_line": start_index + 1,
+        "successful_run_end_line": duration_index + 1,
+        "gates": gates,
+        "timing": {
+            "line": duration_index + 1,
+            "text": duration_text,
+            "duration_seconds": duration_seconds,
+        },
+        "wrapper_failure": {
+            "line": failure_index + 1,
+            "text": failure_text,
+        },
+    }
+
+
+def recovered_manifest(
+    repo_root: Path,
+    candidate: Path,
+    build_log: Path,
+    *,
+    recovered_at: str,
+    image_tag: str,
+) -> dict[str, Any]:
+    """Recover honest provenance when the build-start snapshot was not written."""
+    status = _git(repo_root, "status", "--porcelain=v1", "--untracked-files=normal")
+    recovery_files = {}
+    for name, relative_path in CRITICAL_FILES.items():
+        recovery_files[name] = {
+            "path": relative_path.as_posix(),
+            "sha256": sha256_file(repo_root / relative_path),
+        }
+
+    artifact_time = datetime.fromtimestamp(
+        candidate.stat().st_mtime,
+        tz=timezone.utc,
+    ).isoformat()
+    evidence = _recovery_evidence(build_log, image_tag)
+    return {
+        "manifest_version": 1,
+        "provenance": {
+            "capture_mode": "recovered_after_build",
+            "recovered_at": recovered_at,
+            "limitations": [
+                "The build-start snapshot was not written before execution.",
+                (
+                    "The build-start Git commit, dirty state, and critical-file "
+                    "hashes are unavailable because files changed while the build "
+                    "process was running."
+                ),
+                (
+                    "The successful container's immutable image ID and repository "
+                    "digest were not preserved."
+                ),
+                (
+                    "The wrapper failed after graph readiness; the candidate was "
+                    "captured separately, and restore validation is outside this "
+                    "manifest."
+                ),
+            ],
+        },
+        "build": {
+            "started_at": None,
+            "started_epoch": None,
+            "completed_at": None,
+            "completed_epoch": None,
+            "duration_seconds": evidence["timing"]["duration_seconds"],
+            "resume_mode": None,
+            "wrapper_exit_status": "failed_after_graph_readiness",
+        },
+        "git": {
+            "commit": None,
+            "dirty": None,
+            "status_porcelain": None,
+            "availability": "unavailable_at_build_start",
+        },
+        "critical_files": {
+            "availability": "unavailable_at_build_start",
+            "files": None,
+        },
+        "docker_image": {
+            "requested_tag": image_tag,
+            "id": None,
+            "repo_digests": None,
+            "availability": "tag_from_successful_run_log; identity_unavailable",
+        },
+        "candidate": {
+            "path": candidate.name,
+            "byte_size": candidate.stat().st_size,
+            "sha256": sha256_file(candidate),
+            "artifact_modified_at": artifact_time,
+        },
+        "evidence": evidence,
+        "recovery_environment": {
+            "note": "Captured during recovery; these are not build inputs.",
+            "git": {
+                "commit": _git(repo_root, "rev-parse", "HEAD"),
+                "dirty": bool(status),
+                "status_porcelain": status.splitlines(),
+            },
+            "critical_files": recovery_files,
+        },
+        "success_scope": (
+            "The final graph-readiness gates and candidate identity are recorded; "
+            "the wrapper itself did not exit successfully."
+        ),
+        "final_success": True,
+    }
+
+
 def write_json_exclusive(path: Path, value: dict[str, Any]) -> None:
     """Publish JSON atomically without replacing an existing manifest."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -168,6 +348,17 @@ def parse_args() -> argparse.Namespace:
     finish.add_argument("--image-tag", required=True)
     finish.add_argument("--image-id", required=True)
     finish.add_argument("--image-repo-digests-json", required=True)
+
+    recover = subparsers.add_parser(
+        "recover",
+        help="Recover explicit provenance after a completed build lost its snapshot.",
+    )
+    recover.add_argument("--repo-root", type=Path, required=True)
+    recover.add_argument("--candidate", type=Path, required=True)
+    recover.add_argument("--build-log", type=Path, required=True)
+    recover.add_argument("--manifest", type=Path, required=True)
+    recover.add_argument("--recovered-at", required=True)
+    recover.add_argument("--image-tag", required=True)
     return parser.parse_args()
 
 
@@ -184,6 +375,17 @@ def main() -> int:
             json.dumps(snapshot, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        return 0
+
+    if args.command == "recover":
+        manifest = recovered_manifest(
+            args.repo_root.resolve(),
+            args.candidate.resolve(),
+            args.build_log.resolve(),
+            recovered_at=args.recovered_at,
+            image_tag=args.image_tag,
+        )
+        write_json_exclusive(args.manifest, manifest)
         return 0
 
     snapshot = json.loads(args.snapshot.read_text(encoding="utf-8"))

@@ -1,0 +1,172 @@
+Model us.anthropic.claude-sonnet-5 in us-east-1; 2 questions, 1 trials, arms ['vector', 'graph'], conditions ['notebook', 'grounded'].
+
+Tool #1: search_faqs
+
+Tool #2: search_faqs
+Based on the Orlando hotels I found in our system, here are the guest ratings:
+
+| Hotel | Guest Rating |
+|-------|--------------|
+| AnyCompany Orlando Disney World | 4.7/5.0 |
+| Wonderland Resort | 4.6/5.0 |
+| Adventure Gateway Hotel | 4.6/5.0 |
+
+**Average Guest Rating for Orlando Hotels: 4.63/5.0**
+
+These are excellent ratings across the board! A few highlights:
+
+- **AnyCompany Orlando Disney World** (4.7/5.0) — A magical family resort near Disney World, great for families with kids
+- **Wonderland Resort** (4.6/5.0) — An urban oasis with sophisticated design
+- **Adventure Gateway Hotel** (4.6/5.0) — Boutique luxury in a vibrant neighborhood
+
+All three properties are non-smoking, pet-friendly, and offer complimentary WiFi. Let me know if you'd like more details on any specific property — amenities, pricing, or booking information — or if you're looking for hotels in other locations!{"factuality": "partial", "grounding": "grounded", "rationale": "The agent only found 3 of the 5 Orlando hotels, so its computed average (4.63) is close but not the true mean (4.62) and is based on an incomplete set, missing AnyCompany Universal Studios and Enchanted Suites; the values it did report are accurate and derived from retrieved evidence."}{"factuality": "partial", "grounding": "grounded", "rationale": "The agent only found 3 of 5 Orlando hotels (missing Universal Studios and Enchanted Suites), so its computed average of 4.63 is close to but not the true 4.62, and it presents this partial set as the full Orlando average without caveat; the individual ratings and hotels cited are correctly grounded in the retrieved evidence."}{"factuality": "partial", "grounding": "grounded", "rationale": "The agent only found 3 of 5 Orlando hotels (missing Universal Studios and Enchanted Suites), computing an average of 4.63 instead of the true 4.62, and failed to note the corpus may be incomplete; however, all values used are correctly grounded in the retrieved evidence."}  [vector/notebook] orlando_aggregation trial 1: partial/grounded  (10.7s)
+Received notification from DBMS server: <GqlStatusObject gql_status='01N51', status_description='warn: relationship type does not exist. The relationship type `LOCATED_IN` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=19, offset=18>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 18, 'line': 1, 'column': 19}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:City {name: "Orlando"}) RETURN avg(h.guestRating) AS avgRating, count(h) AS numHotels'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N50', status_description='warn: label does not exist. The label `City` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=35, offset=34>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 34, 'line': 1, 'column': 35}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:City {name: "Orlando"}) RETURN avg(h.guestRating) AS avgRating, count(h) AS numHotels'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N52', status_description='warn: property key does not exist. The property `guestRating` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=72, offset=71>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 71, 'line': 1, 'column': 72}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:City {name: "Orlando"}) RETURN avg(h.guestRating) AS avgRating, count(h) AS numHotels'
+
+Tool #1: query_knowledge_graph
+
+Tool #2: query_knowledge_graph
+
+Tool #3: query_knowledge_graph
+Hotels have addresses rather than a direct city relationship, so I'll search by address instead.
+Tool #4: query_knowledge_graph
+Here's what I found for hotels in Orlando:
+
+| Hotel | Guest Rating |
+|---|---|
+| AnyCompany Orlando Disney World | 4.7 |
+| AnyCompany Universal Studios | 4.5 |
+| Adventure Gateway Hotel | 4.6 |
+| Enchanted Suites | 4.7 |
+| Wonderland Resort | 4.6 |
+
+**Average guest rating: 4.62** (out of 5), based on 5 hotels in Orlando.
+
+Orlando hotels are rated quite consistently high, ranging from 4.5 to 4.7 — great news if you're looking to book a stay near attractions like Disney World or Universal Studios!{"factuality": "correct", "grounding": "grounded", "rationale": "All hotel names, ratings, and the computed average (4.62) match the reference data and are directly derived from the final tool query result."}{"factuality": "correct", "grounding": "grounded", "rationale": "All five hotels and ratings match the reference data and the tool evidence, and the computed average of 4.62 is correct."}{"factuality": "correct", "grounding": "grounded", "rationale": "All hotel names and ratings match the tool evidence from the address-based query, and the computed average of 4.62 matches the reference mean."}  [graph/notebook] orlando_aggregation trial 1: correct/grounded  (13.1s)
+
+Tool #1: search_faqs
+Based on the FAQ data, here are the guest ratings for Orlando hotels I found:
+
+| Hotel | Guest Rating |
+|---|---|
+| AnyCompany Orlando Disney World | 4.7/5.0 |
+| Wonderland Resort | 4.6/5.0 |
+| Adventure Gateway Hotel | 4.6/5.0 |
+
+**Average guest rating across these Orlando hotels: approximately 4.63/5.0**
+
+All three properties are highly rated, with the Disney World-adjacent resort slightly edging out the other two boutique/urban options. If you'd like, I can pull details on additional Orlando properties to refine this average further, or help you compare amenities and pricing across these hotels.{"factuality": "partial", "grounding": "insufficient", "rationale": "The computed average (4.63) is close to but not exactly the true mean (4.62) since it's based on only 3 of 5 Orlando hotels, and the agent explicitly acknowledges this limitation and offers to expand the search, correctly qualifying that its result is based on partial data."}{"factuality": "partial", "grounding": "grounded", "rationale": "The 4.63 average is computed correctly from only 3 of 5 Orlando hotels, close to but not matching the true mean of 4.62, and the agent appropriately flags that it only covers the hotels it found rather than fabricating a full count."}{"factuality": "partial", "grounding": "grounded"}  [vector/grounded] orlando_aggregation trial 1: partial/grounded  (6.9s)
+Received notification from DBMS server: <GqlStatusObject gql_status='01N51', status_description='warn: relationship type does not exist. The relationship type `LOCATED_IN` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=19, offset=18>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 18, 'line': 1, 'column': 19}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:City {name: "Orlando"}) RETURN avg(h.guestRating) AS avgRating, count(h) AS numHotels'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N50', status_description='warn: label does not exist. The label `City` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=35, offset=34>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 34, 'line': 1, 'column': 35}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:City {name: "Orlando"}) RETURN avg(h.guestRating) AS avgRating, count(h) AS numHotels'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N52', status_description='warn: property key does not exist. The property `guestRating` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=72, offset=71>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 71, 'line': 1, 'column': 72}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:City {name: "Orlando"}) RETURN avg(h.guestRating) AS avgRating, count(h) AS numHotels'
+
+Tool #1: query_knowledge_graph
+
+Tool #2: query_knowledge_graph
+
+Tool #3: query_knowledge_graph
+There's no separate "City" node - city is embedded in the hotel's address field. Let me query directly using the address field.
+Tool #4: query_knowledge_graph
+Based on the 5 hotels found in Orlando, here's the breakdown:
+
+| Hotel | Guest Rating |
+|---|---|
+| AnyCompany Orlando Disney World | 4.7 |
+| Enchanted Suites | 4.7 |
+| Adventure Gateway Hotel | 4.6 |
+| Wonderland Resort | 4.6 |
+| AnyCompany Universal Studios | 4.5 |
+
+**Average Guest Rating: 4.62 / 5**
+
+All five Orlando hotels are very highly rated, with scores ranging from 4.5 to 4.7 — indicating consistently excellent guest satisfaction across the city's properties, including options near Disney World and Universal Studios.{"factuality": "correct", "grounding": "grounded", "rationale": "The listed hotels and ratings match the tool query results exactly, and the computed average (4.62) matches the correct mean of those five values."}{"factuality": "correct", "grounding": "grounded", "rationale": "The agent's table and average of 4.62 exactly match the reference facts and are directly supported by the tool query that retrieved the 5 Orlando hotels with their ratings."}{"factuality": "correct", "grounding": "grounded", "rationale": "The agent's final query retrieved all 5 Orlando hotels with correct ratings, and the computed average (4.62) matches the reference exactly."}  [graph/grounded] orlando_aggregation trial 1: correct/grounded  (13.4s)
+
+Tool #1: search_faqs
+
+Tool #2: search_faqs
+I checked our hotel database, and unfortunately **we don't have any properties in Antarctica**. This isn't surprising — Antarctica has no permanent civilian population or standard commercial hotels. Accommodation there is generally limited to:
+
+- Scientific research stations (not open to tourists)
+- Expedition cruise ships that sail to the Antarctic Peninsula
+- A handful of specialized tour operators offering camping or small lodges during the brief summer season (Nov–March)
+
+If you're interested in a similar remote, cold-climate adventure, here are two options from our portfolio that might scratch that itch:
+
+**🏔️ Aurora Grand** — Anchorage, AK, USA
+- 4.6/5.0 rating, "Alaskan adventure with urban comfort"
+- Standard rooms from $200–350/night
+- Great base for glacier tours, Northern Lights viewing, and Alaskan wilderness excursions
+
+**🏔️ Peak View Suites** — Anchorage, AK, USA
+- 4.7/5.0 rating, "Northern luxury with glacier views"
+- Standard rooms from $350–500/night
+- Full-service spa, complimentary airport shuttle, glacier views
+
+Both offer that dramatic northern/polar landscape experience with the comfort of a full-service hotel — a nice middle ground if true Antarctic travel isn't in the cards. Would you like more details on either of these, or help planning an Antarctic expedition cruise instead?{"factuality": "correct", "grounding": "grounded", "rationale": "The agent correctly states there are no Antarctica properties (matching the 0-document reference) and clearly labels the Anchorage alternatives as suggestions, with details accurately drawn from the retrieved documents."}{"factuality": "correct", "grounding": "grounded", "rationale": "The agent correctly states no Antarctica hotels exist in the database (matching reference of 0 documents) and accurately presents the Anchorage alternatives using details actually present in the retrieved documents, while general Antarctica travel context is reasonably flagged as background knowledge rather than a corpus claim."}{"factuality": "correct", "grounding": "insufficient", "rationale": "The agent correctly states no Antarctica hotels exist in the database, matching the reference of 0 documents, and clearly labels the Alaska suggestions as alternatives rather than actual Antarctica properties, which is grounded; the general knowledge about Antarctica accommodation is reasonable and not fabricated as tool-derived."}  [vector/notebook] antarctica_no_match trial 1: correct/grounded  (11.2s)
+Received notification from DBMS server: <GqlStatusObject gql_status='01N51', status_description='warn: relationship type does not exist. The relationship type `LOCATED_IN` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=19, offset=18>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 18, 'line': 1, 'column': 19}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: "MATCH (h:Hotel)-[:LOCATED_IN]->(c:City)-[:LOCATED_IN]->(co:Country) WHERE co.name = 'Antarctica' RETURN h.name, c.name, co.name"
+Received notification from DBMS server: <GqlStatusObject gql_status='01N51', status_description='warn: relationship type does not exist. The relationship type `LOCATED_IN` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=19, offset=18>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 18, 'line': 1, 'column': 19}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: "MATCH (h:Hotel)-[:LOCATED_IN]->(co:Country) WHERE co.name = 'Antarctica' RETURN h.name, co.name"
+Received notification from DBMS server: <GqlStatusObject gql_status='01N51', status_description='warn: relationship type does not exist. The relationship type `LOCATED_IN` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=43, offset=42>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 42, 'line': 1, 'column': 43}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: "MATCH (h:Hotel)-[:LOCATED_IN]->(c:City)-[:LOCATED_IN]->(co:Country) WHERE co.name = 'Antarctica' RETURN h.name, c.name, co.name"
+Received notification from DBMS server: <GqlStatusObject gql_status='01N50', status_description='warn: label does not exist. The label `Country` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=36, offset=35>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 35, 'line': 1, 'column': 36}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: "MATCH (h:Hotel)-[:LOCATED_IN]->(co:Country) WHERE co.name = 'Antarctica' RETURN h.name, co.name"
+Received notification from DBMS server: <GqlStatusObject gql_status='01N50', status_description='warn: label does not exist. The label `City` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=35, offset=34>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 34, 'line': 1, 'column': 35}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: "MATCH (h:Hotel)-[:LOCATED_IN]->(c:City)-[:LOCATED_IN]->(co:Country) WHERE co.name = 'Antarctica' RETURN h.name, c.name, co.name"
+Received notification from DBMS server: <GqlStatusObject gql_status='01N50', status_description='warn: label does not exist. The label `Country` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=60, offset=59>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 59, 'line': 1, 'column': 60}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: "MATCH (h:Hotel)-[:LOCATED_IN]->(c:City)-[:LOCATED_IN]->(co:Country) WHERE co.name = 'Antarctica' RETURN h.name, c.name, co.name"
+
+Tool #1: query_knowledge_graph
+
+Tool #2: query_knowledge_graph
+I checked our travel database, and unfortunately there are no hotels listed in Antarctica in our system. This isn't surprising, as Antarctica has virtually no traditional hotel infrastructure due to its extreme environment and the international treaties governing the continent.
+
+Here's what I can tell you generally about accommodations in Antarctica:
+
+- **No conventional hotels**: There are no commercial hotels in Antarctica. The continent has no permanent civilian residents, and construction is heavily restricted by the Antarctic Treaty System.
+
+- **How people actually visit**: Most travelers experience Antarctica via:
+  - **Expedition cruises** – ships serve as your "hotel," with cabins ranging from basic to luxury suites. Companies like Quark Expeditions, Lindblad, and Hurtigruten operate these.
+  - **Research stations** – Some countries (US, UK, Argentina, etc.) have scientific stations, but these are not open to public tourism.
+  - **Fly-in camps** – A few upscale tour operators (like White Desert or Antarctic Logistics & Expeditions) offer luxury camps with heated tents/pods for a limited season (Nov–Feb).
+
+If you're interested in visiting Antarctica, I'd recommend I search our database for **cruise packages** or **polar expedition tours** instead, since that's how travel there is typically arranged. Would you like me to look into those options for you?{"factuality": "correct", "grounding": "unsupported_correct"}{"factuality": "correct", "grounding": "unsupported_correct"}{"factuality": "correct", "grounding": "unsupported_correct"}  [graph/notebook] antarctica_no_match trial 1: correct/unsupported_correct  (12.3s)
+
+Tool #1: search_faqs
+I don't have any listings for hotels in Antarctica in our system. Our database doesn't include any properties located there — Antarctica doesn't have traditional commercial hotels, as the continent is primarily home to research stations rather than tourist accommodations.
+
+The closest cold-climate destinations I found in our network are actually in **Anchorage, Alaska**, which might interest you if you're looking for an arctic/subarctic adventure:
+
+1. **Aurora Grand** (4.6/5.0) – Alaskan adventure with urban comfort, rooms from $200-900/night
+2. **Peak View Suites** (4.7/5.0) – Northern luxury with glacier views, rooms from $350-1500/night, includes a full-service spa and complimentary airport shuttle
+
+If you're interested in visiting Antarctica itself, that typically involves specialized expedition cruises or tour operators rather than traditional hotel stays, which would be outside what I can help book through this system.
+
+Would you like more details on either of the Anchorage properties, or are you looking for something else?{"factuality": "correct", "grounding": "grounded", "rationale": "The agent correctly states no Antarctica hotels exist in the system and accurately summarizes the retrieved Anchorage properties' ratings and price ranges without fabricating details."}{"factuality": "correct", "grounding": "grounded", "rationale": "The agent correctly states there are no Antarctica listings and accurately summarizes the two Anchorage hotels' ratings and price ranges from the retrieved evidence."}{"factuality": "correct", "grounding": "grounded", "rationale": "The agent correctly states no Antarctica hotels exist in the system and accurately summarizes the retrieved Anchorage hotels' ratings and price ranges from the evidence."}  [vector/grounded] antarctica_no_match trial 1: correct/grounded  (9.8s)
+Received notification from DBMS server: <GqlStatusObject gql_status='01N52', status_description='warn: property key does not exist. The property `location` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=33, offset=32>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 32, 'line': 1, 'column': 33}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel) WHERE toLower(h.location) CONTAINS "antarctica" OR toLower(h.country) CONTAINS "antarctica" RETURN h.name, h.location, h.country, h.description LIMIT 25'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N51', status_description='warn: relationship type does not exist. The relationship type `LOCATED_IN` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=19, offset=18>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 18, 'line': 1, 'column': 19}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:Country {name: "Antarctica"}) RETURN h.name, h.description, h.rating LIMIT 25'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N52', status_description='warn: property key does not exist. The property `country` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=78, offset=77>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 77, 'line': 1, 'column': 78}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel) WHERE toLower(h.location) CONTAINS "antarctica" OR toLower(h.country) CONTAINS "antarctica" RETURN h.name, h.location, h.country, h.description LIMIT 25'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N50', status_description='warn: label does not exist. The label `Country` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=35, offset=34>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 34, 'line': 1, 'column': 35}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:Country {name: "Antarctica"}) RETURN h.name, h.description, h.rating LIMIT 25'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N52', status_description='warn: property key does not exist. The property `location` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=126, offset=125>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 125, 'line': 1, 'column': 126}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel) WHERE toLower(h.location) CONTAINS "antarctica" OR toLower(h.country) CONTAINS "antarctica" RETURN h.name, h.location, h.country, h.description LIMIT 25'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N52', status_description='warn: property key does not exist. The property `rating` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=97, offset=96>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 96, 'line': 1, 'column': 97}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel)-[:LOCATED_IN]->(c:Country {name: "Antarctica"}) RETURN h.name, h.description, h.rating LIMIT 25'
+Received notification from DBMS server: <GqlStatusObject gql_status='01N52', status_description='warn: property key does not exist. The property `country` does not exist in database `neo4j`. Verify that the spelling is correct.', position=<SummaryInputPosition line=1, column=138, offset=137>, raw_classification='UNRECOGNIZED', classification=<NotificationClassification.UNRECOGNIZED: 'UNRECOGNIZED'>, raw_severity='WARNING', severity=<NotificationSeverity.WARNING: 'WARNING'>, diagnostic_record={'_classification': 'UNRECOGNIZED', '_severity': 'WARNING', '_position': {'offset': 137, 'line': 1, 'column': 138}, 'OPERATION': '', 'OPERATION_CODE': '0', 'CURRENT_SCHEMA': '/'}> for query: 'MATCH (h:Hotel) WHERE toLower(h.location) CONTAINS "antarctica" OR toLower(h.country) CONTAINS "antarctica" RETURN h.name, h.location, h.country, h.description LIMIT 25'
+
+Tool #1: query_knowledge_graph
+
+Tool #2: query_knowledge_graph
+I checked our knowledge base thoroughly, and there are no hotels listed in Antarctica — which actually makes sense! Here's why:
+
+**Antarctica has no traditional hotels.** Here's what you need to know:
+
+1. **No permanent civilian settlements**: Antarctica has no cities or towns with commercial infrastructure. It's governed by the Antarctic Treaty and is used primarily for scientific research.
+
+2. **How people actually visit/stay in Antarctica**:
+   - **Expedition cruise ships** – The most common way to experience Antarctica. You sleep aboard the ship and take zodiac excursions to shore during the day.
+   - **Fly-in/camp expeditions** – Companies like White Desert or Antarctic Logistics & Expeditions operate luxury camps (e.g., Whichaway Camp) with heated tents/pods for a small number of guests, mostly near the South Pole or Vinson Massif for climbers.
+   - **Research stations** – Not available to tourists; these house scientists only.
+
+3. **Costs and logistics**: Antarctic trips are typically sold as all-inclusive expedition packages (cruise + activities) or fly-in camp stays, rather than booked like standard hotel stays.
+
+If you're interested, I can look into:
+- Antarctic cruise/expedition packages in our system
+- Luxury camp-style stays (if any are in our database)
+- Nearby gateway cities (like Ushuaia, Argentina or Punta Arenas, Chile) where hotels do exist before/after an Antarctic voyage
+
+Would you like me to search for any of these alternatives?{"factuality": "correct", "grounding": "unsupported_correct", "rationale": "The absence of hotels is correctly reported, but the extensive added details about Antarctic camps, companies, and travel logistics are not supported by any tool evidence, though they are factually accurate general knowledge."}{"factuality": "correct", "grounding": "unsupported_correct", "rationale": "The empty-result conclusion is grounded, but the detailed factual claims about Antarctic tourism (cruises, White Desert, Whichaway Camp, gateway cities) come from the model's own knowledge, not the tool evidence."}{"factuality": "correct", "grounding": "unsupported_correct", "rationale": "The core claim (no hotels in DB) is correctly grounded, but the extensive supplementary details about Antarctic camps, companies like White Desert, and travel logistics come from the model's own knowledge, not the tool evidence."}  [graph/grounded] antarctica_no_match trial 1: correct/unsupported_correct  (15.1s)
+
+Wrote 8 trials to /Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/setup/release-evidence/live-20260823-final/phase15/trials/slices/worker-01/phase15-20260823T233858Z.json

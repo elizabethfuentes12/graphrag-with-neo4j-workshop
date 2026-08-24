@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 import sys
 from pathlib import Path
 from unittest.mock import AsyncMock, Mock
@@ -98,10 +99,32 @@ def test_pipeline_raises_component_errors_and_disables_entity_resolution(
 
     graph_builder.build_pipeline(Mock())
 
-    assert captured["schema"] is LLM_EXTRACTION_SCHEMA
+    assert captured["schema"] == LLM_EXTRACTION_SCHEMA
+    assert captured["schema"] is not LLM_EXTRACTION_SCHEMA
     assert captured["on_error"] == "RAISE"
     assert captured["perform_entity_resolution"] is False
     assert captured["neo4j_database"] == "workshop-db"
+
+
+def test_pipeline_cannot_mutate_the_schema_used_by_build_contract(monkeypatch) -> None:
+    contract_before = graph_builder.build_contract()
+
+    class MutatingPipelineStub:
+        def __init__(self, **kwargs) -> None:
+            kwargs["schema"]["patterns"][0] = re.compile("mutated")
+
+    monkeypatch.setattr(graph_builder, "SimpleKGPipeline", MutatingPipelineStub)
+    monkeypatch.setattr(graph_builder, "BedrockLLM", Mock(return_value=Mock()))
+    monkeypatch.setattr(graph_builder, "BedrockEmbeddings", Mock(return_value=Mock()))
+
+    graph_builder.build_pipeline(Mock())
+
+    assert graph_builder.build_contract() == contract_before
+    assert LLM_EXTRACTION_SCHEMA["patterns"][0] == (
+        "Hotel",
+        "HAS_ROOM",
+        "Room",
+    )
 
 
 def test_source_hotel_check_rejects_missing_ambiguous_and_shared_hotels() -> None:

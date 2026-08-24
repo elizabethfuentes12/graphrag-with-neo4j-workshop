@@ -102,3 +102,86 @@ def test_final_manifest_is_complete_and_never_overwrites(tmp_path: Path) -> None
     with pytest.raises(FileExistsError):
         write_prebuilt_manifest.write_json_exclusive(output, {"final_success": False})
     assert json.loads(output.read_text(encoding="utf-8")) == written
+
+
+def test_recovered_manifest_separates_evidence_from_current_state(
+    tmp_path: Path, monkeypatch
+) -> None:
+    candidate = tmp_path / "candidate.dump"
+    candidate.write_bytes(b"recovered neo4j candidate")
+    build_log = tmp_path / "build.log"
+    gate_lines = list(write_prebuilt_manifest.RECOVERY_GATES.values())
+    build_log.write_text(
+        "old failed run\n"
+        "Starting disposable Neo4j with neo4j:latest...\n"
+        + "\n".join(gate_lines)
+        + "\nsetup/build_prebuilt_graph.sh: line 101: syntax error near "
+        "unexpected token `then'\n"
+        "real 10729.83\n",
+        encoding="utf-8",
+    )
+    critical = tmp_path / "builder.py"
+    critical.write_text("recovery-time input\n", encoding="utf-8")
+    monkeypatch.setattr(
+        write_prebuilt_manifest,
+        "CRITICAL_FILES",
+        {"graph_builder": Path("builder.py")},
+    )
+
+    def fake_git(repo_root: Path, *args: str) -> str:
+        assert repo_root == tmp_path
+        if args[0] == "status":
+            return " M builder.py"
+        return "recovery-commit"
+
+    monkeypatch.setattr(write_prebuilt_manifest, "_git", fake_git)
+    manifest = write_prebuilt_manifest.recovered_manifest(
+        tmp_path,
+        candidate,
+        build_log,
+        recovered_at="2026-08-23T23:30:00Z",
+        image_tag="neo4j:latest",
+    )
+
+    assert manifest["provenance"]["capture_mode"] == "recovered_after_build"
+    assert manifest["build"]["duration_seconds"] == 10729.83
+    assert manifest["build"]["wrapper_exit_status"] == "failed_after_graph_readiness"
+    assert "wrapper itself did not exit successfully" in manifest["success_scope"]
+    assert manifest["git"]["commit"] is None
+    assert manifest["critical_files"]["files"] is None
+    assert manifest["docker_image"]["id"] is None
+    assert manifest["candidate"]["sha256"] == (
+        write_prebuilt_manifest.sha256_file(candidate)
+    )
+    assert manifest["evidence"]["successful_run_start_line"] == 2
+    assert manifest["evidence"]["timing"]["duration_seconds"] == 10729.83
+    assert manifest["recovery_environment"]["git"]["commit"] == "recovery-commit"
+    assert manifest["recovery_environment"]["critical_files"]["graph_builder"] == {
+        "path": "builder.py",
+        "sha256": write_prebuilt_manifest.sha256_file(critical),
+    }
+
+
+def test_recovered_manifest_rejects_incomplete_evidence(
+    tmp_path: Path, monkeypatch
+) -> None:
+    candidate = tmp_path / "candidate.dump"
+    candidate.write_bytes(b"candidate")
+    build_log = tmp_path / "build.log"
+    build_log.write_text(
+        "Starting disposable Neo4j with neo4j:latest...\n"
+        "BUILD COMPLETE (295/295 ingests acknowledged)\n"
+        "real 1.0\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(write_prebuilt_manifest, "CRITICAL_FILES", {})
+    monkeypatch.setattr(write_prebuilt_manifest, "_git", lambda *_: "")
+
+    with pytest.raises(ValueError, match="document_count"):
+        write_prebuilt_manifest.recovered_manifest(
+            tmp_path,
+            candidate,
+            build_log,
+            recovered_at="2026-08-23T23:30:00Z",
+            image_tag="neo4j:latest",
+        )

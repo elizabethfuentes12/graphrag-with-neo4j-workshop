@@ -30,6 +30,7 @@ import asyncio
 import hashlib
 import json
 import os
+from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
 from uuid import uuid4
@@ -197,7 +198,10 @@ def build_pipeline(driver: Driver) -> SimpleKGPipeline:
         llm=llm,
         driver=driver,
         embedder=embedder,
-        schema=LLM_EXTRACTION_SCHEMA,
+        # neo4j-graphrag normalizes pattern tuples into compiled regular
+        # expressions in place. Protect the shared schema because
+        # `build_contract` serializes it after pipeline construction.
+        schema=deepcopy(LLM_EXTRACTION_SCHEMA),
         text_splitter=FixedSizeSplitter(
             chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP
         ),

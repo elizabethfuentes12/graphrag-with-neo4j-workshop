@@ -1,0 +1,545 @@
+
+Running notebooks/01-build-graph/1.1_build_graph.ipynb
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+[IPKernelApp] WARNING | Unknown error in handling startup files:
+  Cell 1/13 started: import os
+  Cell 1/13 ok in 0.0s
+  Cell 2/13 started: # Bedrock needs a region, and botocore reads only AWS_DEFAULT_REGION, never
+  Cell 2/13 ok in 1.5s
+    AWS Account: ********1974
+    Region: us-east-1
+    ✅ AWS credentials configured
+  Cell 3/13 started: from graph_builder import connect, count_documents
+  Cell 3/13 ok in 0.5s
+    Database: neo4j
+    Documents already loaded: 300
+    Hotels already loaded:    300
+  Cell 4/13 started: # Read-only. Reports the lexical and domain layers for one document.
+  Cell 4/13 ok in 0.1s
+    AnyCompany Paris Champs-Élysées  (hotel-paris-001.txt)
+      lexical:  1 chunk(s), embedding width 1024
+      domain:   3 rooms, 6 amenities, 9 policies, 15 services
+      on the node: rating 4.9, address 789 Avenue des Champs-Élysées, 75008 Paris, France
+  Cell 5/13 started: from held_out_documents import HELD_OUT_DOCUMENTS, extract_held_out
+  Cell 5/13 ok in 0.0s
+      hotel-tokyo-002.txt  (7,340 bytes)
+      hotel-sydney-002.txt  (7,312 bytes)
+      hotel-riodejaneiro-002.txt  (7,341 bytes)
+      hotel-capetown-002.txt  (7,341 bytes)
+      hotel-prague-002.txt  (7,216 bytes)
+    
+    --- hotel-tokyo-002.txt, first 400 characters ---
+    # AnyCompany Ginza Suites
+    
+    ## Hotel Overview
+    AnyCompany Ginza Suites is located in Tokyo, Japan. Luxury suites in Tokyo's premier shopping district
+    
+    **Guest Rating:** 4.9/5.0
+    **Total Rooms:** 150
+    
+    ## Contact Information
+    **Address:** 321 Ginza District, Tokyo 104-0061
+    **Phone:** +81-3-5555-0002
+    **Email:** ginza@anycompany.com
+    
+    ## Check-in & Check-out
+    
+    ### Check-in Time
+    Standard check-in time is 3:0
+  Cell 6/13 started: from workshop.graph_schema import GRAPH_SCHEMA, LLM_EXTRACTION_SCHEMA, OFF_SCHEMA_LABELS
+  Cell 6/13 ok in 0.0s
+    Node types the LLM extraction is allowed to produce:
+      :Hotel     name, address, guest_rating, total_rooms, email, phone
+      :Room      type, bed_configuration, max_occupancy, min_rate, max_rate
+      :Policy    name, description
+      :Service   name, description, cost, hours, is_available, is_complimentary
+    
+    Relationships it is allowed to produce:
+      (:Hotel)-[:HAS_ROOM]->(:Room)
+      (:Hotel)-[:HAS_POLICY]->(:Policy)
+      (:Hotel)-[:PROVIDES_SERVICE]->(:Service)
+    
+    Added deterministically after LLM extraction:
+      :Amenity name
+      (:Hotel)-[:OFFERS_AMENITY]->(:Amenity)
+    
+    Labels an unpinned run invents instead, which the build treats as a failure:
+      Address, RoomType, BedConfiguration, Fee, PaymentMethod, ContactMethod, ContactInfo, Location, City, Country, Attraction
+  Cell 7/13 started: # Optional. Extracts one document with no schema and reports what it invented.
+  Cell 7/13 ok in 0.0s
+    Skipped. Set RUN_UNPINNED_DEMO = True to watch the labels drift.
+  Cell 8/13 started: from graph_builder import run_additive_build
+  Cell 8/13 ok in 168.3s
+    Module 1: building your five hotels: 5 documents
+    Database: neo4j
+    The graph already holds 295 documents.
+      extraction concurrency: 1
+      [1/5] hotel-tokyo-002.txt... started
+      [1/5] hotel-tokyo-002.txt... ✅
+      [2/5] hotel-sydney-002.txt... started
+      [2/5] hotel-sydney-002.txt... ✅
+      [3/5] hotel-riodejaneiro-002.txt... started
+      [3/5] hotel-riodejaneiro-002.txt... ✅
+      [4/5] hotel-capetown-002.txt... started
+      [4/5] hotel-capetown-002.txt... ✅
+      [5/5] hotel-prague-002.txt... started
+      [5/5] hotel-prague-002.txt... ✅
+      labels produced: {'Service': 83, 'Policy': 53, 'Hotel': 5, 'Room': 16}
+      hotel: 'AnyCompany Charles Bridge Suites' rating=4.8 rels=31 [ok]
+      hotel: 'AnyCompany Ipanema Suites' rating=4.7 rels=29 [ok]
+      hotel: 'AnyCompany Ginza Suites' rating=4.9 rels=30 [ok]
+      hotel: 'AnyCompany Bondi Beach' rating=4.6 rels=33 [ok]
+      hotel: 'AnyCompany Camps Bay' rating=4.8 rels=29 [ok]
+      conforming hotels: 5/5
+    ✅ Extraction matches the documented schema
+    
+    Materializing authored amenity lists...
+    ✅ Materialized 26 amenity assertions
+    
+      amenity assertions reconciled: 26 graph pairs, 26 source pairs
+    Creating and verifying the retrieval indexes...
+    ✅ Retrieval indexes are online and match the embedding contract
+    
+    Module 1 readiness report:
+      documents: 300 (expected 300)
+      chunks: 300 (expected 300)
+      extracted labels: {'Amenity': 65, 'Hotel': 300, 'Policy': 3052, 'Room': 914, 'Service': 4634}
+      relationships: {'HAS_POLICY': 3052, 'HAS_ROOM': 914, 'OFFERS_AMENITY': 1632, 'PROVIDES_SERVICE': 4634}
+    
+    Node labels:
+      :Service: 4634
+      :Policy: 3052
+      :Room: 914
+      :Hotel: 300
+      :Amenity: 65
+    
+    Relationship types:
+      :PROVIDES_SERVICE: 4634
+      :HAS_POLICY: 3052
+      :OFFERS_AMENITY: 1632
+      :HAS_ROOM: 914
+    
+    --- Acceptance queries (these are what the notebook asks) ---
+      Aggregation  avg guest rating in Paris: 4.7 across 2 hotels
+      Counting  hotels with a pool: 175
+      Multi-hop  Cairo hotels with spa AND pool:
+        AnyCompany Cairo Nile View: 4.5
+        AnyCompany Giza Pyramids: 4.6
+    
+    ✅ Done!
+  Cell 9/13 started: # Read-only. Reports the two indexes the build just created.
+  Cell 9/13 ok in 0.1s
+    hotel_chunk_embeddings
+      type:       VECTOR
+      state:      ONLINE
+      indexes:    :Chunk(embedding)
+      dimensions: 1024
+      similarity: COSINE
+    hotel_chunk_fulltext
+      type:       FULLTEXT
+      state:      ONLINE
+      indexes:    :Chunk(text)
+  Cell 10/13 started: with connect() as driver:
+  Cell 10/13 ok in 0.1s
+    The hotels you just extracted:
+    
+      AnyCompany Bondi Beach
+        987 Campbell Parade, Bondi Beach NSW 2026, Australia
+        rating 4.6, 6 amenities
+    
+      AnyCompany Camps Bay
+        456 Victoria Road, Camps Bay 8005, Cape Town, Western Cape, South Africa
+        rating 4.8, 6 amenities
+    
+      AnyCompany Charles Bridge Suites
+        258 Lesser Town, Prague 118 00, Czech Republic
+        rating 4.8, 4 amenities
+    
+      AnyCompany Ginza Suites
+        321 Ginza District, Tokyo 104-0061
+        rating 4.9, 5 amenities
+    
+      AnyCompany Ipanema Suites
+        321 Rua Vieira Souto, Rio de Janeiro 22420-000, Brazil
+        rating 4.7, 5 amenities
+    
+    Documents: 300 -> 300
+    Hotels:    300 -> 300
+    
+    Every aggregation and multi-hop question from here on runs across the whole graph, yours included.
+  Cell 11/13 started: # Read-only. The same both-layers walk, now on a hotel you extracted yourself.
+  Cell 11/13 ok in 0.0s
+    AnyCompany Ginza Suites  (hotel-tokyo-002.txt)
+      lexical:  1 chunk(s), embedding width 1024
+      domain:   3 rooms, 5 amenities, 9 policies, 18 services
+      on the node: rating 4.9, address 321 Ginza District, Tokyo 104-0061
+  Cell 12/13 started: # Read-only. Proves that two source Hotels traverse to one shared Amenity node.
+  Cell 12/13 ok in 0.0s
+    {'amenity_node_id': '4:26015bcc-6010-4445-bc24-a270d373d6e2:9336', 'hotels': ['Lakeview Horizon Suites', 'Windward Mile Tower'], 'source_filenames': ['hotel-chicago-002.txt', 'hotel-chicago-001.txt']}
+  Cell 13/13 started: from workshop.workshop_utils import lego_progress
+  Cell 13/13 ok in 0.2s
+    
+    ========================================================
+      Workshop progress
+      🟦⬜⬜⬜⬜⬜
+      ✅  Module 1: Build the Graph
+      ▶️   Module 2: From Similarity Search to Connected Context  ← you are here
+      ⬜  Module 3: Build the Grounded Booking Agent
+      ⬜  Module 4: Production Agent with AgentCore
+      ⬜  Module 5: Deploy to AgentCore Runtime
+      ⬜  Module 6: Inspectable Neo4j Memory
+    ========================================================
+
+Running notebooks/02-connected-context/2.1_connected_context.ipynb
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+[IPKernelApp] WARNING | Unknown error in handling startup files:
+  Cell 1/10 started: import sys, os
+  Cell 1/10 ok in 0.0s
+  Cell 2/10 started: import os
+  Cell 2/10 ok in 0.3s
+    Connected to Neo4j.
+  Cell 3/10 started: try:
+  Cell 3/10 ok in 0.0s
+    ✓ hotel_chunk_embeddings is online
+    ✓ hotel_chunk_fulltext is online
+    ✓ Demo-critical fixtures are present
+  Cell 4/10 started: pattern_rows = ''.join(
+  Cell 4/10 ok in 0.0s
+    <IPython.core.display.HTML object>
+  Cell 5/10 started: embedder = BedrockEmbeddings(region_name=aws_region())
+  Cell 5/10 ok in 0.1s
+  Cell 6/10 started: vector_retriever = VectorRetriever(
+  Cell 6/10 ok in 2.0s
+    Question: What is the standard check-in time at the AnyCompany Cairo Nile View hotel?
+    
+    [1] score=0.9070
+    {'text': "# AnyCompany Cairo Nile View\n\n## Hotel Overview\nAnyCompany Cairo Nile View is located in Cairo, Egypt. Pharaonic luxury overlooking the eternal Nile\n\n**Guest Rating:** 4.5/5.0\n**Total Rooms:** 250\n\n## Contact Information\n**Address:** 789 Corniche el-Nil, Cairo 11519\n**Phone:** +20-2-555-0001\n**Email:** cairo@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to …
+    
+    [2] score=0.8786
+    {'text': "# AnyCompany Giza Pyramids\n\n## Hotel Overview\nAnyCompany Giza Pyramids is located in Cairo, Egypt. Ancient wonders meet modern comfort\n\n**Guest Rating:** 4.6/5.0\n**Total Rooms:** 200\n\n## Contact Information\n**Address:** 321 Pyramid Road, Giza 12556\n**Phone:** +20-2-555-0002\n**Email:** giza@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to availability.\n\n##…
+    
+    [3] score=0.8637
+    {'text': "# AnyCompany Bosphorus View\n\n## Hotel Overview\nAnyCompany Bosphorus View is located in Istanbul, Turkey. Waterfront luxury with stunning Bosphorus views\n\n**Guest Rating:** 4.8/5.0\n**Total Rooms:** 120\n\n## Contact Information\n**Address:** 963 Bebek, Istanbul 34342\n**Phone:** +90-212-555-0002\n**Email:** bosphorus@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject …
+    
+    Pattern fit: Semantic similarity finds the policy wording even when the question is paraphrased.
+  Cell 7/10 started: identifier_question = 'What is the cancellation policy for the hotel at 60611?'
+  Cell 7/10 ok in 0.5s
+    Question: What is the cancellation policy for the hotel at 60611?
+    
+    [1] score=0.8279
+    {'text': "# Melody Lane Hotel\n\n## Hotel Overview\nMelody Lane Hotel is located in Austin, TX, USA. Stylish hotel in a prime location\n\n**Guest Rating:** 4.5/5.0\n**Total Rooms:** 320\n\n## Contact Information\n**Address:** 1071 Congress Avenue, Austin, TX 78701\n**Phone:** +1-512-555-0131\n**Email:** austin1@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to availability.\n\n#…
+    
+    [2] score=0.8249
+    {'text': "# Cliffside Coast Resort\n\n## Hotel Overview\nCliffside Coast Resort is located in Kauai, HI, USA. Garden island luxury with natural beauty\n\n**Guest Rating:** 4.7/5.0\n**Total Rooms:** 320\n\n## Contact Information\n**Address:** 1511 Poipu Road, Kauai, HI 96756\n**Phone:** +1-808-555-0299\n**Email:** kauai1@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to availabil…
+    
+    [3] score=0.8236
+    {'text': "# Bayview Crossing Resort\n\n## Hotel Overview\nBayview Crossing Resort is located in San Francisco, CA, USA. Premium hotel featuring local charm\n\n**Guest Rating:** 4.7/5.0\n**Total Rooms:** 340\n\n## Contact Information\n**Address:** 520 Resort Boulevard, San Francisco, CA 94105\n**Phone:** +1-415-555-0199\n**Email:** sanfranciscoresort@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fe…
+    
+    [4] score=0.8232
+    {'text': "# Swing District Hotel\n\n## Hotel Overview\nSwing District Hotel is located in Kansas City, MO, USA. Premium hotel featuring local charm\n\n**Guest Rating:** 4.8/5.0\n**Total Rooms:** 280\n\n## Contact Information\n**Address:** 1232 Main Street, Kansas City, MO 64106\n**Phone:** +1-816-555-0164\n**Email:** kansascity2@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to …
+    
+    [5] score=0.8225
+    {'text': "# Coastal Breeze Retreat\n\n## Hotel Overview\nCoastal Breeze Retreat is located in San Diego, CA, USA. Premium hotel featuring local charm\n\n**Guest Rating:** 4.6/5.0\n**Total Rooms:** 270\n\n## Contact Information\n**Address:** 1032 Broadway, San Diego, CA 92102\n**Phone:** +1-619-555-0124\n**Email:** sandiego2@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to avail…
+    
+    Pattern fit: This semantic-only search gives exact postal codes a weak signal.
+    
+    ================================================================================
+    
+    Question: What is the cancellation policy for the hotel at 60611?
+    
+    [1] score=0.8000
+    {'text': "# Windward Mile Tower\n\n## Hotel Overview\nWindward Mile Tower is located in Chicago, IL, USA. Modern hotel with stunning Lake Michigan views\n\n**Guest Rating:** 4.5/5.0\n**Total Rooms:** 290\n\n## Contact Information\n**Address:** 654 Michigan Avenue, Chicago, IL 60611\n**Phone:** +1-312-555-0005\n**Email:** chicago@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to …
+    
+    [2] score=0.2000
+    {'text': "# Melody Lane Hotel\n\n## Hotel Overview\nMelody Lane Hotel is located in Austin, TX, USA. Stylish hotel in a prime location\n\n**Guest Rating:** 4.5/5.0\n**Total Rooms:** 320\n\n## Contact Information\n**Address:** 1071 Congress Avenue, Austin, TX 78701\n**Phone:** +1-512-555-0131\n**Email:** austin1@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to availability.\n\n#…
+    
+    [3] score=0.1993
+    {'text': "# Cliffside Coast Resort\n\n## Hotel Overview\nCliffside Coast Resort is located in Kauai, HI, USA. Garden island luxury with natural beauty\n\n**Guest Rating:** 4.7/5.0\n**Total Rooms:** 320\n\n## Contact Information\n**Address:** 1511 Poipu Road, Kauai, HI 96756\n**Phone:** +1-808-555-0299\n**Email:** kauai1@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to availabil…
+    
+    [4] score=0.1990
+    {'text': "# Bayview Crossing Resort\n\n## Hotel Overview\nBayview Crossing Resort is located in San Francisco, CA, USA. Premium hotel featuring local charm\n\n**Guest Rating:** 4.7/5.0\n**Total Rooms:** 340\n\n## Contact Information\n**Address:** 520 Resort Boulevard, San Francisco, CA 94105\n**Phone:** +1-415-555-0199\n**Email:** sanfranciscoresort@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fe…
+    
+    [5] score=0.1989
+    {'text': "# Swing District Hotel\n\n## Hotel Overview\nSwing District Hotel is located in Kansas City, MO, USA. Premium hotel featuring local charm\n\n**Guest Rating:** 4.8/5.0\n**Total Rooms:** 280\n\n## Contact Information\n**Address:** 1232 Main Street, Kansas City, MO 64106\n**Phone:** +1-816-555-0164\n**Email:** kansascity2@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee of $50, subject to …
+    
+    Pattern fit: Full-text matching preserves 60611 while the separately supplied question vector handles the policy wording.
+  Cell 8/10 started: retrieval_query = '''
+  Cell 8/10 ok in 0.5s
+    Question: Tell me about the hotel at 789 Avenue des Champs-Élysées and its amenities.
+    
+    [1] score=0.8731
+    {'chunk': "# AnyCompany Paris Champs-Élysées\n\n## Hotel Overview\nAnyCompany Paris Champs-Élysées is located in Paris, France. Luxury on the world's most famous avenue\n\n**Guest Rating:** 4.9/5.0\n**Total Rooms:** 180\n\n## Contact Information\n**Address:** 789 Avenue des Champs-Élysées, 75008 Paris\n**Phone:** +33-1-5555-0001\n**Email:** paris@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additional fee o…
+    
+    [2] score=0.8265
+    {'chunk': "# Crescent Quarter Elegance\n\n## Hotel Overview\nCrescent Quarter Elegance is located in New Orleans, LA, USA. Contemporary hotel perfect for business and leisure\n\n**Guest Rating:** 4.5/5.0\n**Total Rooms:** 280\n\n## Contact Information\n**Address:** 1111 Canal Street, New Orleans, LA 70112\n**Phone:** +1-504-555-0139\n**Email:** neworleans1@anycompany.com\n\n## Check-in & Check-out\n\n### Check-in Time\nStandard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.\n\n### Check-out Time\nStandard check-out time is 11:00 AM. Late check-out until 2:00 PM may be available for an additi…
+    
+    Pattern fit: Vector search locates source chunks; Cypher adds connected hotel entities and typed relationships.
+  Cell 9/10 started: hotel_schema = '''
+  Cell 9/10 ok in 2.9s
+    Question: Which hotels in Cairo have a guest rating of at least 4.5 and offer a spa?
+    Generated Cypher:
+    MATCH (h:Hotel)-[:OFFERS_AMENITY]->(a:Amenity)
+    WHERE toLower(h.address) CONTAINS 'cairo' AND h.guest_rating >= 4.5 AND toLower(a.name) CONTAINS 'spa'
+    RETURN DISTINCT h.name AS hotel_name, h.guest_rating AS guest_rating
+    ORDER BY guest_rating DESC
+    
+    Returned records:
+      <Record hotel_name='AnyCompany Giza Pyramids' guest_rating=4.6>
+      <Record hotel_name='AnyCompany Cairo Nile View' guest_rating=4.5>
+    
+    Pattern fit: the database applies the field and relationship filters to each returned hotel.
+  Cell 10/10 started: driver.close()
+  Cell 10/10 ok in 0.0s
+    Connection closed.
+
+Running notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb
+/Users/ryanknight/.cache/uv/archive-v0/pRBtSAcjbqBrq9Ct/lib/python3.13/site-packages/nbformat/validator.py:434: MissingIDFieldWarning: Cell is missing an id field, this will become a hard error in future nbformat versions. You may want to use `normalize()` on your notebooks before validations (available since nbformat 5.1.4). Previous versions of nbformat are fixing this issue transparently, and will stop doing so in the future.
+  _validate(nbdict, ref, version, version_minor, relax_add_props)
+[IPKernelApp] WARNING | Kernel is running over TCP without encryption. All communication (including code and outputs) is sent in plain text and is susceptible to eavesdropping. Use IPC transport or launch with kernel manager-provisioned CurveZMQ keys to enable transport encryption.
+[IPKernelApp] WARNING | Unknown error in handling startup files:
+  Cell 1/9 started: import sys, os
+  Cell 1/9 ok in 0.0s
+  Cell 2/9 started: import json
+  Cell 2/9 ok in 0.3s
+    Participant retrieval is configured. Ready to retrieve the fixture hotel.
+  Cell 3/9 started: if not NEO4J_READY:
+  Cell 3/9 ok in 0.2s
+    Participant graph is ready: both indexes online, fixtures applied, rule present.
+  Cell 4/9 started: if not RETRIEVAL_READY:
+  Cell 4/9 ok in 1.8s
+    Question: What amenities and guest rating does AnyCompany Cairo Nile View have?
+    
+    Hotel: AnyCompany Cairo Nile View | hotel_id=81393d51-1df3-4f53-b58e-e4cda9736fd7
+    Combined hybrid score: 1.0000
+    Guest rating: 4.5
+    Exact matched terms: and, Guest, Rating, AnyCompany, Cairo, Nile, View
+    Amenities: 24-Hour Fitness Center, Complimentary High-Speed Wifi, Full-Service Spa, Nile Views, On-Site Restaurant, Outdoor Swimming Pool
+    Amenity count: 6
+    
+    Chunk evidence:
+    # AnyCompany Cairo Nile View
+    
+    ## Hotel Overview
+    AnyCompany Cairo Nile View is located in Cairo, Egypt. Pharaonic luxury overlooking the eternal Nile
+    
+    **Guest Rating:** 4.5/5.0
+    **Total Rooms:** 250
+    
+    ## Contact Information
+    **Address:** 789 Corniche el-Nil, Cairo 11519
+    **Phone:** +20-2-555-0001
+    **Email:** cairo@anycompany.com
+    
+    ## Check-in & Check-out
+    
+    ### Check-in Time
+    Standard check-in time is 3:00 PM. Early check-in is subject to availability and may be requested at the time of booking or by contacting the hotel directly.
+    
+    ### Check-out Time
+    Standard check-out time is 11:00 AM. Late check-out u
+  Cell 5/9 started: if not RETRIEVAL_READY:
+  Cell 5/9 ok in 7.0s
+    
+    Tool #1: search_hotel_knowledge_tool
+    **
+    AnyCompany Cairo Nile View** — located at 789 Corni
+    che el-Nil, Cairo 11519, Egypt
+    
+    **Guest Rating:** 4.5
+    /5.0
+    
+    **Amenities:**
+    - 24-Hour Fitness Center
+    - Complimentary High-Speed WiFi
+    - Full-Service Spa
+    -
+     Nile Views
+    - On-Site Restaurant
+    - Outdoor Swimming Pool
+    
+    The property is described as offering "Pharaonic luxury overlooking the eternal Nile" and has
+     250 total rooms.**AnyCompany Cairo Nile View** — located at 789 Corniche el-Nil, Cairo 11519, Egypt
+    
+    **Guest Rating:** 4.5/5.0
+    
+    **Amenities:**
+    - 24-Hour Fitness Center
+    - Complimentary High-Speed WiFi
+    - Full-Service Spa
+    - Nile Views
+    - On-Site Restaurant
+    - Outdoor Swimming Pool
+    
+    The property is described as offering "Pharaonic luxury overlooking the eternal Nile" and has 250 total rooms.
+  Cell 6/9 started: if not RETRIEVAL_READY:
+  Cell 6/9 error in 7.0s
+    
+    Tool #2: search_hotel_knowledge_tool
+    No
+     — I cannot confirm guaranteed room availability for AnyCompany Cair
+    o Nile View next weekend from the available hotel knowledge.
+    
+    The evidence only
+     covers general policies:
+    - Reservations can be made via website, phone, email, or the mobile app.
+    - Early check-in and late check-out are no
+    ted as "subject to availability," which is a policy statement, not a confirmation of current inventory.
+    - Cancellations must be made at least 24
+     hours before arrival to avoid a fee.
+    
+    There is no live inventory or booking-confirmation data in this system
+    , so I can't verify or guarantee that rooms are available for a specific weekend. To check
+     actual availability and book, you'd need to contact the hotel directly (+20-2
+    -555-0001, cairo@anycompany.com) or check www.anycompany.com / the AnyCompany Hotels app.No — I cannot confirm guaranteed room availability for AnyCompany Cairo Nile View next weekend from the available hotel knowledge.
+    
+    The evidence only covers general policies:
+    - Reservations can be made via website, phone, email, or the mobile app.
+    - Early check-in and late check-out are noted as "subject to availability," which is a policy statement, not a confirmation of current inventory.
+    - Cancellations must be made at least 24 hours before arrival to avoid a fee.
+    
+    There is no live inventory or booking-confirmation data in this system, so I can't verify or guarantee that rooms are available for a specific weekend. To check actual availability and book, you'd need to contact the hotel directly (+20-2-555-0001, cairo@anycompany.com) or check www.anycompany.com / the AnyCompany Hotels app.
+    [31m---------------------------------------------------------------------------[39m
+    [31mAssertionError[39m                            Traceback (most recent call last)
+    [36mCell[39m[36m [39m[32mIn[6][39m[32m, line 17[39m
+    [32m     13[39m         [33m"yes, it guarantees"[39m,
+    [32m     14[39m         [33m"confirmed availability"[39m,
+    [32m     15[39m         [33m"rooms are open"[39m,
+    [32m     16[39m     )
+    [32m---> [39m[32m17[39m     assert not any(
+    [32m     18[39m         claim [38;5;28;01min[39;00m availability_text [38;5;28;01mfor[39;00m claim [38;5;28;01min[39;00m fabricated_availability_claims
+    [32m     19[39m     ), availability_text
+    [32m     20[39m     abstention_markers = (
+    
+    [31mAssertionError[39m: no — i cannot confirm guaranteed room availability for anycompany cairo nile view next weekend from the available hotel knowledge.
+    
+    the evidence only covers general policies:
+    - reservations can be made via website, phone, email, or the mobile app.
+    - early check-in and late check-out are noted as "subject to availability," which is a policy statement, not a confirmation of current inventory.
+    - cancellations must be made at least 24 hours before arrival to avoid a fee.
+    
+    there is no live inventory or booking-confirmation data in this system, so i can't verify or guarantee that rooms are available for a specific weekend. to check actual availability and book, you'd need to contact the hotel directly (+20-2-555-0001, cairo@anycompany.com) or check www.anycompany.com / the anycompany hotels app.
+
+Results
+========================================================================
+PASS  notebooks/01-build-graph/1.1_build_graph.ipynb
+PASS  notebooks/02-connected-context/2.1_connected_context.ipynb
+FAIL  notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb (CellExecutionError: An error occurred while executing the following cell:)
+
+Passed: 2  Failed: 1  Skipped: 0  Total: 3
+
+Failure: notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb
+Traceback (most recent call last):
+  File "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/setup/run_notebooks.py", line 313, in run_notebook
+    executor.preprocess(
+    ~~~~~~~~~~~~~~~~~~~^
+        document, {"metadata": {"path": str(notebook.path.parent)}}
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/ryanknight/.cache/uv/archive-v0/pRBtSAcjbqBrq9Ct/lib/python3.13/site-packages/nbconvert/preprocessors/execute.py", line 103, in preprocess
+    self.preprocess_cell(cell, resources, index)
+    ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/ryanknight/.cache/uv/archive-v0/pRBtSAcjbqBrq9Ct/lib/python3.13/site-packages/nbconvert/preprocessors/execute.py", line 124, in preprocess_cell
+    cell = self.execute_cell(cell, index, store_history=True)
+  File "/Users/ryanknight/.cache/uv/archive-v0/pRBtSAcjbqBrq9Ct/lib/python3.13/site-packages/jupyter_core/utils/__init__.py", line 165, in wrapped
+    return loop.run_until_complete(inner)
+           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/ryanknight/.local/share/uv/python/cpython-3.13.0-macos-aarch64-none/lib/python3.13/asyncio/base_events.py", line 721, in run_until_complete
+    return future.result()
+           ~~~~~~~~~~~~~^^
+  File "/Users/ryanknight/.cache/uv/archive-v0/pRBtSAcjbqBrq9Ct/lib/python3.13/site-packages/nbclient/client.py", line 1062, in async_execute_cell
+    await self._check_raise_for_error(cell, cell_index, exec_reply)
+  File "/Users/ryanknight/.cache/uv/archive-v0/pRBtSAcjbqBrq9Ct/lib/python3.13/site-packages/nbclient/client.py", line 918, in _check_raise_for_error
+    raise CellExecutionError.from_cell_and_msg(cell, exec_reply_content)
+nbclient.exceptions.CellExecutionError: An error occurred while executing the following cell:
+------------------
+if not RETRIEVAL_READY:
+    print("Skipping availability question: retrieval is not configured.")
+else:
+    availability_response = grounded_agent(AVAILABILITY_QUESTION)
+    print(availability_response)
+
+    availability_text = str(availability_response).lower()
+    fabricated_availability_claims = (
+        "rooms are available",
+        "is available next weekend",
+        "availability is guaranteed",
+        "we guarantee availability",
+        "yes, it guarantees",
+        "confirmed availability",
+        "rooms are open",
+    )
+    assert not any(
+        claim in availability_text for claim in fabricated_availability_claims
+    ), availability_text
+    abstention_markers = (
+        "cannot determine",
+        "cannot confirm",
+        "can't confirm",
+        "unable to confirm",
+        "no evidence",
+        "does not guarantee",
+        "doesn't guarantee",
+    )
+    assert any(marker in availability_text for marker in abstention_markers), availability_text
+------------------
+
+----- stdout -----
+
+Tool #2: search_hotel_knowledge_tool
+----- stdout -----
+No
+----- stdout -----
+ — I cannot confirm guaranteed room availability for AnyCompany Cair
+----- stdout -----
+o Nile View next weekend from the available hotel knowledge.
+
+The evidence only
+----- stdout -----
+ covers general policies:
+- Reservations can be made via website, phone, email, or the mobile app.
+- Early check-in and late check-out are no
+----- stdout -----
+ted as "subject to availability," which is a policy statement, not a confirmation of current inventory.
+- Cancellations must be made at least 24
+----- stdout -----
+ hours before arrival to avoid a fee.
+
+There is no live inventory or booking-confirmation data in this system
+----- stdout -----
+, so I can't verify or guarantee that rooms are available for a specific weekend. To check
+----- stdout -----
+ actual availability and book, you'd need to contact the hotel directly (+20-2
+----- stdout -----
+-555-0001, cairo@anycompany.com) or check www.anycompany.com / the AnyCompany Hotels app.No — I cannot confirm guaranteed room availability for AnyCompany Cairo Nile View next weekend from the available hotel knowledge.
+
+The evidence only covers general policies:
+- Reservations can be made via website, phone, email, or the mobile app.
+- Early check-in and late check-out are noted as "subject to availability," which is a policy statement, not a confirmation of current inventory.
+- Cancellations must be made at least 24 hours before arrival to avoid a fee.
+
+There is no live inventory or booking-confirmation data in this system, so I can't verify or guarantee that rooms are available for a specific weekend. To check actual availability and book, you'd need to contact the hotel directly (+20-2-555-0001, cairo@anycompany.com) or check www.anycompany.com / the AnyCompany Hotels app.
+------------------
+
+[31m---------------------------------------------------------------------------[39m
+[31mAssertionError[39m                            Traceback (most recent call last)
+[36mCell[39m[36m [39m[32mIn[6][39m[32m, line 17[39m
+[32m     13[39m         [33m"yes, it guarantees"[39m,
+[32m     14[39m         [33m"confirmed availability"[39m,
+[32m     15[39m         [33m"rooms are open"[39m,
+[32m     16[39m     )
+[32m---> [39m[32m17[39m     assert not any(
+[32m     18[39m         claim [38;5;28;01min[39;00m availability_text [38;5;28;01mfor[39;00m claim [38;5;28;01min[39;00m fabricated_availability_claims
+[32m     19[39m     ), availability_text
+[32m     20[39m     abstention_markers = (
+
+[31mAssertionError[39m: no — i cannot confirm guaranteed room availability for anycompany cairo nile view next weekend from the available hotel knowledge.
+
+the evidence only covers general policies:
+- reservations can be made via website, phone, email, or the mobile app.
+- early check-in and late check-out are noted as "subject to availability," which is a policy statement, not a confirmation of current inventory.
+- cancellations must be made at least 24 hours before arrival to avoid a fee.
+
+there is no live inventory or booking-confirmation data in this system, so i can't verify or guarantee that rooms are available for a specific weekend. to check actual availability and book, you'd need to contact the hotel directly (+20-2-555-0001, cairo@anycompany.com) or check www.anycompany.com / the anycompany hotels app.
+
+Executed notebooks: /Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/setup/release-evidence/live-20260823-final/notebooks

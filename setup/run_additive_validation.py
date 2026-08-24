@@ -49,24 +49,24 @@ VALIDATOR = REPO_ROOT / "setup" / "validate_graph_amenities.py"
 
 COUNTS_QUERY = """
 CYPHER 25
-CALL {
+CALL () {
   MATCH (document:Document)
   RETURN count(document) AS documents
 }
-CALL {
+CALL () {
   MATCH (hotel:Hotel)
   RETURN count(DISTINCT hotel) AS hotels
 }
-CALL {
+CALL () {
   MATCH (amenity:Amenity)
   RETURN count(amenity) AS amenities
 }
-CALL {
+CALL () {
   MATCH ()-[offer:OFFERS_AMENITY]->(amenity:Amenity)
   WITH DISTINCT offer.source_filename AS source, amenity.name AS amenity
   RETURN count(*) AS amenity_assertions
 }
-CALL {
+CALL () {
   MATCH ()-[offer:OFFERS_AMENITY]->(amenity:Amenity)
   WHERE toLower(amenity.name) CONTAINS 'pool'
   RETURN count(DISTINCT offer.source_filename) AS pool_sources

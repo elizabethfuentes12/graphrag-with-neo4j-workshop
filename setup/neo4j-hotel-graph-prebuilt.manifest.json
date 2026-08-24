@@ -1,0 +1,160 @@
+{
+  "build": {
+    "completed_at": null,
+    "completed_epoch": null,
+    "duration_seconds": 10729.83,
+    "resume_mode": null,
+    "started_at": null,
+    "started_epoch": null,
+    "wrapper_exit_status": "failed_after_graph_readiness"
+  },
+  "candidate": {
+    "artifact_modified_at": "2026-08-23T23:13:05.684995+00:00",
+    "byte_size": 6542982,
+    "path": "neo4j-hotel-graph-prebuilt.dump",
+    "sha256": "a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02"
+  },
+  "critical_files": {
+    "availability": "unavailable_at_build_start",
+    "files": null
+  },
+  "docker_image": {
+    "availability": "tag_from_successful_run_log; identity_unavailable",
+    "id": null,
+    "repo_digests": null,
+    "requested_tag": "neo4j:latest"
+  },
+  "evidence": {
+    "gates": {
+      "amenity_assertions": {
+        "line": 774,
+        "text": "\u2705 Materialized 1606 amenity assertions"
+      },
+      "booking_fixtures": {
+        "line": 809,
+        "text": "\u2705 Fixture hotel IDs, the demo06_* constraints, and the maximum-guests rule are in the graph"
+      },
+      "build_complete": {
+        "line": 767,
+        "text": "BUILD COMPLETE (295/295 ingests acknowledged)"
+      },
+      "chunk_count": {
+        "line": 771,
+        "text": ":Chunk nodes: 295 (expected 295, one chunk per document)"
+      },
+      "document_count": {
+        "line": 770,
+        "text": ":Document nodes: 295 (expected 295)"
+      },
+      "module_readiness": {
+        "line": 781,
+        "text": "  documents: 295 (expected 295)"
+      },
+      "pool_sources": {
+        "line": 801,
+        "text": "  Counting  hotels with a pool: 172"
+      },
+      "retrieval_indexes": {
+        "line": 778,
+        "text": "\u2705 Retrieval indexes are online and match the embedding contract"
+      }
+    },
+    "path": "build_prebuilt_graph.log",
+    "sha256": "8156c07fd0ddfa66311638a4bfea9c1643e3140984c83aa15b40ab033dadb5ca",
+    "successful_run_end_line": 811,
+    "successful_run_start_line": 447,
+    "timing": {
+      "duration_seconds": 10729.83,
+      "line": 811,
+      "text": "real 10729.83"
+    },
+    "wrapper_failure": {
+      "line": 810,
+      "text": "setup/build_prebuilt_graph.sh: line 101: syntax error near unexpected token `then'"
+    }
+  },
+  "final_success": true,
+  "git": {
+    "availability": "unavailable_at_build_start",
+    "commit": null,
+    "dirty": null,
+    "status_porcelain": null
+  },
+  "manifest_version": 1,
+  "provenance": {
+    "capture_mode": "recovered_after_build",
+    "limitations": [
+      "The build-start snapshot was not written before execution.",
+      "The build-start Git commit, dirty state, and critical-file hashes are unavailable because files changed while the build process was running.",
+      "The successful container's immutable image ID and repository digest were not preserved.",
+      "The wrapper failed after graph readiness; the candidate was captured separately, and restore validation is outside this manifest."
+    ],
+    "recovered_at": "2026-08-23T23:25:37Z"
+  },
+  "recovery_environment": {
+    "critical_files": {
+      "amenities": {
+        "path": "notebooks/workshop/amenities.py",
+        "sha256": "72e48105b548c55942f96a59c6db1b1e4756e17d3e1b2effd2520d7bf453d672"
+      },
+      "build_script": {
+        "path": "setup/build_prebuilt_graph.sh",
+        "sha256": "1a75ae8beeaa2e66f6da5153b088cb973f09f48259275e638314cd31739f8135"
+      },
+      "contracts": {
+        "path": "notebooks/workshop/contracts.py",
+        "sha256": "004913d06db17838517e232e44bc2b852a6f0fdfedd9b768df59d703aa7415db"
+      },
+      "corpus": {
+        "path": "notebooks/02-connected-context/hotel-faqs.zip",
+        "sha256": "19912a86bcd6d3808af744952741dda892a817b61a405bbd59f3f6485c7c129f"
+      },
+      "graph_builder": {
+        "path": "notebooks/02-connected-context/graph_builder.py",
+        "sha256": "bb7453c7fb83145744bc37a2213d2849e81a74d070b5b5ef4edf7d96efdd4f30"
+      },
+      "graph_config": {
+        "path": "notebooks/02-connected-context/graph_config.py",
+        "sha256": "10fef07802bc9b38f031c27a640f9c54fcaf91d17d5cdea24884d899b7a6a1ab"
+      },
+      "graph_schema_contract": {
+        "path": "notebooks/workshop/graph_schema.py",
+        "sha256": "3ea96e4657071f67d85810d088dc5afc799d452d540c6de6cdd022baabf38250"
+      },
+      "manifest_writer": {
+        "path": "setup/write_prebuilt_manifest.py",
+        "sha256": "ef5d1ebee96ff2dca202683fcec127bc21ee41babbd5a09252e263210b62323e"
+      },
+      "prepare_graph": {
+        "path": "notebooks/02-connected-context/prepare_graph.py",
+        "sha256": "542bf997087603b98460efc6530ecec597e4086e42aa030770d1c9a4892d7b56"
+      },
+      "retrieval_contract": {
+        "path": "notebooks/workshop/retrieval_contract.py",
+        "sha256": "f7ba039dd8fffbdbb0c9b1768b72278f3a13f11039de0431396ba9c5addc1cac"
+      },
+      "uv_lock": {
+        "path": "notebooks/workshop/uv.lock",
+        "sha256": "63859225e9e4c108cf432ab4fbc08fcf16455b4ebc2260b37ccd95ada307a6d1"
+      }
+    },
+    "git": {
+      "commit": "86af02098d371e1e8cd236e82b8e7a018a615076",
+      "dirty": true,
+      "status_porcelain": [
+        " M clean-graph.md",
+        " M setup/build_prebuilt_graph.log",
+        " M setup/build_prebuilt_graph.sh",
+        " M setup/test_prebuilt_manifest.py",
+        " M setup/test_release_workflows.py",
+        " M setup/write_prebuilt_manifest.py",
+        "?? setup/neo4j-hotel-graph-prebuilt.dump",
+        "?? setup/release-evidence/",
+        "?? setup/run_additive_validation.sh",
+        "?? setup/test_build_prebuilt_script.py"
+      ]
+    },
+    "note": "Captured during recovery; these are not build inputs."
+  },
+  "success_scope": "The final graph-readiness gates and candidate identity are recorded; the wrapper itself did not exit successfully."
+}

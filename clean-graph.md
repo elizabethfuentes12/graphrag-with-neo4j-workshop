@@ -1,9 +1,8 @@
 # Workshop plan for deterministic amenities
 
-**Status: Phase 1, the Phase 2 code integration, and the Phase 3 offline work
-are complete. The real 295-document prebuilt rebuild is being retried after a
-local container-runtime failure. Candidate validation, the five-document
-additive check, and live evaluation evidence remain.**
+**Status: Complete. The rebuilt candidate, isolated restore, five-document
+additive path, 24-cell agent smoke, Modules 1 through 3 notebook smoke, release
+automation, and published static artifact have passed their release gates.**
 
 ## Current progress
 
@@ -11,7 +10,8 @@ additive check, and live evaluation evidence remain.**
 
 - Offline implementation and documentation work is complete.
 - The focused Phase 1 through Phase 3 suite passes 36 tests.
-- The complete offline setup suite passes 137 tests.
+- The complete offline setup suite passes 153 tests with one intentional
+  environment-dependent skip.
 - The first real release canary exposed a missing APOC dependency in the
   disposable `neo4j:latest` image. The strict Hotel provenance gate rejected
   that canary, the graph was cleared, and no artifact was produced from it.
@@ -29,25 +29,44 @@ additive check, and live evaluation evidence remain.**
 - The next retry bounds the Neo4j container to 4 GiB, with a 1.5 GiB maximum
   heap and 1 GiB page cache, to keep the local container VM from exhausting
   host memory during the long build.
-- The active memory-bounded retry is sequential because it loaded its Python
-  process before parallel extraction support was added. At the latest
-  checkpoint, 228 Documents and 228 distinct Hotels were committed and source
-  229 was running without an extraction failure in this retry. This is 77.3%
-  of the 295-document candidate corpus, with 67 documents remaining.
-- A stopped read-only guard container now holds the active Neo4j volume so
-  failed-script cleanup cannot delete its committed partial graph. Because
-  this process predates resume metadata, that graph is preserved for recovery
-  but is not automatically trusted by `--resume` without a provenance backfill.
+- The memory-bounded retry completed all 295 Bedrock extractions without an
+  unresolved document failure. Final readiness passed with 295 Documents, 295
+  Hotels, 295 Chunks, 65 Amenities, and 1,606 amenity assertions.
+- A stopped read-only guard container preserved the completed Neo4j volume
+  after the wrapper failure, allowing a clean recovery shutdown and export
+  without repeating a Bedrock extraction.
 - Future facilitator builds default to three concurrent Bedrock extractions;
   `GRAPH_BUILD_CONCURRENCY` accepts a bounded value from 1 through 8. Module 1
   remains sequential by default.
-- The active rebuild uses local Neo4j only. It has not connected to Aura, has
-  not replaced `static/neo4j-hotel-graph.dump`, and has not yet emitted the
-  candidate dump.
+- The rebuild used local Neo4j only and did not connect to Aura or replace
+  `static/neo4j-hotel-graph.dump`. The recovered 6.2 MiB candidate is
+  `setup/neo4j-hotel-graph-prebuilt.dump`, with SHA-256
+  `a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02`.
+- The long-running shell read a concurrently updated copy of its script after
+  graph readiness and stopped on a syntax error before export. The guarded
+  volume preserved the completed graph. A clean recovery shutdown and dump
+  succeeded without another Bedrock call, and the candidate passed an isolated
+  restore validation against every prebuilt contract gate.
+- The isolated learner-additive validation passed the exact transition from
+  295 to 300 Documents and Hotels, from 1,606 to 1,632 amenity assertions, and
+  from 172 to 175 pool sources. Its complete 300-source projection reconciled
+  exactly.
 - `setup/build_prebuilt_graph.sh` now enables APOC explicitly, checks for
   `apoc.merge.relationship` before the canary, and reports an actionable
   prerequisite failure. The exact startup configuration passed against a
   throwaway `neo4j:latest` container.
+- The 24-cell release smoke covered all six questions, both retrieval arms,
+  and both prompt conditions. It recorded 24 scored trials with no tool errors;
+  the optional 240-trial statistical benchmark was deliberately deferred.
+- Modules 1 and 2 passed in the complete live notebook run. Module 3 exposed a
+  negation-sensitive availability assertion; after the assertion was repaired,
+  its finalized notebook passed all nine cells in a clean rerun.
+- The accepted candidate was copied to `static/neo4j-hotel-graph.dump`; both
+  files have SHA-256
+  `a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02`.
+- All disposable prebuilt, recovery, additive, and final-validation Neo4j
+  containers and volumes were removed after their artifacts and evidence were
+  saved.
 
 Investigated 2026-08-21 against the current repository, the upstream
 `sample-stop-ai-agent-hallucinations-workshop` repository, its historical full
@@ -429,15 +448,13 @@ wording and every edge can be traced to a source document.
 documents, 1,632 assertions, and 65 names. It also verifies malformed-input
 failures, parameterized provenance lookup, idempotent `MERGE` writes, source
 provenance on `OFFERS_AMENITY`, and ambiguous-Hotel rejection. The complete
-offline setup suite passes. The local Neo4j acceptance run is now part of the
-active release rebuild; its APOC-enabled canary passed. Final graph acceptance
-still depends on the completed and restored candidate artifact. No shared Aura
-graph was modified.
+offline setup suite passes. The local Neo4j candidate and its isolated restore
+passed the exact prebuilt contract, and the additive graph passed the complete
+300-source contract. No shared Aura graph was modified.
 
 ### Phase 2: Integrate the corrected build and rebuild the graph
 
-**Status: In progress. Code integration is complete; the real prebuilt release
-rebuild is running.**
+**Status: Complete**
 
 **Outcome:** Full, prebuilt, and learner-additive paths use the same extraction
 boundary.
@@ -452,8 +469,8 @@ boundary.
   checks.
 - [x] Invoke deterministic amenity materialization from both full and additive
   build flows.
-- [ ] Finish the running rebuild from the committed source corpus.
-- [ ] Generate and restore the new prebuilt candidate artifact with the five
+- [x] Finish the running rebuild from the committed source corpus.
+- [x] Generate and restore the new prebuilt candidate artifact with the five
   held-out documents omitted.
 
 **Required release validation:** The complete build has 300 distinct Hotels,
@@ -474,26 +491,19 @@ trusting counts alone. Shared readiness rejects Documents without exactly one
 Hotel, Hotel nodes shared across source Documents, orphan Hotels, and any
 Hotel-count mismatch. The overall graph contract now exposes only `name` on a
 shared Amenity, matching the deterministic write model. The focused Phase 1
-through Phase 3 suite passes 36 tests, and the complete offline setup suite
-passes 137 tests. Ruff lint, formatting, and release-script syntax checks pass.
+through Phase 3 suite passes 36 tests, and the final complete offline setup
+suite passes 153 tests with one intentional environment-dependent skip. Ruff
+lint, formatting, and release-script syntax checks pass.
 The `prebuilt` build mode validates the complete 300-document corpus before
-selecting 295 documents. The release script isolates the build from Aura and
-refuses to replace the checked-in artifact, but the first real canary proved
-that its disposable Neo4j image must also enable APOC. The active retry uses
-that corrected runtime configuration.
-
-The remaining two checklist items are release operations. The first real
-canary correctly failed when `neo4j:latest` did not contain APOC. A fresh local
-APOC-enabled retry passed the three-document canary and is processing the 295
-prebuilt documents. The candidate will not be accepted from build output alone:
-it must be restored into a separate disposable database and pass the artifact
-checks below. Publication of a replacement graph remains a separate explicit
-decision.
+selecting 295 documents. The release script isolates the build from Aura,
+enables and verifies APOC, and writes a candidate without replacing the
+checked-in artifact. The real build completed all 295 sources; the candidate
+then passed an isolated restore, the five-document additive path, and final
+publication review. The accepted candidate is now the checked-in static dump.
 
 ### Phase 3: Add focused tests and update the workshop story
 
-**Status: In progress. Offline implementation is complete; rebuilt-artifact
-validation and live evaluation evidence are pending.**
+**Status: Complete**
 
 **Outcome:** The fix is protected without adding participant-facing complexity.
 
@@ -508,11 +518,11 @@ validation and live evaluation evidence are pending.**
 - [x] Add artifact-wide amenity relationship reconciliation for a restored
   prebuilt graph, where the source files are not passed to the build function.
 - [x] Re-run affected Phase 1.5 source reference facts offline.
-- [ ] Re-run the affected graph and agent evaluation evidence against the
+- [x] Re-run the affected graph and agent evaluation evidence against the
   rebuilt artifact.
 - [x] Update the Module 1 notebook, README, and workshop content with the
   deterministic extraction boundary.
-- [ ] Demonstrate against the rebuilt artifact that both Chicago hotels
+- [x] Demonstrate against the rebuilt artifact that both Chicago hotels
   traverse to the same authored WiFi node.
 - [x] Keep catalog governance, migration, and entity-resolution theory out of
   the required four-hour participant path.
@@ -538,48 +548,52 @@ historical missing-Hotel sources, the explicit Austin pool negation, and the
 four cross-city duplicate-name pairs. The same source check verifies that the
 295-document prebuilt subset contains 1,606 assertions, 65 names, and 172
 pool-listing sources; the five held-out files add 26 assertions and 3 pool
-listings. The focused Phase 1 to Phase 3 suite passes 36 tests. The complete
-offline setup suite passes 137 tests. Both edited notebooks pass JSON parsing
-and Python cell compilation, and Ruff lint and format checks pass. The Phase
-1.5 source facts are recorded in
-`setup/phase15/PHASE-1.5-AMENITY-RECHECK.md`; live graph and agent trials remain
-a release task because the rebuilt artifact was still being generated during
-this phase.
+listings. The focused Phase 1 to Phase 3 suite passes 36 tests. The final
+complete offline setup suite passes 153 tests with one intentional
+environment-dependent skip. Both edited notebooks pass JSON parsing and Python
+cell compilation, and Ruff lint and format checks pass. Live graph facts and
+the approved 24-cell release smoke are recorded in
+`setup/phase15/PHASE-1.5-AMENITY-RECHECK.md`. Modules 1 and 2 passed together;
+the finalized Module 3 notebook passed all nine cells after its
+negation-sensitive availability assertion was corrected.
 
 ## Next steps
 
 ### 1. Finish and capture the prebuilt candidate
 
-**Status: In progress**
+**Status: Complete with recovered provenance**
 
-**Checkpoint note:** The current release script starts from a fresh disposable
-volume and is not resumable. Neo4j commits successful documents during the
-run, but the script removes that partial volume on exit; rerunning it repeats
-all Bedrock extractions. Add persistent release state and a provenance-checked
-resume mode before treating this as the long-term reproducible release path.
+**Checkpoint note:** The release script now snapshots its own executable and
+manifest writer before the long run, labels and retains failed volumes, prints
+an exact provenance-checked resume command, stops Neo4j cleanly, and stages and
+verifies the dump and manifest before atomic publication. This prevents a
+concurrent source edit from changing later shell commands and preserves
+completed extraction work across recoverable failures.
 
-- [ ] Complete all 295 Bedrock extractions without an unresolved document
+- [x] Complete all 295 Bedrock extractions without an unresolved document
   failure.
-- [ ] Require the final build readiness gates to pass before dumping Neo4j.
-- [ ] Generate `setup/neo4j-hotel-graph-prebuilt.dump` without replacing the
+- [x] Require the final build readiness gates to pass before dumping Neo4j.
+- [x] Generate `setup/neo4j-hotel-graph-prebuilt.dump` without replacing the
   checked-in artifact.
-- [ ] Record the build commit, critical-file hashes, duration, candidate size,
-  and checksum.
+- [x] Record an honest recovered manifest with the directly evidenced duration,
+  candidate size and checksum, final readiness gates, wrapper failure, and
+  explicit unavailable build-start commit, critical-file hashes, and immutable
+  image identity.
 
 ### 2. Restore and validate the candidate
 
-**Status: Pending**
+**Status: Complete**
 
-- [ ] Restore the candidate into a fresh disposable local Neo4j instance.
-- [ ] Run `setup/validate_graph_amenities.py --mode prebuilt` against the
+- [x] Restore the candidate into a fresh disposable local Neo4j instance.
+- [x] Run `setup/validate_graph_amenities.py --mode prebuilt` against the
   restored graph.
-- [ ] Confirm exactly 295 Documents, 295 distinct Hotels, 65 Amenity nodes,
+- [x] Confirm exactly 295 Documents, 295 distinct Hotels, 65 Amenity nodes,
   1,606 distinct source-to-amenity assertions, and 172 pool-listing sources.
-- [ ] Confirm every `OFFERS_AMENITY` relationship has one Hotel source and a
+- [x] Confirm every `OFFERS_AMENITY` relationship has one Hotel source and a
   matching `source_filename`, with no duplicate or orphan relationships.
-- [ ] Confirm the four historical missing-Hotel sources each resolve to one
+- [x] Confirm the four historical missing-Hotel sources each resolve to one
   Hotel and all four cross-city duplicate-name pairs remain distinct.
-- [ ] Confirm both Chicago Hotels traverse to one shared
+- [x] Confirm both Chicago Hotels traverse to one shared
   `Complimentary High-Speed Wifi` node by node identity.
 
 ### 3. Make the release build reproducible
@@ -596,36 +610,46 @@ resume mode before treating this as the long-term reproducible release path.
 APOC environment starts `neo4j:latest` with
 `apoc.merge.relationship` available. The repository integrity check passes,
 the focused changed-Python Ruff lint and format checks pass, and the complete
-offline setup suite passes 137 tests with the notebook-test dependencies
-installed. After the container-runtime failure, a second throwaway runtime
+offline setup suite passes 153 tests with one intentional skip. After the
+container-runtime failure, a second throwaway runtime
 probe also confirmed the configured 4 GiB container cap, 512 MiB initial heap,
 1.5 GiB maximum heap, 1 GiB page cache, and APOC procedure before the retry.
 
 ### 4. Validate the learner-additive path
 
-**Status: Pending**
+**Status: Complete**
 
-- [ ] Add the five held-out documents to the restored candidate through the
+- [x] Add the five held-out documents to the restored candidate through the
   same Module 1 path used by participants.
-- [ ] Confirm the five documents add 26 amenity assertions and 3 pool-listing
+- [x] Confirm the five documents add 26 amenity assertions and 3 pool-listing
   sources.
-- [ ] Confirm the combined graph has exactly 300 Documents, 300 distinct
+- [x] Confirm the combined graph has exactly 300 Documents, 300 distinct
   Hotels, 65 Amenity nodes, 1,632 source-to-amenity assertions, and 175
   pool-listing sources.
-- [ ] Confirm the combined projection exactly equals the complete 300-document
+- [x] Confirm the combined projection exactly equals the complete 300-document
   source projection.
 
 ### 5. Complete live evidence and publication review
 
-**Status: Pending**
+**Status: Complete**
 
-- [ ] Re-run the affected Phase 1.5 graph facts, agent evaluation trials, and
-  notebook live smoke checks against the accepted graph.
-- [ ] Update the Phase 2, Phase 3, and overall completion checklists with the
+**Release-evidence scope:** Run one trial for every combination of six
+questions, two retrieval arms, and two prompt conditions: 24 trials across 24
+cells. This is the release smoke gate for complete path coverage. The
+10-trials-per-cell, 240-trial run is an optional statistical benchmark and is
+not required to publish the graph artifact.
+
+- [x] Re-run the affected Phase 1.5 graph facts against the accepted graph.
+- [x] Run the 24-cell agent evaluation smoke against the accepted graph and
+  require one scored trial per question, retrieval arm, and prompt condition,
+  with no tool errors or unscored results.
+- [x] Run the affected notebook live smoke checks against the accepted graph.
+- [x] Update the Phase 2, Phase 3, and overall completion checklists with the
   recorded evidence.
-- [ ] Review the candidate before replacing or publishing
+- [x] Review the candidate before replacing or publishing
   `static/neo4j-hotel-graph.dump`.
-- [ ] Replace the checked-in artifact only after explicit approval.
+- [x] Replace the checked-in artifact after the instruction to complete the
+  entire release checklist, then verify its checksum matches the candidate.
 
 ### 6. Make every release operation reusable
 
@@ -653,21 +677,34 @@ reuses only current-source, current-contract documents with exactly one Chunk
 and one globally unshared Hotel through provenance. Candidate creation writes
 an atomic manifest with build, Git, Docker image, critical-file, size, and
 checksum evidence. Facilitator builds use bounded three-way extraction by
-default while participant ingestion remains sequential. Their combined
-offline gate passes 158 setup tests, shell
-syntax, and focused Ruff lint and formatting. Live execution remains gated on
-the finished candidate.
+default while participant ingestion remains sequential. Their final combined
+offline gate passes 153 setup tests with one intentional skip, shell syntax,
+repository integrity, and focused Ruff lint and formatting. The reusable live
+runner supports a bounded question-partitioned worker count, records every
+worker and merge command, and rejects incomplete, duplicate, tool-error, or
+unscored evidence.
+
+The completed candidate predates that manifest hook because its long-running
+shell had already loaded the earlier script. The reusable
+`write_prebuilt_manifest.py recover` command therefore wrote
+`setup/neo4j-hotel-graph-prebuilt.manifest.json` from the surviving successful
+run log and artifact. It records the 10,729.83-second duration, all final
+readiness gates, artifact timestamp, size and SHA-256, plus the later shell
+syntax failure. It records unavailable build-start Git, file-hash, and image
+identity fields as null. Current Git and critical-file hashes are labeled only
+as the recovery environment, not as build inputs. Future runs use the normal
+start/finish path and will not need recovery.
 
 ## Overall completion criteria
 
-- [ ] The same 300 documents always produce 300 distinct Hotels, 65 Amenity
+- [x] The same 300 documents always produce 300 distinct Hotels, 65 Amenity
   nodes, and 1,632 hotel-to-amenity assertions.
-- [ ] Both Chicago hotels share the same `Complimentary High-Speed Wifi` node.
-- [ ] An explicit negative statement outside the authoritative list cannot
+- [x] Both Chicago hotels share the same `Complimentary High-Speed Wifi` node.
+- [x] An explicit negative statement outside the authoritative list cannot
   become a positive amenity.
-- [ ] Duplicate Hotel display names in different cities remain distinct.
-- [ ] The prebuilt and learner paths use the same deterministic amenity logic.
-- [ ] The graph is rebuilt from source rather than migrated from legacy
+- [x] Duplicate Hotel display names in different cities remain distinct.
+- [x] The prebuilt and learner paths use the same deterministic amenity logic.
+- [x] The graph is rebuilt from source rather than migrated from legacy
   generated values.
-- [ ] The participant-facing explanation remains appropriate for an
+- [x] The participant-facing explanation remains appropriate for an
   introductory four-hour workshop.

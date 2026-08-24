@@ -1,0 +1,95 @@
+{
+  "completed_utc": "2026-08-23T23:25:36.724885+00:00",
+  "expected": {
+    "after": {
+      "amenities": 65,
+      "amenity_assertions": 1632,
+      "documents": 300,
+      "hotels": 300,
+      "pool_sources": 175
+    },
+    "before": {
+      "amenities": 65,
+      "amenity_assertions": 1606,
+      "documents": 295,
+      "hotels": 295,
+      "pool_sources": 172
+    },
+    "delta": {
+      "amenities": 0,
+      "amenity_assertions": 26,
+      "documents": 5,
+      "hotels": 5,
+      "pool_sources": 3
+    }
+  },
+  "neo4j_database": "neo4j",
+  "neo4j_uri": "bolt://localhost:32770",
+  "problems": [
+    "held-out loader exited with status 1",
+    "after documents: found 295, expected 300",
+    "after hotels: found 295, expected 300",
+    "after amenity_assertions: found 1606, expected 1632",
+    "after pool_sources: found 172, expected 175",
+    "delta documents: found 0, expected 5",
+    "delta hotels: found 0, expected 5",
+    "delta amenity_assertions: found 0, expected 26",
+    "delta pool_sources: found 0, expected 3",
+    "full source reconciliation exited with status 1"
+  ],
+  "stages": {
+    "after": {
+      "completed_utc": "2026-08-23T23:25:36.525084+00:00",
+      "counts": {
+        "amenities": 65,
+        "amenity_assertions": 1606,
+        "documents": 295,
+        "hotels": 295,
+        "pool_sources": 172
+      },
+      "delta": {
+        "amenities": 0,
+        "amenity_assertions": 0,
+        "documents": 0,
+        "hotels": 0,
+        "pool_sources": 0
+      },
+      "passed": false
+    },
+    "before": {
+      "completed_utc": "2026-08-23T23:25:35.543758+00:00",
+      "counts": {
+        "amenities": 65,
+        "amenity_assertions": 1606,
+        "documents": 295,
+        "hotels": 295,
+        "pool_sources": 172
+      },
+      "passed": true
+    },
+    "full_reconciliation": {
+      "command": [
+        "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/bin/python3",
+        "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/setup/validate_graph_amenities.py",
+        "--mode",
+        "full"
+      ],
+      "completed_utc": "2026-08-23T23:25:36.724843+00:00",
+      "log": "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/setup/release-evidence/additive-20260823-release/full-reconciliation.log",
+      "passed": false,
+      "returncode": 1
+    },
+    "load_held_out": {
+      "command": [
+        "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/notebooks/workshop/.venv/bin/python3",
+        "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/setup/load_held_out_hotels.py"
+      ],
+      "completed_utc": "2026-08-23T23:25:36.513566+00:00",
+      "log": "/Users/ryanknight/projects/aws/graphrag-with-neo4j-workshop/setup/release-evidence/additive-20260823-release/load-held-out.log",
+      "passed": false,
+      "returncode": 1
+    }
+  },
+  "started_utc": "2026-08-23T23:25:35.443354+00:00",
+  "status": "failed"
+}

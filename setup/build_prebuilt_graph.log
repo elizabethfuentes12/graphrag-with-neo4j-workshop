@@ -721,4 +721,93 @@ Clearing the canary's documents before the full ingest...
   [252/295] hotel-savannah-002.txt... ✅
   [253/295] hotel-seattle-001.txt... ✅
   [254/295] hotel-seattle-002.txt... ✅
-  [255/295] hotel-seoul-001.txt... 
+  [255/295] hotel-seoul-001.txt... ✅
+  [256/295] hotel-seoul-002.txt... ✅
+  [257/295] hotel-shanghai-001.txt... ✅
+  [258/295] hotel-shanghai-002.txt... ✅
+  [259/295] hotel-singapore-001.txt... ✅
+  [260/295] hotel-singapore-002.txt... ✅
+  [261/295] hotel-spokane-001.txt... ✅
+  [262/295] hotel-spokane-002.txt... ✅
+  [263/295] hotel-stlouis-001.txt... ✅
+  [264/295] hotel-stlouis-002.txt... ✅
+  [265/295] hotel-sydney-001.txt... ✅
+  [266/295] hotel-tampa-001.txt... ✅
+  [267/295] hotel-tampa-002.txt... ✅
+  [268/295] hotel-tijuana-001.txt... ✅
+  [269/295] hotel-tijuana-002.txt... ✅
+  [270/295] hotel-tokyo-001.txt... ✅
+  [271/295] hotel-toronto-001.txt... ✅
+  [272/295] hotel-toronto-002.txt... ✅
+  [273/295] hotel-tucson-001.txt... ✅
+  [274/295] hotel-tucson-002.txt... ✅
+  [275/295] hotel-tulum-001.txt... ✅
+  [276/295] hotel-tulum-002.txt... ✅
+  [277/295] hotel-tulum-003.txt... ✅
+  [278/295] hotel-vancouver-001.txt... ✅
+  [279/295] hotel-vancouver-002.txt... ✅
+  [280/295] hotel-venice-001.txt... ✅
+  [281/295] hotel-venice-002.txt... ✅
+  [282/295] hotel-victoria-001.txt... ✅
+  [283/295] hotel-victoria-002.txt... ✅
+  [284/295] hotel-vienna-001.txt... ✅
+  [285/295] hotel-vienna-002.txt... ✅
+  [286/295] hotel-vientiane-001.txt... ✅
+  [287/295] hotel-vientiane-002.txt... ✅
+  [288/295] hotel-washington-001.txt... ✅
+  [289/295] hotel-washington-002.txt... ✅
+  [290/295] hotel-windsor-001.txt... ✅
+  [291/295] hotel-windsor-002.txt... ✅
+  [292/295] hotel-winnipeg-001.txt... ✅
+  [293/295] hotel-winnipeg-002.txt... ✅
+  [294/295] hotel-yangon-001.txt... ✅
+  [295/295] hotel-yangon-002.txt... ✅
+
+============================================================
+BUILD COMPLETE (295/295 ingests acknowledged)
+============================================================
+
+:Document nodes: 295 (expected 295)
+:Chunk nodes: 295 (expected 295, one chunk per document)
+
+Materializing authored amenity lists...
+✅ Materialized 1606 amenity assertions
+  amenity assertions reconciled: 1606 graph pairs, 1606 source pairs
+
+Creating and verifying the retrieval indexes...
+✅ Retrieval indexes are online and match the embedding contract
+
+Module 1 readiness report:
+  documents: 295 (expected 295)
+  chunks: 295 (expected 295)
+  extracted labels: {'Amenity': 65, 'Hotel': 295, 'Policy': 2999, 'Room': 898, 'Service': 4551}
+  relationships: {'HAS_POLICY': 2999, 'HAS_ROOM': 898, 'OFFERS_AMENITY': 1606, 'PROVIDES_SERVICE': 4551}
+
+Node labels:
+  :Service: 4551
+  :Policy: 2999
+  :Room: 898
+  :Hotel: 295
+  :Amenity: 65
+
+Relationship types:
+  :PROVIDES_SERVICE: 4551
+  :HAS_POLICY: 2999
+  :OFFERS_AMENITY: 1606
+  :HAS_ROOM: 898
+
+--- Acceptance queries (these are what the notebook asks) ---
+  Aggregation  avg guest rating in Paris: 4.7 across 2 hotels
+  Counting  hotels with a pool: 172
+  Multi-hop  Cairo hotels with spa AND pool:
+    AnyCompany Cairo Nile View: 4.5
+    AnyCompany Giza Pyramids: 4.6
+
+✅ Done!
+
+Seeding the fixtures the Module 3.1 booking agent depends on...
+✅ Fixture hotel IDs, the demo06_* constraints, and the maximum-guests rule are in the graph
+setup/build_prebuilt_graph.sh: line 101: syntax error near unexpected token `then'
+real 10729.83
+user 7.00
+sys 2.96

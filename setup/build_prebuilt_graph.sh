@@ -14,6 +14,19 @@
 
 set -euo pipefail
 
+# Bash can read a script incrementally. Execute an immutable private copy so an
+# edit to this file during the long Bedrock build cannot change later commands.
+if [[ -z "${PREBUILT_SCRIPT_SNAPSHOT:-}" ]]; then
+  PREBUILT_SCRIPT_SNAPSHOT_DIR="$(mktemp -d)"
+  PREBUILT_SCRIPT_SNAPSHOT="$PREBUILT_SCRIPT_SNAPSHOT_DIR/build_prebuilt_graph.sh"
+  cp "${BASH_SOURCE[0]}" "$PREBUILT_SCRIPT_SNAPSHOT"
+  chmod 700 "$PREBUILT_SCRIPT_SNAPSHOT"
+  export PREBUILT_SCRIPT_SNAPSHOT PREBUILT_SCRIPT_SNAPSHOT_DIR
+  export PREBUILT_REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  exec bash "$PREBUILT_SCRIPT_SNAPSHOT" "$@"
+fi
+trap 'rm -rf "$PREBUILT_SCRIPT_SNAPSHOT_DIR"' EXIT
+
 RESUMABLE=false
 case "${1:-}" in
   "") ;;
@@ -38,10 +51,11 @@ if [[ $# -gt 1 ]]; then
   exit 2
 fi
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO_ROOT="${PREBUILT_REPO_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 IMAGE="${NEO4J_IMAGE:-neo4j:latest}"
 MEMORY_LIMIT="${NEO4J_MEMORY_LIMIT:-4g}"
 BUILD_CONCURRENCY="${GRAPH_BUILD_CONCURRENCY:-3}"
+SHUTDOWN_TIMEOUT="${NEO4J_SHUTDOWN_TIMEOUT:-60}"
 if [[ "$RESUMABLE" == true ]]; then
   VOLUME="${NEO4J_PREBUILT_VOLUME:-neo4j-prebuilt-checkpoint}"
   PASSWORD="${NEO4J_PREBUILT_PASSWORD:-prebuilt-local-checkpoint}"
@@ -53,7 +67,48 @@ CHECKPOINT_LABEL="com.aws.graphrag-workshop.prebuilt-checkpoint"
 CONTAINER="neo4j-prebuilt-$$"
 OUTPUT="$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.dump"
 MANIFEST="$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.manifest.json"
+PENDING_MANIFEST="$REPO_ROOT/setup/.neo4j-hotel-graph-prebuilt.manifest.pending.json"
 BUILD_SUCCEEDED=false
+
+verify_candidate_manifest() {
+  python3 - "$1" "$2" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+manifest_path = Path(sys.argv[1])
+candidate = Path(sys.argv[2])
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+recorded = manifest.get("candidate", {})
+checksum = hashlib.sha256()
+with candidate.open("rb") as source:
+    for block in iter(lambda: source.read(1024 * 1024), b""):
+        checksum.update(block)
+digest = checksum.hexdigest()
+if manifest.get("final_success") is not True:
+    raise SystemExit("pending manifest is not complete")
+if recorded.get("path") != candidate.name:
+    raise SystemExit("candidate filename does not match pending manifest")
+if recorded.get("byte_size") != candidate.stat().st_size:
+    raise SystemExit("candidate size does not match pending manifest")
+if recorded.get("sha256") != digest:
+    raise SystemExit("candidate checksum does not match pending manifest")
+PY
+}
+
+if [[ -e "$OUTPUT" && ! -e "$MANIFEST" && -e "$PENDING_MANIFEST" ]]; then
+  verify_candidate_manifest "$PENDING_MANIFEST" "$OUTPUT"
+  mv "$PENDING_MANIFEST" "$MANIFEST"
+  echo "Recovered completed candidate publication: $OUTPUT"
+  echo "Manifest: $MANIFEST"
+  rm -rf "$PREBUILT_SCRIPT_SNAPSHOT_DIR"
+  exit 0
+fi
+if [[ ! -e "$OUTPUT" && -e "$PENDING_MANIFEST" ]]; then
+  echo "Discarding an incomplete candidate-publication manifest." >&2
+  rm -f "$PENDING_MANIFEST"
+fi
 
 if [[ -e "$OUTPUT" ]]; then
   echo "Refusing to overwrite existing candidate: $OUTPUT" >&2
@@ -68,20 +123,40 @@ fi
 
 SCRATCH="$(mktemp -d)"
 START_SNAPSHOT="$SCRATCH/prebuilt-build-start.json"
+MANIFEST_WRITER="$SCRATCH/write_prebuilt_manifest.py"
+cp "$REPO_ROOT/setup/write_prebuilt_manifest.py" "$MANIFEST_WRITER"
 BUILD_STARTED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 BUILD_STARTED_EPOCH="$(date +%s)"
 
 cleanup() {
-  docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  if [[ "$RESUMABLE" == false || "$BUILD_SUCCEEDED" == true ]]; then
+  if docker container inspect "$CONTAINER" >/dev/null 2>&1; then
+    CONTAINER_RUNNING="$(
+      docker container inspect --format '{{.State.Running}}' "$CONTAINER" \
+        2>/dev/null || true
+    )"
+    if [[ "$CONTAINER_RUNNING" == "true" ]]; then
+      echo "Stopping Neo4j cleanly (timeout: ${SHUTDOWN_TIMEOUT}s)..." >&2
+      if ! docker stop --time "$SHUTDOWN_TIMEOUT" "$CONTAINER" >/dev/null; then
+        echo "Graceful Neo4j stop failed; forcing container removal." >&2
+      fi
+    fi
+    docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
+  fi
+  if [[ "$BUILD_SUCCEEDED" == true ]]; then
     docker volume rm "$VOLUME" >/dev/null 2>&1 || true
   else
-    echo "Retained Neo4j checkpoint volume: $VOLUME" >&2
-    echo "Resume with: setup/build_prebuilt_graph.sh --resume" >&2
+    if docker volume inspect "$VOLUME" >/dev/null 2>&1; then
+      echo "Retained Neo4j checkpoint volume: $VOLUME" >&2
+      echo "Resume with:" >&2
+      echo "  NEO4J_PREBUILT_VOLUME='$VOLUME' NEO4J_PREBUILT_PASSWORD='$PASSWORD' setup/build_prebuilt_graph.sh --resume" >&2
+    fi
   fi
   rm -rf "$SCRATCH"
+  rm -rf "$PREBUILT_SCRIPT_SNAPSHOT_DIR"
 }
 trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
 
 mkdir -p "$SCRATCH/dumps-out"
 START_ARGS=(
@@ -94,7 +169,7 @@ START_ARGS=(
 if [[ "$RESUMABLE" == true ]]; then
   START_ARGS+=(--resume)
 fi
-python3 "$REPO_ROOT/setup/write_prebuilt_manifest.py" "${START_ARGS[@]}"
+python3 "$MANIFEST_WRITER" "${START_ARGS[@]}"
 
 if [[ "$RESUMABLE" == true ]] && docker volume inspect "$VOLUME" >/dev/null 2>&1; then
   VOLUME_KIND="$(
@@ -118,7 +193,7 @@ else
   if [[ "$RESUMABLE" == true ]]; then
     docker volume create --label "$CHECKPOINT_LABEL=v1" "$VOLUME" >/dev/null
   else
-    docker volume create "$VOLUME" >/dev/null
+    docker volume create --label "$CHECKPOINT_LABEL=v1" "$VOLUME" >/dev/null
   fi
   if [[ "$RESUMABLE" == true ]]; then
     echo "Created resumable Neo4j checkpoint volume: $VOLUME"
@@ -205,7 +280,8 @@ docker run --rm \
   "$IMAGE" \
   neo4j-admin database dump --to-path=/dumps-out neo4j
 
-cp "$SCRATCH/dumps-out/neo4j.dump" "$OUTPUT"
+STAGED_OUTPUT="$SCRATCH/neo4j-hotel-graph-prebuilt.dump"
+cp "$SCRATCH/dumps-out/neo4j.dump" "$STAGED_OUTPUT"
 BUILD_COMPLETED_AT="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 BUILD_COMPLETED_EPOCH="$(date +%s)"
 IMAGE_ID="$(docker image inspect --format '{{.Id}}' "$IMAGE")"
@@ -215,15 +291,18 @@ IMAGE_REPO_DIGESTS_JSON="$(
 if [[ "$IMAGE_REPO_DIGESTS_JSON" == "null" ]]; then
   IMAGE_REPO_DIGESTS_JSON="[]"
 fi
-python3 "$REPO_ROOT/setup/write_prebuilt_manifest.py" finish \
+python3 "$MANIFEST_WRITER" finish \
   --snapshot "$START_SNAPSHOT" \
-  --candidate "$OUTPUT" \
-  --manifest "$MANIFEST" \
+  --candidate "$STAGED_OUTPUT" \
+  --manifest "$PENDING_MANIFEST" \
   --completed-at "$BUILD_COMPLETED_AT" \
   --completed-epoch "$BUILD_COMPLETED_EPOCH" \
   --image-tag "$IMAGE" \
   --image-id "$IMAGE_ID" \
   --image-repo-digests-json "$IMAGE_REPO_DIGESTS_JSON"
+cp "$STAGED_OUTPUT" "$OUTPUT"
+verify_candidate_manifest "$PENDING_MANIFEST" "$OUTPUT"
+mv "$PENDING_MANIFEST" "$MANIFEST"
 BUILD_SUCCEEDED=true
 echo "Done: $OUTPUT"
 echo "Manifest: $MANIFEST"
