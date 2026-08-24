@@ -4,6 +4,11 @@ Date: 2026-08-23
 Source reviewed: `workfolder/defects-v2.md`, Phases 1 through 6
 Status: Pending
 
+This plan supersedes the pending implementation work in
+`workfolder/defects-v2.md`, including its Phases 5.5, 7, and 8. That document
+remains the historical design and audit record. This file is the source of
+truth for the remaining implementation and validation work.
+
 ## Goal
 
 Finish the redesign work that remains after Phases 1 through 6. Preserve the
@@ -40,7 +45,6 @@ current notebook run.
 | V3-4 | High | The fixed Chicago Cypher block shows the query, parameters, candidate records, qualifiers, and exclusions, but it does not fully follow the shared evidence display contract. It omits an explicit retriever label, approximate context size, requested-field gaps, and structured provenance per record. | Normalize the fixed-Cypher display with the other retrieval blocks and assert the displayed fields through behavioral tests. |
 | V3-5 | Release blocker | The available live Module 2 execution predates the current evidence-first notebook. It used an earlier arrival question and an earlier cell layout. It cannot validate the locked Phase 1 contract now in the source notebook. | Execute the current Modules 1 through 3 in order and retain a fresh validation record tied to the current source revision. |
 | V3-6 | High for publication | The evaluator harness creates strict samples, but the evidence gate trusts recorded flags and final labels. It does not recompute vote winners, vote counts, rationale ownership, or exact raw-response validity. The report can treat shallow flag checks as sufficient for publishable grounding labels. | Make one validator authoritative for both the gate and report. Recompute all derived judge fields from preserved samples and reject inconsistencies. |
-| V3-7 | Release blocker | The compact Phase 1.5 policy and decision records are allowed by ignore rules but are still absent from Git's tracked-file inventory. The Phase 6 claim that a fresh clone can locate them is therefore unproven. Several new contract tests and the evaluator contract module are also untracked. | Add every intended durable file to the release change set and verify that local-only raw evidence remains excluded. |
 | V3-8 | Medium | Phase 5 content tests use a curated learner-file list. Current scans find no stale redesign claims, but a new active page or notebook can fall outside that list. | Derive learner-facing scan coverage from active notebook and workshop-content trees, with narrow documented exclusions for historical evidence and planning records. |
 | V3-9 | Critical | The Module 2 notebook and workshop page direct learners to the lite preparation path even when Module 1 already prepared the hosted graph. A readiness mismatch can reach the destructive rebuild path without an explicit rebuild request and erase the restored graph and learner work. | Make the hosted instructions readiness-only and require explicit rebuild intent before any whole-graph deletion. Test the refusal path against a populated graph. |
 | V3-10 | High | The decision tree assigns the Chicago spa-and-pool example to Text2Cypher, while the locked contract and notebook use reviewed fixed Cypher as the deterministic acceptance path. Module 3 also says Module 2 compares the selected Hybrid-Cypher configuration even though Module 2 only selects it. | Give reviewed fixed Cypher its own diagram branch, mark Text2Cypher optional and governed, and correct the Module 2 and Module 3 learner prose. |
@@ -60,8 +64,13 @@ current notebook run.
   action is validation, not graph reconstruction.
 - Whole-graph reconstruction is a facilitator or self-paced operation and
   requires explicit destructive intent.
+- `--rebuild` is required before any whole-graph build, including an empty
+  graph. `--resume` also counts as explicit destructive intent for its
+  checkpoint workflow.
 - Repository root, `notebooks/`, and the active module directory are supported
-  launch locations for notebook and helper workflows.
+  launch locations for notebook and helper workflows. Each notebook must work
+  from its own module directory; notebooks do not need to work when launched
+  from another module's directory.
 - Optional Text2Cypher may report a blocked state when verified reader
   credentials are unavailable. Its live execution is outside the deterministic
   completion gate.
@@ -87,6 +96,8 @@ current notebook run.
   to satisfy the new schema.
 - Raw evidence contains environment and execution details. Keep it local unless
   an approved durable location and retention policy are recorded.
+- Live validation reads credentials and service configuration from `.env`.
+  Validation records must not copy credentials or secret values.
 
 ## Phase 1: Make graph preparation safe and repair deterministic contracts
 
@@ -111,6 +122,9 @@ example enforces and displays the complete locked contract.
 - [ ] Require explicit rebuild intent before `prepare_graph.py` can reach the
   whole-graph clearing path. Report the observed and expected graph sizes in the
   refusal message.
+- [ ] Require `--rebuild` for builds against empty graphs as well as populated
+  graphs. Treat `--resume` as explicit destructive intent for the checkpoint
+  workflow.
 - [ ] Add regression tests proving that default preparation and check-only mode
   never call the destructive build path on a populated graph.
 - [ ] Give the optional unpinned demo a filename reserved solely for temporary
@@ -205,8 +219,8 @@ from every supported launch location.
   explicitly.
 - [ ] Document the supported launch locations in the root and module setup prose.
 - [ ] Add path-contract tests from the repository root, notebooks root, and each
-  active module directory. Tests must prove that every resolved asset is the
-  same file in all three cases.
+  notebook's own active module directory. Tests must prove that every resolved
+  asset is the same file in all three cases.
 - [ ] Add a fresh-clone path test that runs without extracted `data/`, caches, or
   notebook output directories.
 
@@ -266,19 +280,18 @@ recomputed evidence contract passes.
 **Notes:** This phase closes V3-6. Running the paid benchmark is deferred unless
 the release makes comparative rate or stability claims.
 
-## Phase 4: Complete version-control and learner-surface coverage
+## Phase 4: Complete release-inventory and learner-surface coverage
 
 **Status:** Pending
 
-**Outcome:** Every durable Phase 1 through 6 artifact is present in a fresh clone,
-and every active learner surface participates in semantic regression checks.
+**Outcome:** Every durable Phase 1 through 6 artifact remains present in a fresh
+clone, and every active learner surface participates in semantic regression
+checks.
 
 **Checklist:**
 
-- [ ] Add the Phase 1.5 retention policy, findings, and amenity recheck to the
-  intended tracked release set.
-- [ ] Add the evaluator contract and all new focused contract tests to the same
-  release set.
+- [ ] Verify that the Phase 1.5 retention policy, findings, amenity recheck,
+  evaluator contract, and focused contract tests remain tracked in `HEAD`.
 - [ ] Confirm that raw trials, detailed generated reports, logs, executed
   notebooks, archived notebooks, and release-smoke bundles remain local-only.
 - [ ] Replace the curated learner-file list with discovery of active notebook
@@ -326,7 +339,7 @@ and every active learner surface participates in semantic regression checks.
 - Local-only evidence remains ignored and no credential or generated notebook
   output enters the release set.
 
-**Notes:** This phase closes V3-7, V3-8, V3-10, and V3-13. The diagram source,
+**Notes:** This phase closes V3-8, V3-10, and V3-13. The diagram source,
 exports, ownership tests, and learner prose must change together.
 
 ## Phase 5: Run current live semantic acceptance
@@ -340,8 +353,10 @@ agent and produce the exact evidence promised by the locked learning contract.
 
 - [ ] Start from the published graph artifact or another explicitly approved
   clean workshop graph and record its initial identity.
-- [ ] Run the Module 2 non-destructive readiness path against that populated
-  graph and confirm that graph counts and Module 1 learner data do not change.
+- [ ] As a safety preflight, run the Module 2 non-destructive readiness path
+  against that populated graph and confirm that graph counts and existing
+  learner data do not change. This preflight is not the Module 2 execution in
+  the ordered acceptance run.
 - [ ] Execute Module 1, including the repaired optional demo cleanup test, and
   confirm that the final graph contains only intended workshop data.
 - [ ] Execute the current Module 2 notebook. Do not reuse the earlier executed
@@ -367,8 +382,13 @@ agent and produce the exact evidence promised by the locked learning contract.
   abstention, guest-limit enforcement, and idempotent reservation retries.
 - [ ] Record source revision, service and library versions, graph counts, model
   ID, embedding contract, AWS region, Neo4j database, and execution timestamps.
-- [ ] Save executed notebooks and logs as local evidence. Publish them only after
-  assigning an approved immutable URI and checksum.
+- [ ] Read live service configuration from `.env` without copying credentials
+  or secret values into evidence.
+- [ ] Save a short tracked Markdown validation record containing the commit,
+  graph identity, non-secret environment and library versions, timestamps, and
+  acceptance results.
+- [ ] Keep executed notebooks and detailed logs as local diagnostics. Publish
+  them only after assigning an approved immutable URI and checksum.
 
 **Validation:**
 
