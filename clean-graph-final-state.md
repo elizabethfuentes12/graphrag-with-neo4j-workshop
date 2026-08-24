@@ -120,3 +120,54 @@ none blocks the accepted local artifact.
 - **Routine maintenance:** Rerun the reusable build and validation workflows
   when the corpus, graph contract, model configuration, or release dependencies
   change.
+
+## Optional 240-trial benchmark
+
+**Status: Optional and not yet run.** This benchmark is not a release blocker.
+Run it only when the project needs comparative rates, stability estimates, or
+stronger evidence about differences between vector and graph retrieval. It
+uses 10 trials for each combination of six questions, two retrieval arms, and
+two prompt conditions, producing 240 trials across 24 evaluation cells.
+
+- **Purpose:** The benchmark measures repeated factuality and grounding
+  behavior. It extends the completed one-trial-per-cell release smoke, which
+  demonstrates path coverage but does not support statistical claims.
+- **Prerequisites:** The accepted 300-document graph must be available, the
+  workshop environment and model configuration must be pinned, AWS credentials
+  must permit the required Bedrock inference, and the output directory must be
+  new and empty.
+- **Cost and duration:** The run makes substantially more model and judge calls
+  than the release smoke. Confirm the acceptable Bedrock cost and execution
+  window before starting it.
+- **Reproducible runner:** Use `setup/run_live_evidence.py` with `--trials 10`.
+  Three question-partitioned workers preserve all evidence while reducing
+  elapsed time.
+
+```console
+cd notebooks
+uv run python ../setup/run_live_evidence.py \
+  --output-dir ../setup/release-evidence/phase15-benchmark-YYYYMMDD \
+  --trials 10 \
+  --agent-workers 3 \
+  --questions orlando_aggregation pool_counting chicago_criteria \
+              antarctica_no_match chicago_shared_amenities suite_and_spa \
+  --arms vector graph \
+  --conditions notebook grounded \
+  --notebook-modules 1-3 \
+  --notebook-timeout 1800
+```
+
+- **Automated evidence gate:** The run must contain exactly 240 unique trials,
+  exactly 10 trials in each configured cell, no duplicate cells or trial
+  numbers, no tool errors, and no unscored factuality or grounding results.
+- **Required report:** Summarize factuality and grounding counts and rates by
+  retrieval arm, prompt condition, question, and complete cell. Preserve the
+  merged trial JSON, graph facts, notebook results, stage logs, and the exact
+  commands recorded in `release-evidence.json`.
+- **Interpretation:** Keep raw counts and rates distinct from statistical
+  conclusions. Any confidence interval, significance test, or comparative
+  claim must state its method and account for the repeated observations within
+  each question and evaluation cell.
+- **Completion condition:** Mark this optional benchmark complete only after
+  the automated evidence gate passes and its aggregate results, limitations,
+  and artifact paths are added to the Phase 1.5 documentation.

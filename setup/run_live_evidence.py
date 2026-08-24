@@ -15,7 +15,7 @@ Usage from the workshop environment:
     cd notebooks
     # Release smoke: one trial in each of the 24 cells.
     uv run python ../setup/run_live_evidence.py \
-        --output-dir ../setup/release-evidence/live-20260823 \
+        --output-dir ../evidence/live-20260823 \
         --trials 1 \
         --agent-workers 3 \
         --questions orlando_aggregation pool_counting chicago_criteria \

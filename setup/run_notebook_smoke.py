@@ -11,7 +11,7 @@ Usage:
     cd notebooks
     uv run python ../setup/run_notebook_smoke.py \
         --modules 1-3 \
-        --output-dir ../setup/release-evidence/live/notebooks
+        --output-dir ../evidence/live/notebooks
 """
 
 from __future__ import annotations

@@ -46,7 +46,7 @@ For a concise final summary, see
   It did not replace `static/neo4j-hotel-graph.dump` until after the candidate
   passed the restore, additive, live-evidence, and publication-review gates.
   The recovered 6.2 MiB candidate is
-  `setup/neo4j-hotel-graph-prebuilt.dump`, with SHA-256
+  `evidence/build/neo4j-hotel-graph-prebuilt.dump`, with SHA-256
   `a6eeecc3305acbbffe46e0ef7531db34c5a62d62db200c5574c3946102e29f02`.
 - The long-running shell read a concurrently updated copy of its script after
   graph readiness and stopped on a syntax error before export. The guarded
@@ -564,7 +564,7 @@ complete offline setup suite passes 153 tests with one intentional
 environment-dependent skip. Both edited notebooks pass JSON parsing and Python
 cell compilation, and Ruff lint and format checks pass. Live graph facts and
 the approved 24-cell release smoke are recorded in
-`setup/phase15/PHASE-1.5-AMENITY-RECHECK.md`. Modules 1 and 2 passed together;
+`evidence/phase15/PHASE-1.5-AMENITY-RECHECK.md`. Modules 1 and 2 passed together;
 the finalized Module 3 notebook passed all nine cells after its
 negation-sensitive availability assertion was corrected.
 
@@ -584,7 +584,7 @@ completed extraction work across recoverable failures.
 - [x] Complete all 295 Bedrock extractions without an unresolved document
   failure.
 - [x] Require the final build readiness gates to pass before dumping Neo4j.
-- [x] Generate `setup/neo4j-hotel-graph-prebuilt.dump` without replacing the
+- [x] Generate `evidence/build/neo4j-hotel-graph-prebuilt.dump` without replacing the
   repository's existing static artifact during candidate construction.
 - [x] Record an honest recovered manifest with the directly evidenced duration,
   candidate size and checksum, final readiness gates, wrapper failure, and
@@ -699,7 +699,7 @@ unscored evidence.
 The completed candidate predates that manifest hook because its long-running
 shell had already loaded the earlier script. The reusable
 `write_prebuilt_manifest.py recover` command therefore wrote
-`setup/neo4j-hotel-graph-prebuilt.manifest.json` from the surviving successful
+`evidence/build/neo4j-hotel-graph-prebuilt.manifest.json` from the surviving successful
 run log and artifact. It records the 10,729.83-second duration, all final
 readiness gates, artifact timestamp, size and SHA-256, plus the later shell
 syntax failure. It records unavailable build-start Git, file-hash, and image

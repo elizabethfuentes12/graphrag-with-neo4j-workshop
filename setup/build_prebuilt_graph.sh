@@ -10,7 +10,7 @@
 # never connects to Aura and never replaces static/neo4j-hotel-graph.dump.
 #
 # Usage: setup/build_prebuilt_graph.sh [--resume]
-# Output: setup/neo4j-hotel-graph-prebuilt.dump
+# Output: evidence/build/neo4j-hotel-graph-prebuilt.dump
 
 set -euo pipefail
 
@@ -65,10 +65,13 @@ else
 fi
 CHECKPOINT_LABEL="com.aws.graphrag-workshop.prebuilt-checkpoint"
 CONTAINER="neo4j-prebuilt-$$"
-OUTPUT="$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.dump"
-MANIFEST="$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.manifest.json"
-PENDING_MANIFEST="$REPO_ROOT/setup/.neo4j-hotel-graph-prebuilt.manifest.pending.json"
+EVIDENCE_DIR="$REPO_ROOT/evidence/build"
+OUTPUT="$EVIDENCE_DIR/neo4j-hotel-graph-prebuilt.dump"
+MANIFEST="$EVIDENCE_DIR/neo4j-hotel-graph-prebuilt.manifest.json"
+PENDING_MANIFEST="$EVIDENCE_DIR/.neo4j-hotel-graph-prebuilt.manifest.pending.json"
 BUILD_SUCCEEDED=false
+
+mkdir -p "$EVIDENCE_DIR"
 
 verify_candidate_manifest() {
   python3 - "$1" "$2" <<'PY'

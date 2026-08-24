@@ -28,7 +28,7 @@ if [[ "$#" -gt 1 ]]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CANDIDATE="${1:-$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.dump}"
+CANDIDATE="${1:-$REPO_ROOT/evidence/build/neo4j-hotel-graph-prebuilt.dump}"
 IMAGE="${NEO4J_IMAGE:-neo4j:latest}"
 RUN_ID="candidate-validate-$$"
 VOLUME="neo4j-$RUN_ID"

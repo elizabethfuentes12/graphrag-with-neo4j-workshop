@@ -6,7 +6,7 @@ Usage:
 
     cd notebooks
     uv run python ../setup/phase15/capture_graph_facts.py \
-        --out ../setup/release-evidence/live/phase15/graph-facts.json
+        --out ../evidence/live/phase15/graph-facts.json
 """
 
 from __future__ import annotations

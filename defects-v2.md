@@ -31,7 +31,7 @@ curriculum decision and turns it into an implementation plan.
   vector RAG hallucinates.
 - Phase 2 completed the active path migration. Module 2 now lives under
   `02-connected-context`, Module 3 now lives under `03-grounded-booking-agent`,
-  and the old Module 2 notebook is preserved under `setup/phase15/archive/`.
+  and the old Module 2 notebook is preserved under `evidence/phase15/archive/`.
 - A post-migration semantic audit corrected Module 3.1 and Module 2.1 ownership
   throughout Modules 4 and 5, shared helpers, setup messages, and deployment
   documentation. Active learner surfaces contain no retired path or filename.
@@ -586,7 +586,7 @@ leaves generated local files behind.
 | `notebooks/03-retrieval-patterns/3.1_retrieval_patterns.ipynb` | `notebooks/02-connected-context/2.1_connected_context.ipynb` | Becomes the sole Module 2 learner notebook |
 | `notebooks/03-retrieval-patterns/3.2_grounded_booking_agent.ipynb` | `notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb` | Becomes the sole Module 3 learner notebook |
 | `notebooks/03-retrieval-patterns/reservation_command.py` | `notebooks/03-grounded-booking-agent/reservation_command.py` | Moves with the booking agent |
-| `notebooks/02-vector-rag-hallucinates/2.1_vector_rag_hallucinates.ipynb` | `setup/phase15/archive/2.1_vector_rag_hallucinates.ipynb` | Preserved as historical evaluation material |
+| `notebooks/02-vector-rag-hallucinates/2.1_vector_rag_hallucinates.ipynb` | `evidence/phase15/archive/2.1_vector_rag_hallucinates.ipynb` | Preserved as historical evaluation material |
 | `workshop-content/content/02-vector-rag-hallucinates/` | `workshop-content/content/02-connected-context/` | Becomes the Module 2 route |
 | `workshop-content/content/03-retrieval-patterns/` | `workshop-content/content/03-grounded-booking-agent/` | Becomes the Module 3 route |
 
@@ -611,7 +611,7 @@ intermediate paths.
 - [x] Move Module 2 graph preparation, corpus, README, and legacy FAISS assets to
   `notebooks/02-connected-context/` without changing their behavior.
 - [x] Archive the old agent-comparison notebook at
-  `setup/phase15/archive/2.1_vector_rag_hallucinates.ipynb` and remove it from
+  `evidence/phase15/archive/2.1_vector_rag_hallucinates.ipynb` and remove it from
   the notebook runner.
 - [x] Move the booking notebook to
   `notebooks/03-grounded-booking-agent/3.1_grounded_booking_agent.ipynb`.

@@ -1,4 +1,0 @@
-Amenity reconciliation: 295 sources, 65 names, 1606 graph relationships, 1606 distinct graph assertions, 1632 expected assertions
-Amenity reconciliation failed:
-  - 5 expected source Documents are missing; examples: hotel-capetown-002.txt, hotel-prague-002.txt, hotel-riodejaneiro-002.txt, hotel-sydney-002.txt, hotel-tokyo-002.txt
-  - 26 source amenity assertions are missing; examples: hotel-capetown-002.txt: 24-Hour Fitness Center, hotel-capetown-002.txt: Complimentary High-Speed Wifi, hotel-capetown-002.txt: Direct Beach Access, hotel-capetown-002.txt: Full-Service Spa, hotel-capetown-002.txt: On-Site Restaurant

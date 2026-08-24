@@ -29,9 +29,9 @@ if [[ "$#" -gt 2 ]]; then
 fi
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CANDIDATE="${1:-$REPO_ROOT/setup/neo4j-hotel-graph-prebuilt.dump}"
+CANDIDATE="${1:-$REPO_ROOT/evidence/build/neo4j-hotel-graph-prebuilt.dump}"
 RUN_TIMESTAMP="$(date -u +"%Y%m%dT%H%M%SZ")"
-OUTPUT_DIR="${2:-$REPO_ROOT/setup/release-evidence/additive-$RUN_TIMESTAMP}"
+OUTPUT_DIR="${2:-$REPO_ROOT/evidence/additive-$RUN_TIMESTAMP}"
 IMAGE="${NEO4J_IMAGE:-neo4j:latest}"
 RUN_ID="additive-validate-$$"
 VOLUME="neo4j-$RUN_ID"

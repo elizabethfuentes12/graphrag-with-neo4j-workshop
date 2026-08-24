@@ -419,9 +419,9 @@ vector arm produced zero fabrications and concluded that the module title was re
 
 **That conclusion is withdrawn.** The judged comparison carries four design defects, and
 the first one alone can produce the observed result. The raw evidence is kept at
-`setup/phase15/evidence/phase15-merged.json` and the tables at
-`setup/phase15/PHASE-1.5-REPORT.md`, because the deterministic measurements in them
-remain valid. The conclusions in `setup/phase15/PHASE-1.5-FINDINGS.md` do not.
+`evidence/phase15/evidence/phase15-merged.json` and the tables at
+`evidence/phase15/PHASE-1.5-REPORT.md`, because the deterministic measurements in them
+remain valid. The conclusions in `evidence/phase15/PHASE-1.5-FINDINGS.md` do not.
 
 **The scoreboard also does not say what the run 1 summary said.** On the judge's own
 labels the graph arm scored 24 correct out of 24 and the vector arm scored 15 correct, 8
@@ -502,8 +502,8 @@ is better. Both remain open until run 2.
 
 #### Run 2, 2026-08-21: results
 
-Evidence is at `setup/phase15/evidence/run2/phase15-run2-merged.json` and the tables are
-at `setup/phase15/PHASE-1.5-REPORT-RUN2.md`.
+Evidence is at `evidence/phase15/evidence/run2/phase15-run2-merged.json` and the tables are
+at `evidence/phase15/PHASE-1.5-REPORT-RUN2.md`.
 
 **Factuality under the notebook prompt, as `correct / partial / incorrect` out of 10.**
 

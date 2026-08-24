@@ -16,7 +16,7 @@ Usage from the workshop environment:
 
     cd notebooks
     uv run python ../setup/run_additive_validation.py \
-        --output-dir ../setup/release-evidence/additive-20260823
+        --output-dir ../evidence/additive-20260823
 """
 
 from __future__ import annotations
