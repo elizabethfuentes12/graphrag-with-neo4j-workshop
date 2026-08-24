@@ -1,11 +1,13 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""The pinned extraction schema every module agrees on.
+"""The graph contract and restricted LLM extraction schema.
 
 Without a pinned schema `SimpleKGPipeline` lets the LLM invent a fresh set of
 labels for every chunk, so one document yields `Address` nodes and another
-yields `RoomType`/`BedConfiguration`. Module 3.2's retrieval tool promises the
-agent a fixed contract, and the graph has to actually honour it.
+yields `RoomType`/`BedConfiguration`. Module 3.1's retrieval tool promises the
+agent a fixed contract, and the graph has to actually honour it. Amenities
+remain in that overall contract but are excluded from LLM extraction because
+their authored source list is materialized deterministically.
 
 This module reads no environment and opens no client, so it is safe to import
 from tests and from the reservation Lambda.
@@ -69,15 +71,10 @@ GRAPH_SCHEMA: dict[str, object] = {
         {
             "label": "Amenity",
             "description": (
-                "A facility or feature the hotel offers, e.g. 'Swimming Pool', "
-                "'Spa', 'Fitness Center', 'WiFi'. Only create one when the "
-                "document says the hotel actually has it."
+                "An authored facility or feature from the source document's "
+                "Hotel Amenities list. The exact source label is its identity."
             ),
-            "properties": [
-                {"name": "name", "type": "STRING"},
-                {"name": "description", "type": "STRING"},
-                {"name": "fee", "type": "STRING"},
-            ],
+            "properties": [{"name": "name", "type": "STRING"}],
         },
         {
             "label": "Policy",
@@ -118,7 +115,31 @@ GRAPH_SCHEMA: dict[str, object] = {
     "additional_patterns": False,
 }
 
+# The graph exposed to retrieval includes deterministic Amenities, but the LLM
+# must never recreate values that already exist as an authored source list.
+# Keep this as a derived schema so the two contracts cannot drift on the node
+# and relationship types that extraction still owns.
+LLM_EXTRACTION_SCHEMA: dict[str, object] = {
+    "node_types": [
+        node for node in GRAPH_SCHEMA["node_types"] if node["label"] != "Amenity"
+    ],
+    "relationship_types": [
+        relationship
+        for relationship in GRAPH_SCHEMA["relationship_types"]
+        if relationship["label"] != "OFFERS_AMENITY"
+    ],
+    "patterns": [
+        pattern
+        for pattern in GRAPH_SCHEMA["patterns"]
+        if pattern[1] != "OFFERS_AMENITY"
+    ],
+    "additional_node_types": False,
+    "additional_relationship_types": False,
+    "additional_patterns": False,
+}
+
 SCHEMA_NODE_LABELS = ("Hotel", "Room", "Amenity", "Policy", "Service")
+LLM_SCHEMA_NODE_LABELS = ("Hotel", "Room", "Policy", "Service")
 
 # Labels produced by earlier unpinned runs. Their presence after a build means
 # the schema did not hold.
@@ -135,4 +156,3 @@ OFF_SCHEMA_LABELS = (
     "Country",
     "Attraction",
 )
-

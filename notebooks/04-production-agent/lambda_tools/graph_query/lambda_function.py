@@ -3,14 +3,16 @@
 """Lambda entry point for the structured Gateway target.
 
 The retrieval itself is ``workshop.hybrid_retrieval.graph_query``, the same
-``Text2CypherRetriever`` pattern Module 3.1 compares in-process. Everything
+``Text2CypherRetriever`` pattern Module 2.1 compares in-process. Everything
 below is the Lambda boundary. The deployment package installs the shared
 ``workshop`` package rather than flat-copying its files, so this import
 resolves here exactly as it does in the notebook.
 
 This tool reads. The Cypher is model-generated, and ``Text2CypherRetriever``
 plans it with ``EXPLAIN`` and refuses to run anything the planner does not
-report as read-only.
+report as read-only. The workshop reuses its ordinary Neo4j credential to keep
+participant setup small; a production deployment should use a read-only Neo4j
+user as an independent database boundary.
 """
 
 from typing import Any, Mapping

@@ -5,14 +5,15 @@ weight: 50
 
 ## Deploy the Agent Tools and Memory
 
-The Module 3 booking agent calls tools in the notebook process and keeps state
-only for the current session. Module 4 adds three production capabilities:
+The Module 3 booking agent calls tools in the notebook process and stores state only for the current session. Module 4 adds three production capabilities:
 
 | Gap | Fix |
 |---|---|
 | Tools as in-process functions | :link[Bedrock AgentCore]{href="https://aws.amazon.com/bedrock/agentcore/" external=true} Gateway and :link[AWS Lambda]{href="https://aws.amazon.com/lambda/" external=true}: managed MCP endpoints |
 | Tool authentication | **IAM SigV4**: requests signed with AWS credentials |
 | State limited to one session | **AgentCore Memory**: extracted records available across sessions |
+
+Part 1 closes the first two gaps with a Gateway in front of two retrieval Lambdas, and Part 2 closes the third with AgentCore Memory.
 
 :image[Module 4 architecture: a notebook agent uses AgentCore Memory and calls two Neo4j retrieval Lambdas through an IAM-authenticated Gateway]{src="../../images/03-agentcore-architecture.png" width=800}
 
@@ -35,14 +36,14 @@ Studio removes them when the event ends. In your own account, delete them from
 the console or CLI when you finish.
 :::
 
-Module 4 packages two retrieval patterns behind a managed endpoint:
+Module 4 exposes two retrieval patterns through a managed endpoint:
 
 | Gateway tool | Retriever | Question shape |
 |---|---|---|
 | `search_hotel_knowledge` | `HybridCypherRetriever` | Semantic: rooms, amenities, policies, services |
-| `graph_query` | `Text2CypherRetriever` | Structured: counts, averages, filters, multi-hop |
+| `graph_query` | `Text2CypherRetriever` | Structured: counts, averages, filters, connected traversals |
 
-Both tools import from `notebooks/workshop/hybrid_retrieval.py`. `search_hotel_knowledge` reuses the function called by Module 3.2. `graph_query` packages the Text2Cypher pattern demonstrated in Module 3.1 as a reusable function. Each Lambda handler unwraps the event and calls one of these functions.
+Both tools import from `notebooks/workshop/hybrid_retrieval.py`. `search_hotel_knowledge` reuses the function called by Module 3.1. `graph_query` packages the Text2Cypher pattern demonstrated in Module 2.1 as a reusable function. Each Lambda handler unwraps the event and calls one of these functions.
 
 Both interfaces are intended for retrieval. `search_hotel_knowledge` runs reviewed static Cypher. `graph_query` plans model-generated Cypher with `EXPLAIN` and executes it only when the planner reports a read-only query. The reservation command remains outside the Gateway.
 
@@ -96,7 +97,7 @@ This notebook creates one AgentCore Memory resource. The resource can incur char
 
 **Session 1:** A guest provides a name, loyalty number, and room preference.
 
-AgentCore extracts asynchronously. The notebook polls and shows what was extracted:
+AgentCore extracts these records asynchronously. The notebook polls the service and shows the extracted records:
 
 :::code{language=bash}
 🧠 Preferences extracted (1 record(s)):

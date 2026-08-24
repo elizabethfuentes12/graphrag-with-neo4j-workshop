@@ -30,8 +30,8 @@ def lego_progress(completed: int):
     """
     modules = [
         "Module 1: Build the Graph",
-        "Module 2: Vector RAG Hallucinates",
-        "Module 3: Retrieval Patterns and the Grounded Booking Agent",
+        "Module 2: From Similarity Search to Connected Context",
+        "Module 3: Build the Grounded Booking Agent",
         "Module 4: Production Agent with AgentCore",
         "Module 5: Deploy to AgentCore Runtime",
         "Module 6: Inspectable Neo4j Memory",

@@ -26,12 +26,12 @@ Every preference links to its exact source message and the existing `Hotel` node
 
 ## Verify Recall and Provenance
 
-The notebook checks recall for two actors\:
+The notebook checks recall for two actors:
 
 - Actor A starts `SESSION_A2` and asks a new question. The actor-scoped query recalls the preference stored during the earlier session.
 - Actor B asks the same question in a separate session. The actor-scoped query returns no preference.
 
-The following Cypher query returns the complete provenance path\:
+The following Cypher query returns the complete provenance path:
 
 :::code{language=cypher showCopyAction=true}
 CYPHER 25

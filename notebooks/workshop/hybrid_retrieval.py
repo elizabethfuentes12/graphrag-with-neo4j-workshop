@@ -1,6 +1,6 @@
 # Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 # SPDX-License-Identifier: MIT-0
-"""Fixed graph-enriched retrieval shared by Module 3.2 and the Module 4 Lambdas.
+"""Fixed graph-enriched retrieval shared by Module 3.1 and the Module 4 Lambdas.
 
 Two read paths live here and nothing else. ``search_hotel_knowledge`` is the
 semantic path over ``HybridCypherRetriever`` and accepts only ``query``. Index
@@ -195,7 +195,7 @@ def build_retriever(
 
 @lru_cache(maxsize=1)
 def _get_retriever() -> HybridCypherRetriever:
-    secret_id = os.environ.get(contracts.READ_SECRET_ID_ENV)
+    secret_id = os.environ.get(contracts.RETRIEVAL_SECRET_ID_ENV)
     config = (
         Neo4jConfig.from_secret(secret_id)
         if secret_id
@@ -405,7 +405,7 @@ def build_graph_query_retriever(
 
 @lru_cache(maxsize=1)
 def _get_graph_query_retriever() -> Text2CypherRetriever:
-    secret_id = os.environ.get(contracts.READ_SECRET_ID_ENV)
+    secret_id = os.environ.get(contracts.RETRIEVAL_SECRET_ID_ENV)
     config = (
         Neo4jConfig.from_secret(secret_id)
         if secret_id

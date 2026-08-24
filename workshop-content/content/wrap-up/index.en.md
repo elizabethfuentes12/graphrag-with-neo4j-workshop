@@ -15,14 +15,16 @@ weight: 90
 - Verified the **uniqueness constraints** that keep entities de-duplicated
 - Created **both retrieval indexes** (vector and full-text) that every later module queries
 
-### Module 2: Witnessed the Problem
-- Saw pure vector RAG **hallucinate** on relational queries
-- Understood **why** semantic similarity fails for multi-hop reasoning
-- Measured the gap between vector retrieval and ground truth
+### Module 2: Built Connected Context
+- Used **semantic search** to find relevant source text
+- Added **exact-term retrieval** for names, identifiers, and postal codes
+- Expanded matched sources into **connected graph evidence** with named fields and provenance
+- Compared retrieval evidence before asking a model to generate an answer
 
-### Module 3: Implemented Solutions
-- **Four retrievers** on one graph, and the decision table for choosing between them
-- **Hybrid retrieval** - a vector arm and a full-text arm fused, then a reviewed traversal
+### Module 3: Built the Grounded Booking Agent
+- Applied the selected **fixed retrieval contract** to the booking workflow
+- Used **hybrid retrieval** with a vector arm, a full-text arm, and a reviewed traversal
+- Declined questions when the retrieved evidence did not support an answer
 - **A grounded booking agent** that abstains when the graph is silent, and writes only inside a transaction that has already checked the rules
 
 ### Modules 4 and 5: Built Production Infrastructure
@@ -41,8 +43,8 @@ weight: 90
 
 ## Key Concepts to Remember
 
-1. **Vector similarity is not relational reasoning.** Similar text and connected facts are different things, and only one of them survives an aggregation.
-2. **A graph gives structural precision.** A named field can be asserted on, queried, and handed to a write path. A sentence cannot.
+1. **Retrieval signals are complementary.** Semantic similarity finds relevant language. Exact terms protect identifiers. Graph structure adds connected fields and relationships.
+2. **A graph gives structural precision.** Named fields and relationships can be queried, filtered, and handed to a write path with their provenance.
 3. **MCP keeps tool integration clean.** The agent code did not change when the tools moved behind a Gateway, and it did not change again when the agent moved onto Runtime.
 4. **Graph memory gives long-term context you can audit.** Provenance is what turns a wrong preference from an outage into a one-line correction.
 
@@ -87,9 +89,9 @@ weight: 90
 ## Next Steps
 
 ### Start with your own data
-1. **Adapt the schema** - swap the hotel entities for your own, and pin them the same way
-2. **Re-run the extraction** - the pipeline in Module 1 does not care what the documents are about
-3. **Find the questions that still break** - the four failure modes are a test suite, not a story
+1. **Adapt the schema** - replace the hotel entities with your own, and pin them the same way
+2. **Re-run the extraction** - preserve source identifiers and provenance in the new domain
+3. **Build a retrieval evaluation set** - include semantic, exact-term, connected-context, and structured questions
 
 ### Then tune what you built
 1. **Tune retrieval quality** - adjust the hybrid `alpha` and the expansion Cypher against your own query logs
@@ -130,6 +132,6 @@ What worked well? What would you change? Tell us, so the next room gets a better
 
 ## Thank You
 
-We hope you enjoyed learning about GraphRAG and how knowledge graphs keep an agent honest.
+We hope you enjoyed learning how GraphRAG turns relevant source text into connected, inspectable evidence for an agent.
 
 Happy building.

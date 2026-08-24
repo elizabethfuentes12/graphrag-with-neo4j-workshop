@@ -17,9 +17,11 @@ re-export them, so there is one obvious place each name comes from.
 from collections import defaultdict
 from pathlib import Path
 
+from workshop.retrieval_setup import REQUIRED_SOURCE_FILES
+
 # Source documents top out at ~7.4 KB. A chunk this size keeps each hotel in a
 # single chunk, so the hotel's name, address and rating are extracted together
-# with its rooms and amenities instead of being split across two prompts.
+# with its rooms, policies, and services instead of being split across prompts.
 CHUNK_SIZE = 12000
 CHUNK_OVERLAP = 0
 
@@ -32,9 +34,16 @@ EXTRACTION_MAX_TOKENS = 16000
 # Document selection
 # ---------------------------------------------------------------------------
 
-# Module 2 asks about Paris and Cairo by name, so the lite sample has to contain
-# them. `sorted(...)[:30]` is alphabetical and stops at Boston.
-REQUIRED_CITIES = ("paris", "cairo")
+# These documents are extracted live by Module 1 and therefore must not be in
+# the prebuilt graph artifact. This build-time module is the source of truth
+# for both facilitator selection and the learner-facing extraction helper.
+HELD_OUT_DOCUMENTS: tuple[str, ...] = (
+    "hotel-tokyo-002.txt",
+    "hotel-sydney-002.txt",
+    "hotel-riodejaneiro-002.txt",
+    "hotel-capetown-002.txt",
+    "hotel-prague-002.txt",
+)
 
 
 def _city_of(filename: str) -> str:
@@ -46,25 +55,38 @@ def _city_of(filename: str) -> str:
 def select_lite_files(data_dir: str | Path, max_docs: int) -> list[str]:
     """Return a city-stratified sample of `max_docs` FAQ filenames.
 
-    Every document for each city in `REQUIRED_CITIES` comes first, so the
-    Paris average and the Cairo multi-hop query have more than one hotel to
-    work with. The remainder is filled round-robin across the other cities
-    rather than alphabetically, so the sample spans the corpus.
+    Every source in the shared retrieval contract comes first. The remainder
+    is filled round-robin across cities, so the sample spans the corpus while
+    preserving the exact document count.
     """
     by_city: dict[str, list[str]] = defaultdict(list)
     for path in sorted(Path(data_dir).glob("*.txt")):
         by_city[_city_of(path.name)].append(path.name)
 
-    picked = [name for city in REQUIRED_CITIES for name in by_city.get(city, [])]
-    others = [city for city in sorted(by_city) if city not in REQUIRED_CITIES]
+    available = {name for names in by_city.values() for name in names}
+    missing = sorted(set(REQUIRED_SOURCE_FILES) - available)
+    if missing:
+        raise ValueError("required lite sources are missing: " + ", ".join(missing))
+    if max_docs < len(REQUIRED_SOURCE_FILES):
+        raise ValueError(
+            f"lite sample size {max_docs} is smaller than the "
+            f"{len(REQUIRED_SOURCE_FILES)} required sources"
+        )
+
+    picked = list(REQUIRED_SOURCE_FILES)
+    picked_set = set(picked)
 
     depth = max((len(names) for names in by_city.values()), default=0)
     for i in range(depth):
-        for city in others:
+        for city in sorted(by_city):
             if len(picked) >= max_docs:
                 return picked[:max_docs]
             names = by_city[city]
-            if i < len(names):
+            if i < len(names) and names[i] not in picked_set:
                 picked.append(names[i])
+                picked_set.add(names[i])
 
-    return picked[:max_docs]
+    raise ValueError(
+        f"lite sample found only {len(picked)} source documents, "
+        f"expected {max_docs}"
+    )

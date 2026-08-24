@@ -18,7 +18,7 @@ from a module several imports away from the one being read, and nothing that onl
 needs a constant can load at all. Callers that cannot proceed without Neo4j call
 `require_neo4j_env()` in their setup cell, so a participant still finds out
 immediately and sees the check happen instead of it being hidden in an import.
-Module 3.2's notebook instead reads the same variables itself and skips its live
+Module 3.1's notebook instead reads the same variables itself and skips its live
 cells when they are unset, because it is written to be readable without a
 database.
 

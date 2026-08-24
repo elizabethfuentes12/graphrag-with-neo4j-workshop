@@ -2,6 +2,8 @@
 # SPDX-License-Identifier: MIT-0
 """Live checks that a participant's credentials actually reach the services.
 
+Used for: the one required participant readiness check before Module 1.
+
 `check_repo.py` is the offline gate and needs nothing. This is its counterpart:
 it needs the environment, and it is the one command the setup page tells a
 participant to run before opening the first notebook.

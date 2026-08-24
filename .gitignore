@@ -48,10 +48,12 @@ notebooks/05-agentcore-deploy/runtime_app/Dockerfile.bak
 notebooks/workshop/build/
 notebooks/workshop/workshop.egg-info/
 
-# Executed notebook copies from setup/run_notebooks.py --keep-output
+# Executed notebook copies from the maintenance notebook runner
+workfolder/maintenance/notebook-output/
+# Historical notebook-run evidence retained from the former setup runner
 setup/notebook-output/
 
-# pytest, from the checks in setup/
+# pytest, from maintenance checks in workfolder/tests/
 .pytest_cache/
 
 # macOS

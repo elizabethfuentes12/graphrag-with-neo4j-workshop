@@ -62,6 +62,11 @@ cd notebooks
 uv venv && uv pip install -r requirements.txt
 :::
 
+You can launch a notebook from the repository root, from `notebooks/`, or from
+that notebook's own module directory. Each location resolves the same shared
+package and module files. Custom launchers can set `WORKSHOP_NOTEBOOKS_DIR` to
+the absolute `notebooks/` directory.
+
 ---
 
 ## Verify It

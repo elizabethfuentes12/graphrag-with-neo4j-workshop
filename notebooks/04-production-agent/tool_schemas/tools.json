@@ -19,7 +19,7 @@
   },
   {
     "name": "graph_query",
-    "description": "Answer a structured hotel question with read-only Cypher generated against the pinned graph schema. Use for counts, averages, filters, and multi-hop questions that need the database to calculate over the full matching set rather than return top-k text. Returns the generated Cypher alongside its records, and never writes.",
+    "description": "Answer a structured hotel question with read-only Cypher generated against the pinned graph schema. Use for counts, averages, filters, and connected traversals that need the database to calculate over the full matching set rather than return top-k text. Returns the generated Cypher alongside its records, and never writes.",
     "input_schema": {
       "type": "object",
       "properties": {

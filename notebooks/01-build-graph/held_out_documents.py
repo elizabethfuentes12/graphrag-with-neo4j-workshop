@@ -20,20 +20,15 @@ the one fact Module 1 cannot be written without was not in the tree at all.
 from pathlib import Path
 from zipfile import ZipFile
 
-HELD_OUT_DOCUMENTS: tuple[str, ...] = (
-    "hotel-tokyo-002.txt",
-    "hotel-sydney-002.txt",
-    "hotel-riodejaneiro-002.txt",
-    "hotel-capetown-002.txt",
-    "hotel-prague-002.txt",
-)
+from graph_config import HELD_OUT_DOCUMENTS
 
-# The corpus lives beside `prepare_graph.py`, the from-scratch rebuild path,
-# which needs all of it. Module 1 needs five documents and reads them from the
-# same archive rather than committing a second copy of the same bytes.
-CORPUS_ARCHIVE = Path("..") / "02-vector-rag-hallucinates" / "hotel-faqs.zip"
-
-DATA_DIR = Path("data")
+# Resolve both paths from this helper, not from the process working directory.
+# That keeps the notebook, the setup loader, and tests on the same files when
+# they start at the repository root, notebooks/, or this module directory.
+MODULE_DIR = Path(__file__).resolve().parent
+NOTEBOOKS_ROOT = MODULE_DIR.parent
+CORPUS_ARCHIVE = NOTEBOOKS_ROOT / "02-connected-context" / "hotel-faqs.zip"
+DATA_DIR = MODULE_DIR / "data"
 
 
 def extract_held_out(
@@ -47,7 +42,7 @@ def extract_held_out(
             "the repository next to prepare_graph.py."
         )
 
-    data_dir.mkdir(exist_ok=True)
+    data_dir.mkdir(parents=True, exist_ok=True)
     with ZipFile(archive) as corpus:
         available = set(corpus.namelist())
         missing = [name for name in HELD_OUT_DOCUMENTS if name not in available]

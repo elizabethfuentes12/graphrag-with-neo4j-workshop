@@ -35,6 +35,12 @@ credentials
 .idea/
 .git/
 
+# The shared package reaches the image as the wheel that 5.1_deploy.ipynb
+# builds, never as a loose source tree. An earlier flow copied the tree here
+# instead, and a leftover copy both bloats the build context and shadows the
+# installed package for anything importing `workshop` from this directory.
+workshop/
+
 # Starter toolkit state. `.bedrock_agentcore.yaml` records the runtime ID of a
 # previous deploy and belongs on the machine doing the deploying, not in the
 # image it produces.
