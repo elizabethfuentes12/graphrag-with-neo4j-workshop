@@ -32,37 +32,6 @@ Style: AWS workshop style, flat design, Inter font, colors: #232F3E dark navy, #
 
 ---
 
-## Diagram 2: RAG vs. Graph-RAG Architecture
-**Filename:** `01-rag-vs-graphrag-architecture.png`
-**Dimensions:** 1600 × 900 px (16:9)
-
-**Canva prompt:**
-```
-Clean AWS architecture diagram on white background showing two parallel retrieval paths.
-
-TOP: "300 Hotel FAQ Documents" in a document stack icon
-
-SPLIT INTO TWO PATHS:
-
-LEFT PATH labeled "RAG Agent":
-- Vector index cylinder (blue) labeled "Vector Search Index"
-- Arrow down to "Top-3 chunks" box
-- Arrow down to LLM brain icon labeled "Amazon Bedrock Claude"
-- Arrow down to speech bubble labeled "Summarized (possibly wrong)"
-
-RIGHT PATH labeled "Graph-RAG Agent":
-- Neo4j circle icon (cyan) labeled "Neo4j Knowledge Graph"
-- Arrow down to code box showing "MATCH (h:Hotel) RETURN AVG(h.rating)"
-- Arrow down to database result icon
-- Arrow down to speech bubble labeled "Precise result"
-
-BOTTOM: Arrow from both paths to "Same user query" box
-
-Style: AWS architecture diagram style, flat icons, white background, #4581C3 for Neo4j, #FF9900 for AWS, clean sans-serif font
-```
-
----
-
 ## Diagram 3: Retrieval Patterns Decision Tree
 **Filename:** `02-retrieval-decision-tree.png`
 **Editable source:** `02-retrieval-decision-tree.excalidraw`

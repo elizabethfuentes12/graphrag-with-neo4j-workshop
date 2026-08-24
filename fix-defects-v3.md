@@ -13,12 +13,15 @@ truth for the remaining implementation and validation work.
 
 Finish the redesign work that remains after Phases 1 through 6. Preserve the
 connected-context curriculum, close the deterministic contract gaps, remove
-working-directory dependencies, strengthen evaluation publication safeguards,
-and produce current live evidence for Modules 1 through 3.
+working-directory dependencies, remove evaluation infrastructure that is out of
+scope for a simple workshop, and produce current live evidence for Modules 1
+through 3.
 
 ## Verified baseline
 
-- The full offline suite passes 220 tests.
+- The current offline suite passes 210 tests after removing 58 FAISS and
+  Phase 1.5 benchmark tests and adding the focused Phase 1 and Phase 2
+  regressions.
 - The repository checker passes notebook parsing, Python compilation, content
   links, content weights, folder-to-page parity, image synchronization, stale
   path checks, and named-path checks.
@@ -28,8 +31,6 @@ and produce current live evidence for Modules 1 through 3.
   Vector, Hybrid, Vector-Cypher, fixed Cypher, and optional Text2Cypher patterns.
 - The Module 2 decision-tree source and export are synchronized in both image
   trees. The unsupported comparison image is absent.
-- The Phase 1.5 FAISS baseline is separate from the learner path and its focused
-  offline tests pass.
 
 These results prove offline implementation health. They do not complete live
 semantic acceptance or prove that all promised evidence fields appear during a
@@ -44,7 +45,6 @@ current notebook run.
 | V3-3 | High | The locked Cairo fixture requires hotel ID `81393d51-1df3-4f53-b58e-e4cda9736fd7`, but the shared readiness query and `SourceFixture` contract do not validate that ID before retrieval. | Add the hotel ID to readiness data, validation, and negative regression tests. |
 | V3-4 | High | The fixed Chicago Cypher block shows the query, parameters, candidate records, qualifiers, and exclusions, but it does not fully follow the shared evidence display contract. It omits an explicit retriever label, approximate context size, requested-field gaps, and structured provenance per record. | Normalize the fixed-Cypher display with the other retrieval blocks and assert the displayed fields through behavioral tests. |
 | V3-5 | Release blocker | The available live Module 2 execution predates the current evidence-first notebook. It used an earlier arrival question and an earlier cell layout. It cannot validate the locked Phase 1 contract now in the source notebook. | Execute the current Modules 1 through 3 in order and retain a fresh validation record tied to the current source revision. |
-| V3-6 | High for publication | The evaluator harness creates strict samples, but the evidence gate trusts recorded flags and final labels. It does not recompute vote winners, vote counts, rationale ownership, or exact raw-response validity. The report can treat shallow flag checks as sufficient for publishable grounding labels. | Make one validator authoritative for both the gate and report. Recompute all derived judge fields from preserved samples and reject inconsistencies. |
 | V3-8 | Medium | Phase 5 content tests use a curated learner-file list. Current scans find no stale redesign claims, but a new active page or notebook can fall outside that list. | Derive learner-facing scan coverage from active notebook and workshop-content trees, with narrow documented exclusions for historical evidence and planning records. |
 | V3-9 | Critical | The Module 2 notebook and workshop page direct learners to the lite preparation path even when Module 1 already prepared the hosted graph. A readiness mismatch can reach the destructive rebuild path without an explicit rebuild request and erase the restored graph and learner work. | Make the hosted instructions readiness-only and require explicit rebuild intent before any whole-graph deletion. Test the refusal path against a populated graph. |
 | V3-10 | High | The decision tree assigns the Chicago spa-and-pool example to Text2Cypher, while the locked contract and notebook use reviewed fixed Cypher as the deterministic acceptance path. Module 3 also says Module 2 compares the selected Hybrid-Cypher configuration even though Module 2 only selects it. | Give reviewed fixed Cypher its own diagram branch, mark Text2Cypher optional and governed, and correct the Module 2 and Module 3 learner prose. |
@@ -74,9 +74,9 @@ current notebook run.
 - Optional Text2Cypher may report a blocked state when verified reader
   credentials are unavailable. Its live execution is outside the deterministic
   completion gate.
-- The optional 240-trial benchmark remains supported but is not required for
-  workshop release. Any future publication of comparative rates requires a new
-  valid benchmark and durable raw evidence.
+- FAISS and the optional Phase 1.5 comparison benchmark are retired. The
+  workshop makes no comparative retrieval-rate claim and carries no benchmark
+  runner, evaluator, report pipeline, or publication gate.
 - Existing unrelated working-tree changes must remain intact.
 
 ## Risks
@@ -91,11 +91,8 @@ current notebook run.
   execution, and environment loading. A partial conversion can make one launch
   mode pass while another silently reads the wrong assets.
 - Live Neo4j and Bedrock validation uses credentials and incurs model cost.
-- Tightening the evaluator gate will reject earlier or manually edited evidence
-  files. Historical files should remain historical instead of being rewritten
-  to satisfy the new schema.
-- Raw evidence contains environment and execution details. Keep it local unless
-  an approved durable location and retention policy are recorded.
+- Live notebook logs can contain environment and execution details. Keep them
+  local and do not copy credentials into the short validation record.
 - Live validation reads credentials and service configuration from `.env`.
   Validation records must not copy credentials or secret values.
 
@@ -195,7 +192,7 @@ example enforces and displays the complete locked contract.
 It must finish before any new live notebook acceptance run.
 
 **Validation result:** Complete offline. Phase 1 focused and related tests pass
-as part of the 268-test setup suite. The repository checker and whitespace
+as part of the current 210-test setup suite. The repository checker and whitespace
 validation pass. Live semantic acceptance remains Phase 5 work.
 
 ## Phase 2: Establish one working-directory contract
@@ -243,51 +240,48 @@ credentials so most failures remain testable offline.
 
 **Validation result:** Complete offline. Path resolution tests cover Modules 1
 through 6, the held-out corpus helper, `prepare_graph.py`, and the supported
-launch locations without generated data. The combined 268-test setup suite and
+launch locations without generated data. The combined 210-test setup suite and
 repository checker pass.
 
-## Phase 3: Harden Phase 1.5 evidence publication controls
+## Phase 3: Retire out-of-scope comparison infrastructure
 
-**Status:** In progress
+**Status:** Complete
 
-**Outcome:** A report can mark judge labels publishable only after one strict,
-recomputed evidence contract passes.
+**Outcome:** The workshop contains only the Neo4j retrieval paths it teaches.
+FAISS and the optional Phase 1.5 benchmark no longer add dependencies, artifacts,
+commands, tests, or publication machinery.
 
 **Checklist:**
 
-- [ ] Centralize run validation so the command-line gate and report generator
-  apply the same rules.
-- [ ] Parse each preserved raw judge response again and confirm that its exact
-  schema and normalized values match the recorded sample.
-- [ ] Recompute factuality and grounding winners from all preserved samples.
-- [ ] Reject unresolved ties, mismatched winning labels, incorrect vote counts,
-  and rationales that did not come from a sample casting the winning label.
-- [ ] Persist enough evidence metadata to prove that the judge received the full
-  evidence shown to the evaluated agent. Validate the retained character count
-  and integrity value instead of trusting a Boolean flag alone.
-- [ ] Reject a report request when the strict gate fails. Historical reports may
-  render only with the existing invalid-grounding warning and without
-  publishable rates.
-- [ ] Pin the complete FAISS compatibility manifest and evaluator settings when
-  merging worker slices.
-- [ ] Add mutation tests for altered raw responses, forged completion flags,
-  changed labels, wrong vote counts, unrelated rationales, manifest drift, and
-  unbalanced cells.
-- [ ] Confirm that the optional benchmark still requires ten trials in every
-  question, arm, and prompt-condition cell.
+- [x] Remove the committed FAISS index, corpus mapping, manifest, loader, and
+  rebuild utility.
+- [x] Remove the direct FAISS dependency and regenerate the workshop lock file.
+- [x] Remove the Phase 1.5 benchmark harness, evaluator, merge, report,
+  validation, evidence-capture runner, and their dedicated tests.
+- [x] Remove the Phase 1.5 evidence-retention policy and local benchmark output.
+- [x] Keep the standalone notebook smoke runner, additive graph validation, and
+  active Modules 1 through 6 tests.
+- [x] Remove active learner and authoring references to FAISS and the optional
+  benchmark.
+- [x] Run the full offline suite, repository checker, dependency scan, and stale
+  reference scan after all retirement deletions are integrated.
 
 **Validation:**
 
-- The gate rejects every inconsistent derived field even when stored status
-  flags claim success.
-- The report and evidence gate agree on whether grounding labels are publishable.
-- No historical Phase 1.5 grounding label becomes valid through schema
-  migration or report regeneration.
-- Focused evaluator, merge, report, retention, FAISS, and release-workflow tests
-  pass.
+- No tracked active file imports FAISS or names the retired benchmark commands or
+  artifacts.
+- Workshop dependencies and the lock file contain no direct `faiss-cpu`
+  dependency.
+- The normal workshop suite and repository checker pass without replacement
+  benchmark infrastructure.
 
-**Notes:** This phase closes V3-6. Running the paid benchmark is deferred unless
-the release makes comparative rate or stability claims.
+**Notes:** V3-6 was a publication safeguard for infrastructure the workshop no
+longer needs. Retirement removes that publication path instead of replacing it
+with a more complex validator.
+
+**Validation result:** Complete. The simplified offline suite passes 210 tests,
+the repository checker passes, the workshop lock resolves offline, and active
+tracked code and content contain no retired FAISS or benchmark references.
 
 ## Phase 4: Complete release-inventory and learner-surface coverage
 
@@ -299,15 +293,11 @@ checks.
 
 **Checklist:**
 
-- [ ] Verify that the Phase 1.5 retention policy, findings, amenity recheck,
-  evaluator contract, and focused contract tests remain tracked in `HEAD`.
-- [ ] Confirm that raw trials, detailed generated reports, logs, executed
-  notebooks, archived notebooks, and release-smoke bundles remain local-only.
 - [ ] Replace the curated learner-file list with discovery of active notebook
   markdown, module READMEs, workshop pages, root navigation, summary, and wrap-up
   content.
-- [ ] Keep exclusions narrow and explicit for planning records, historical
-  evidence, generated output, caches, and retired local directories.
+- [ ] Keep exclusions narrow and explicit for planning records, generated
+  output, caches, and retired local directories.
 - [ ] Re-run stale-title, retired-path, module-number, unsupported-claim,
   `Chunk` terminology, model-variability, extraction-boundary, and handoff scans
   across the discovered learner surfaces.
@@ -335,8 +325,8 @@ checks.
 
 **Validation:**
 
-- A fresh-clone inventory contains every compact retained artifact and every
-  contract test required by Phases 1 through 6.
+- A fresh-clone inventory contains every active contract file and test required
+  by the workshop.
 - The learner-surface gate covers every active page and notebook without hiding
   active files behind broad directory exclusions.
 - The Module 2 decision tree assigns Chicago to reviewed fixed Cypher and gives
@@ -345,8 +335,8 @@ checks.
   unreferenced Module 1 image remains in either image tree.
 - Module 2 and Module 3 prose describes the patterns the notebooks actually run
   and the Hybrid-Cypher handoff they select.
-- Local-only evidence remains ignored and no credential or generated notebook
-  output enters the release set.
+- No credential, generated notebook output, or retired benchmark artifact enters
+  the release set.
 
 **Notes:** This phase closes V3-8, V3-10, and V3-13. The diagram source,
 exports, ownership tests, and learner prose must change together.
@@ -436,8 +426,6 @@ later-module handoffs all describe the same completed redesign.
 - [ ] Update current test totals in release summaries while retaining clearly
   labeled historical totals where they describe an earlier result.
 - [ ] Independently verify the published static graph dump size and SHA-256.
-- [ ] Record the final disposition of the optional benchmark. State that it was
-  deferred unless a valid 240-trial run was actually completed.
 - [ ] Review the final change set for unrelated edits, generated notebook
   output, raw evidence, credentials, caches, and accidental artifact deletion.
 
@@ -468,15 +456,13 @@ later-module handoffs all describe the same completed redesign.
 - Acceptance failures, Text2Cypher display limits, and graph-enrichment misses
   are explicit and actionable.
 - The current Modules 1 through 3 pass in order with fresh live evidence.
-- The evaluator gate recomputes judge outcomes and the report cannot publish
-  labels that fail that gate.
-- Compact Phase 1.5 records and new contract tests are present in a fresh clone,
-  while raw evidence remains local-only.
+- FAISS artifacts, dependencies, rebuild utilities, and tests are absent.
+- The optional Phase 1.5 benchmark, evaluator, report pipeline, and evidence
+  retention machinery are absent.
 - Active learner scans cover the complete current learner surface.
 - The Module 2 diagram and learner prose distinguish reviewed fixed Cypher from
   optional Text2Cypher.
 - Every retained active diagram has an editable source and an active consumer.
 - Module 4 and Module 5 handoffs use the redesigned module ownership and paths.
 - Release records, test totals, graph dump identity, and completion status agree.
-- No comparative benchmark claim is published without a valid complete-evidence
-  run and durable raw evidence.
+- No active learner or release surface publishes a comparative benchmark claim.
