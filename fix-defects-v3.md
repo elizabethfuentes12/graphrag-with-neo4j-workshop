@@ -42,6 +42,12 @@ current notebook run.
 | V3-6 | High for publication | The evaluator harness creates strict samples, but the evidence gate trusts recorded flags and final labels. It does not recompute vote winners, vote counts, rationale ownership, or exact raw-response validity. The report can treat shallow flag checks as sufficient for publishable grounding labels. | Make one validator authoritative for both the gate and report. Recompute all derived judge fields from preserved samples and reject inconsistencies. |
 | V3-7 | Release blocker | The compact Phase 1.5 policy and decision records are allowed by ignore rules but are still absent from Git's tracked-file inventory. The Phase 6 claim that a fresh clone can locate them is therefore unproven. Several new contract tests and the evaluator contract module are also untracked. | Add every intended durable file to the release change set and verify that local-only raw evidence remains excluded. |
 | V3-8 | Medium | Phase 5 content tests use a curated learner-file list. Current scans find no stale redesign claims, but a new active page or notebook can fall outside that list. | Derive learner-facing scan coverage from active notebook and workshop-content trees, with narrow documented exclusions for historical evidence and planning records. |
+| V3-9 | Critical | The Module 2 notebook and workshop page direct learners to the lite preparation path even when Module 1 already prepared the hosted graph. A readiness mismatch can reach the destructive rebuild path without an explicit rebuild request and erase the restored graph and learner work. | Make the hosted instructions readiness-only and require explicit rebuild intent before any whole-graph deletion. Test the refusal path against a populated graph. |
+| V3-10 | High | The decision tree assigns the Chicago spa-and-pool example to Text2Cypher, while the locked contract and notebook use reviewed fixed Cypher as the deterministic acceptance path. Module 3 also says Module 2 compares the selected Hybrid-Cypher configuration even though Module 2 only selects it. | Give reviewed fixed Cypher its own diagram branch, mark Text2Cypher optional and governed, and correct the Module 2 and Module 3 learner prose. |
+| V3-11 | High | The Vector-Cypher context-size calculation counts the source text twice and includes representation punctuation. The resulting comparison can teach the opposite of the intended compact-context lesson. | Report structured-field size and source-text size separately, using the same measurement rules for every arm. |
+| V3-12 | Medium | The Chicago query selects its candidates by the two expected source filenames, and the Module 2 readiness gate still requires aggregation and counting fixtures from retired lessons. | Select Chicago candidates by city, validate expected source identities separately, and limit Module 2 readiness to facts used by current examples. |
+| V3-13 | High | The active Module 3 architecture PNG has no editable source. Two Module 1 PNGs are unreferenced orphans, and the diagram authoring notes document an image path that active pages do not use. | Create the missing editable source, remove the orphans, correct the authoring notes, and generalize diagram ownership tests. |
+| V3-14 | Medium | Several notebook failures still produce bare assertions, source provenance is joined through a client-side full-corpus text map, Text2Cypher reports a truncated display count as the result count, and Vector-Cypher can silently drop semantic hits with no extracted Hotel. | Make failures diagnostic, resolve provenance per result, separate total and displayed counts, and expose graph-enrichment misses. |
 
 ## Assumptions
 
@@ -50,6 +56,10 @@ current notebook run.
 - The published graph dump remains the starting artifact. Graph rebuilding is
   required only if a fixture check proves that the artifact violates the locked
   contract.
+- The hosted learner path reaches Module 2 with a prepared graph. Its default
+  action is validation, not graph reconstruction.
+- Whole-graph reconstruction is a facilitator or self-paced operation and
+  requires explicit destructive intent.
 - Repository root, `notebooks/`, and the active module directory are supported
   launch locations for notebook and helper workflows.
 - Optional Text2Cypher may report a blocked state when verified reader
@@ -65,6 +75,9 @@ current notebook run.
 - The Module 1 cleanup regression writes temporary graph data. Run it only
   against an approved workshop graph and verify the graph state before and after
   the test.
+- Changing graph preparation from implicit repair to explicit rebuild changes a
+  facilitator workflow. Update its documentation and failure messages in the
+  same phase so a safe refusal is actionable.
 - Path changes affect imports, corpus discovery, deployment staging, notebook
   execution, and environment loading. A partial conversion can make one launch
   mode pass while another silently reads the wrong assets.
@@ -75,15 +88,31 @@ current notebook run.
 - Raw evidence contains environment and execution details. Keep it local unless
   an approved durable location and retention policy are recorded.
 
-## Phase 1: Repair deterministic data and evidence contracts
+## Phase 1: Make graph preparation safe and repair deterministic contracts
 
 **Status:** Pending
 
-**Outcome:** The optional demo cleans up only its own data, and every required
-Module 2 example enforces and displays the complete locked contract.
+**Outcome:** Module 2 cannot erase a prepared graph without explicit rebuild
+intent, the optional demo cleans up only its own data, and every required
+example enforces and displays the complete locked contract.
 
 **Checklist:**
 
+- [ ] Remove the unconditional lite-build prerequisite from the Module 2
+  notebook and workshop page. State that Module 1 already prepared the hosted
+  graph.
+- [ ] Make the Module 2 readiness failure direct learners to the non-destructive
+  check-only path before any rebuild guidance.
+- [ ] Keep lite and full preparation instructions under an explicit
+  from-scratch or self-paced heading.
+- [ ] Change `prepare_graph.py` so an unexpected or incomplete populated graph
+  returns an actionable failure unless the caller explicitly requested a
+  rebuild.
+- [ ] Require explicit rebuild intent before `prepare_graph.py` can reach the
+  whole-graph clearing path. Report the observed and expected graph sizes in the
+  refusal message.
+- [ ] Add regression tests proving that default preparation and check-only mode
+  never call the destructive build path on a populated graph.
 - [ ] Give the optional unpinned demo a filename reserved solely for temporary
   demo data. Do not reuse a held-out source filename.
 - [ ] Pass the temporary filename through the extraction metadata so the
@@ -99,25 +128,57 @@ Module 2 example enforces and displays the complete locked contract.
   validator, and focused negative tests.
 - [ ] Make readiness fail before retrieval when the Cairo ID is missing,
   duplicated, or different from the locked value.
+- [ ] Remove retired aggregation and counting fixtures from the Module 2
+  notebook readiness gate.
+- [ ] Retain broader graph-health fixtures in build-time validation where they
+  still protect downstream tools, and rename them for the behavior they protect.
+- [ ] Select Chicago candidates through a city predicate rather than passing the
+  two expected source filenames as the candidate set.
+- [ ] Keep the expected Chicago filenames in readiness and result validation so
+  the city-based query remains deterministic.
 - [ ] Give the fixed Chicago block an explicit pattern name and configuration,
   then display candidate and qualifying record context size, absent requested
   fields, source filename, and provenance.
 - [ ] Assert those Chicago display fields through structured notebook-contract
   tests instead of checking only for source-code strings.
+- [ ] Replace the Vector-Cypher blended context-size number with separate
+  measurements for structured fields and source text.
+- [ ] Apply the same measurement definitions to the vector arm so the learner
+  compares equivalent evidence.
+- [ ] Replace the full-corpus client-side text map with provenance resolution
+  tied to each retrieval result.
+- [ ] Make Vector-Cypher surface semantic hits that lack extracted Hotel context
+  and explain why enrichment returned fewer complete records.
+- [ ] Give every acceptance assertion an actionable message containing the
+  expected fact and observed evidence.
+- [ ] Report total Text2Cypher records separately from the bounded set displayed
+  in the notebook.
 - [ ] Keep generated Text2Cypher outside the deterministic acceptance path.
 
 **Validation:**
 
+- A populated graph cannot enter the whole-graph clearing path without an
+  explicit rebuild request.
+- The hosted Module 2 instructions perform readiness checks and preserve Module
+  1 learner work.
 - The demo leaves graph counts and participant source paths unchanged after both
   success and simulated failure.
 - Cairo readiness rejects every wrong-ID variant before a retriever is created.
+- Module 2 starts without requiring Paris aggregation, pool counting, or other
+  retired-lesson fixtures.
+- The Chicago query discovers candidates by city and still returns the two
+  locked source records, one qualifier, and one explicit exclusion.
 - The Chicago block exposes all applicable fields from the evidence display
   contract and still returns two candidates, one qualifier, and one explicit
   exclusion.
+- Context-size output counts each character once and separates structured fields
+  from source text.
+- Missing graph enrichment, provenance, assertion failures, and bounded
+  Text2Cypher displays are explicit in notebook output.
 - Focused Module 1 cleanup, Module 2 fixture, and notebook-contract tests pass.
 
-**Notes:** This phase closes V3-1, V3-3, and V3-4. It must finish before any new
-live notebook acceptance run.
+**Notes:** This phase closes V3-1, V3-3, V3-4, V3-9, V3-11, V3-12, and V3-14.
+It must finish before any new live notebook acceptance run.
 
 ## Phase 2: Establish one working-directory contract
 
@@ -228,6 +289,23 @@ and every active learner surface participates in semantic regression checks.
 - [ ] Re-run stale-title, retired-path, module-number, unsupported-claim,
   `Chunk` terminology, model-variability, extraction-boundary, and handoff scans
   across the discovered learner surfaces.
+- [ ] Add a reviewed fixed-Cypher branch to the Module 2 decision tree with the
+  Chicago spa-and-pool example and its candidate, qualifier, and exclusion
+  evidence.
+- [ ] Give optional Text2Cypher a separate flexible structured example and label
+  its reader-credential and read-only planner boundary.
+- [ ] Update the diagram contract test so it enforces the fixed-Cypher and
+  Text2Cypher example ownership instead of merely requiring both labels.
+- [ ] Create an editable source for the active Module 3 grounded-agent
+  architecture diagram and synchronize its export across both image trees.
+- [ ] Remove the two unreferenced Module 1 comparison PNGs from both image trees.
+- [ ] Correct the image path in the diagram authoring usage notes.
+- [ ] Generalize diagram tests so every retained PNG has a documented editable
+  source and an active consumer, with any approved exception named explicitly.
+- [ ] Correct Module 3 prose so it says Module 2 selects Hybrid-Cypher for the
+  application but does not execute it as a comparison arm.
+- [ ] Add reviewed fixed Cypher to the Module 2 content table and label
+  Text2Cypher optional and governed.
 - [ ] Confirm that both image trees contain the same editable sources and exports
   and that no unsupported comparison image has returned.
 - [ ] Review the final tracked-file inventory for unintended generated or local
@@ -239,11 +317,17 @@ and every active learner surface participates in semantic regression checks.
   contract test required by Phases 1 through 6.
 - The learner-surface gate covers every active page and notebook without hiding
   active files behind broad directory exclusions.
+- The Module 2 decision tree assigns Chicago to reviewed fixed Cypher and gives
+  optional Text2Cypher a distinct governed role.
+- The active Module 3 architecture image has an editable source, and no
+  unreferenced Module 1 image remains in either image tree.
+- Module 2 and Module 3 prose describes the patterns the notebooks actually run
+  and the Hybrid-Cypher handoff they select.
 - Local-only evidence remains ignored and no credential or generated notebook
   output enters the release set.
 
-**Notes:** This phase closes V3-7 and V3-8. The current diagram design passed
-visual review and needs verification, not redesign.
+**Notes:** This phase closes V3-7, V3-8, V3-10, and V3-13. The diagram source,
+exports, ownership tests, and learner prose must change together.
 
 ## Phase 5: Run current live semantic acceptance
 
@@ -256,6 +340,8 @@ agent and produce the exact evidence promised by the locked learning contract.
 
 - [ ] Start from the published graph artifact or another explicitly approved
   clean workshop graph and record its initial identity.
+- [ ] Run the Module 2 non-destructive readiness path against that populated
+  graph and confirm that graph counts and Module 1 learner data do not change.
 - [ ] Execute Module 1, including the repaired optional demo cleanup test, and
   confirm that the final graph contains only intended workshop data.
 - [ ] Execute the current Module 2 notebook. Do not reuse the earlier executed
@@ -268,8 +354,10 @@ agent and produce the exact evidence promised by the locked learning contract.
   a permanent constant.
 - [ ] Verify the Vector-Cypher Cairo record contains the locked hotel name,
   hotel ID, rating, source filename, required amenity terms, source text,
-  semantic score, relationship types, field provenance, context size, and no
-  missing requested fields.
+  semantic score, relationship types, field provenance, separate structured and
+  source-text sizes, and no missing requested fields.
+- [ ] Verify that graph-enrichment misses remain visible and do not silently
+  reduce the reported semantic result set.
 - [ ] Verify the fixed Chicago filter returns two candidates, only Lakeview
   Horizon Suites as the qualifier, and Windward Mile Tower as the explicit
   exclusion.
@@ -285,6 +373,8 @@ agent and produce the exact evidence promised by the locked learning contract.
 **Validation:**
 
 - Modules 1 through 3 pass in order against the same configured environment.
+- The non-destructive preparation path preserves the starting graph and learner
+  work.
 - Every locked Module 2 result and evidence field is visible in the executed
   notebook.
 - The live record corresponds to the current notebook questions and current
@@ -335,16 +425,28 @@ later-module handoffs all describe the same completed redesign.
 ## Completion criteria
 
 - The optional Module 1 demo creates and removes only its own temporary data.
+- Module 2 preparation cannot clear a populated graph without explicit rebuild
+  intent, and hosted instructions use the non-destructive readiness path.
 - All active notebooks and helpers use one tested base-path contract.
 - Cairo readiness enforces the locked hotel ID before retrieval begins.
+- Module 2 readiness depends only on current learner examples.
+- The Chicago structured query discovers candidates by city and validates the
+  expected source identities separately.
 - Every deterministic Module 2 block displays all applicable evidence and
   provenance fields.
+- Context-size comparisons count source text once and distinguish it from named
+  structured fields.
+- Acceptance failures, Text2Cypher display limits, and graph-enrichment misses
+  are explicit and actionable.
 - The current Modules 1 through 3 pass in order with fresh live evidence.
 - The evaluator gate recomputes judge outcomes and the report cannot publish
   labels that fail that gate.
 - Compact Phase 1.5 records and new contract tests are present in a fresh clone,
   while raw evidence remains local-only.
 - Active learner scans cover the complete current learner surface.
+- The Module 2 diagram and learner prose distinguish reviewed fixed Cypher from
+  optional Text2Cypher.
+- Every retained active diagram has an editable source and an active consumer.
 - Module 4 and Module 5 handoffs use the redesigned module ownership and paths.
 - Release records, test totals, graph dump identity, and completion status agree.
 - No comparative benchmark claim is published without a valid complete-evidence
